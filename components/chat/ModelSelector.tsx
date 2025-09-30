@@ -166,13 +166,23 @@ export default function ModelSelector({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models]);
 
+  // Normalize provider modality strings to canonical categories used for icons/filters
+  const normalizeModality = (value: unknown): 'text' | 'image' | 'audio' | 'video' => {
+    const k = String(value ?? '').toLowerCase();
+    if (k === 'image' || k === 'images' || k === 'img' || k === 'vision' || k === 'picture' || k === 'photo') return 'image';
+    if (k === 'audio' || k === 'sound' || k === 'speech' || k === 'voice') return 'audio';
+    if (k === 'video' || k === 'videos') return 'video';
+    // Treat unknowns (e.g., "file", "document", "json") as text for display purposes
+    return 'text';
+  };
+
   // Collect available input->output pairs dynamically from real model data
   const availablePairs: readonly { key: string; input: string; output: string }[] = useMemo(() => {
     const found = new Map<string, { key: string; input: string; output: string }>();
     for (const m of dedupedModels) {
       try {
-        const inputs = (m.architecture?.input_modalities ?? ['text']).map(x => String(x).toLowerCase());
-        const outputs = (m.architecture?.output_modalities ?? ['text']).map(x => String(x).toLowerCase());
+        const inputs = new Set((m.architecture?.input_modalities ?? ['text']).map(normalizeModality));
+        const outputs = new Set((m.architecture?.output_modalities ?? ['text']).map(normalizeModality));
         for (const i of inputs) {
           for (const o of outputs) {
             const key = `${i}->${o}`;
@@ -191,8 +201,8 @@ export default function ModelSelector({
       .includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
     if (pairFilters.size === 0) return true;
-    const inputs = (model.architecture?.input_modalities ?? ['text']).map(v => String(v).toLowerCase());
-    const outputs = (model.architecture?.output_modalities ?? ['text']).map(v => String(v).toLowerCase());
+    const inputs = new Set((model.architecture?.input_modalities ?? ['text']).map(normalizeModality));
+    const outputs = new Set((model.architecture?.output_modalities ?? ['text']).map(normalizeModality));
     for (const i of inputs) {
       for (const o of outputs) {
         const key = `${i}->${o}`;
@@ -582,8 +592,8 @@ export default function ModelSelector({
     };
 
     // Build input->output modality pairs for icon display
-    const inputs = (effectiveModel?.architecture?.input_modalities ?? ['text']).map(v => String(v).toLowerCase());
-    const outputs = (effectiveModel?.architecture?.output_modalities ?? ['text']).map(v => String(v).toLowerCase());
+    const inputs = new Set((effectiveModel?.architecture?.input_modalities ?? ['text']).map(normalizeModality));
+    const outputs = new Set((effectiveModel?.architecture?.output_modalities ?? ['text']).map(normalizeModality));
     const ioPairs: { key: string; input: string; output: string }[] = (() => {
       const pairs: { key: string; input: string; output: string }[] = [];
       const seen = new Set<string>();
