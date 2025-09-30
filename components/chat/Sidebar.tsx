@@ -41,7 +41,7 @@ export default function Sidebar({
         className={`${isMobile
           ? (isSidebarOpen ? 'fixed inset-0 z-50 w-72 translate-x-0' : 'fixed inset-0 z-50 w-72 -translate-x-full')
           : `fixed top-0 left-0 h-full w-72 ${isSidebarCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}
-          bg-[#181818] flex flex-col transition-all duration-300 ease-in-out shadow-lg`}
+          bg-[#0f0f0f] flex flex-col transition-all duration-300 ease-in-out shadow-lg`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Action Bar with New Chat button and Collapse/Close button */}

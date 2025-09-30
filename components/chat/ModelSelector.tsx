@@ -735,7 +735,7 @@ export default function ModelSelector({
         <div
           ref={modelDrawerRef}
           id="model-selector-drawer"
-          className={`${isMobile ? 'fixed left-1/2 -translate-x-1/2 top-[60px] w-[92vw]' : 'absolute top-full left-0 w-[720px] max-w-[95vw] mt-1'} bg-[#1e1e1e] border border-white/10 rounded-md shadow-lg max-h-[70vh] overflow-hidden z-50 transform transition-all duration-200 ${isDrawerAnimating ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-1 scale-95'}`}
+          className={`${isMobile ? 'fixed left-1/2 -translate-x-1/2 top-[60px] w-[92vw]' : 'absolute top-full left-0 w-[720px] max-w-[95vw] mt-1'} bg-[#181818] border border-white/10 rounded-md shadow-lg max-h-[70vh] overflow-hidden z-50 transform transition-all duration-200 ${isDrawerAnimating ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-1 scale-95'}`}
           onMouseLeave={() => setHoveredModelId(null)}
         >
           {/* Mobile view: page-like transition between list and details */}
@@ -743,7 +743,7 @@ export default function ModelSelector({
             {activeView === 'list' ? (
               <div>
                 {/* Search bar */}
-                <div className="sticky top-0 p-2 bg-[#1e1e1e] backdrop-blur-sm border-b border-white/10">
+                <div className="sticky top-0 p-2 bg-[#181818] backdrop-blur-sm border-b border-white/10">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                       <Search className="h-3.5 w-3.5 text-white/40" />
@@ -853,7 +853,7 @@ export default function ModelSelector({
             {/* Left: Search + List */}
             <div className="border-r border-white/10">
               {/* Search bar */}
-              <div className="sticky top-0 p-2 bg-[#1e1e1e] backdrop-blur-sm border-b border-white/10">
+              <div className="sticky top-0 p-2 bg-[#181818] backdrop-blur-sm border-b border-white/10">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                     <Search className="h-3.5 w-3.5 text-white/40" />
