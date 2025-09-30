@@ -8,6 +8,7 @@ import { useCashuToken } from "@/hooks/useCashuToken";
 import { useCashuStore } from "@/stores/cashuStore";
 import { formatBalance, calculateBalance } from "@/lib/cashu";
 import { cn } from "@/lib/utils";
+import { computeTotalBalanceSats } from '@/utils/walletUtils';
 import InvoiceModal from './InvoiceModal';
 import {
   createLightningInvoice,
@@ -187,17 +188,8 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   }, [mintUnits, cashuStore.activeMintUrl]);
 
   useEffect(() => {
-    let totalBalance = 0;
-    for (const mintUrl in mintBalances) {
-      const balance = mintBalances[mintUrl];
-      const unit = mintUnits[mintUrl];
-      if (unit === 'msat') {
-        totalBalance += balance / 1000;
-      } else {
-        totalBalance += balance;
-      }
-    }
-    setBalance(Math.round(totalBalance*1000)/1000);
+    const total = computeTotalBalanceSats(mintBalances, mintUnits);
+    setBalance(Math.round(total * 1000) / 1000);
   }, [mintBalances, mintUnits]);
 
   // Check for local wallet balance on component mount
@@ -860,6 +852,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       type="number"
                       value={receiveAmount}
                       onChange={(e) => setReceiveAmount(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handleCreateInvoice();
+                        }
+                      }}
                       className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
                       placeholder={`Amount in ${currentMintUnit}s`}
                     />

@@ -15,6 +15,7 @@ import { useCashuWallet } from "@/hooks/useCashuWallet";
 import { useCashuToken } from "@/hooks/useCashuToken";
 import { useCashuStore } from "@/stores/cashuStore";
 import { formatBalance, calculateBalance } from "@/lib/cashu";
+import { truncateMintUrl as utilTruncateMintUrl, getAvailableMints, isMintValid, getCurrentMintBalance as utilGetCurrentMintBalance } from '@/utils/walletUtils';
 import {
   createLightningInvoice,
   mintTokensFromPaidInvoice,
@@ -125,23 +126,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
   const npub = publicKey ? formatPublicKey(publicKey) : '';
   const truncatedNpub = npub ? truncateNpub(npub) : '';
 
-  // Helper function to truncate mint URL for display
-  const truncateMintUrl = (url: string): string => {
-    try {
-      const urlObj = new URL(url);
-      const domain = urlObj.hostname;
-      if (domain.length <= 20) return domain;
-      return `${domain.slice(0, 15)}...`;
-    } catch {
-      return url.length <= 20 ? url : `${url.slice(0, 15)}...`;
-    }
-  };
-
-  // Get current mint balance
-  const getCurrentMintBalance = (): number => {
-    if (!cashuStore.activeMintUrl || !mintBalances) return 0;
-    return mintBalances[cashuStore.activeMintUrl] || 0;
-  };
+  // Use shared mint helpers
+  const truncateMintUrl = utilTruncateMintUrl;
 
   // Handle mint selection
   const handleMintSelection = (mintUrl: string) => {
@@ -156,13 +142,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
   };
 
   // Get available mints from mintBalances
-  const availableMints = Object.keys(mintBalances || {});
+  const availableMints = getAvailableMints(mintBalances);
 
   // Check if user has any mints available
   const hasMints = availableMints.length > 0;
 
   // Check if current mint is valid
-  const isCurrentMintValid = cashuStore.activeMintUrl && availableMints.includes(cashuStore.activeMintUrl);
+  const isCurrentMintValid = isMintValid(cashuStore.activeMintUrl, availableMints);
 
   // Stop auto-checking
   const stopAutoChecking = useCallback(() => {
@@ -775,7 +761,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     }
   };
 
-  const isValidSendAmount = sendAmount && parseInt(sendAmount) > 0 && parseInt(sendAmount) <= (usingNip60 ? getCurrentMintBalance() : (currentMintUnit === 'msat' ? balance * 1000 : balance));
+  const isValidSendAmount = sendAmount && parseInt(sendAmount) > 0 && parseInt(sendAmount) <= (usingNip60 ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) : (currentMintUnit === 'msat' ? balance * 1000 : balance));
   const isValidReceiveAmount = mintAmount && parseInt(mintAmount) > 0;
 
   const getTabTitle = () => {
@@ -1080,9 +1066,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                   <div className="bg-white/5 rounded-lg p-2 text-center">
                     <div className="text-white/60 text-xs">Available Balance</div>
                     <div className="text-white text-lg font-bold">
-                      {usingNip60 ? (
+                    {usingNip60 ? (
                         <>
-                          {currentMintUnit === 'msat' ? getCurrentMintBalance() : getCurrentMintBalance()} {currentMintUnit === 'msat' ? 'msats' : 'sats'}
+                          {currentMintUnit === 'msat' ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) : utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances)} {currentMintUnit === 'msat' ? 'msats' : 'sats'}
                         </>
                       ) : (
                         <>
@@ -1095,7 +1081,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                         Invalid mint selected
                       </div>
                     )}
-                    {usingNip60 && isCurrentMintValid && getCurrentMintBalance() === 0 && (
+                    {usingNip60 && isCurrentMintValid && utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) === 0 && (
                       <div className="text-yellow-400 text-xs mt-1">
                         No balance available in selected mint
                       </div>
@@ -1114,7 +1100,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                       placeholder="0"
                       autoFocus
                     />
-                    {sendAmount && parseInt(sendAmount) > (usingNip60 ? getCurrentMintBalance() : (currentMintUnit === 'msat' ? balance * 1000 : balance)) && (
+                    {sendAmount && parseInt(sendAmount) > (usingNip60 ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) : (currentMintUnit === 'msat' ? balance * 1000 : balance)) && (
                       <p className="text-red-400 text-xs mt-1">
                         Amount exceeds available balance
                       </p>
@@ -1126,15 +1112,15 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                       <button
                         key={amount}
                         onClick={() => setSendAmount(amount.toString())}
-                        disabled={amount > (usingNip60 ? getCurrentMintBalance() : (currentMintUnit === 'msat' ? balance * 1000 : balance))}
+                        disabled={amount > (usingNip60 ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) : (currentMintUnit === 'msat' ? balance * 1000 : balance))}
                         className="py-1.5 px-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 rounded-md text-white/70 text-xs transition-colors cursor-pointer"
                       >
                         {amount}
                       </button>
                     ))}
                     <button
-                      onClick={() => setSendAmount((usingNip60 ? getCurrentMintBalance() : (currentMintUnit === 'msat' ? balance * 1000 : balance)).toString())}
-                      disabled={usingNip60 ? getCurrentMintBalance() === 0 : balance === 0}
+                      onClick={() => setSendAmount((usingNip60 ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) : (currentMintUnit === 'msat' ? balance * 1000 : balance)).toString())}
+                      disabled={usingNip60 ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances) === 0 : balance === 0}
                       className="py-1.5 px-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 rounded-md text-white/70 text-xs transition-colors cursor-pointer"
                     >
                       Max
@@ -1309,6 +1295,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                       type="text"
                       value={mintAmount}
                       onChange={(e) => handleAmountChange(e, 'receive')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handleCreateMintQuote();
+                        }
+                      }}
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-lg font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
                       placeholder="0"
                       autoFocus

@@ -335,6 +335,12 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                   type="number"
                   value={receiveAmount}
                   onChange={(e) => setReceiveAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleCreateInvoice();
+                    }
+                  }}
                   disabled={isLoading || !cashuStore.activeMintUrl}
                   className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none disabled:opacity-50"
                   placeholder="Amount in sats"
