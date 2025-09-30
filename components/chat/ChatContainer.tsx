@@ -37,7 +37,7 @@ const ChatContainer: React.FC = () => {
   } = useChat();
 
   return (
-    <div className={`flex h-dvh w-full ${isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#212121]'} text-white overflow-hidden`}>
+    <div className={`flex h-dvh w-full ${isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#1e1e1e]'} text-white overflow-hidden`}>
       {/* Mobile Sidebar Overlay */}
       {isMobile && isAuthenticated && (
         <div

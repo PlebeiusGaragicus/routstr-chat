@@ -36,7 +36,7 @@ export default function ChatInput({
   const [isAnimating, setIsAnimating] = useState(false);
   const [isCentered, setIsCentered] = useState(!hasMessages);
   const { isSidebarOpen } = useChat();
-  const unifiedBgClass = isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#212121]';
+  const unifiedBgClass = isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#1e1e1e]';
 
   // Handle animation when messages change from external updates
   useEffect(() => {
@@ -139,7 +139,7 @@ export default function ChatInput({
               : `${
                 isMobile
                   ? `fixed z-20 bottom-0 left-0 right-0 ${unifiedBgClass} backdrop-blur-sm transition-all duration-300 ease-in-out px-1 pb-1 pt-0`
-                  : 'fixed z-20 bottom-0 bg-[#212121] backdrop-blur-sm transition-all duration-300 ease-in-out ' + (!isAuthenticated ? 'left-0 right-0 pb-4 pt-0' : isSidebarCollapsed ? 'left-0 right-0 pb-4 pt-0' : 'left-72 right-0 pb-4 pt-0')
+                  : 'fixed z-20 bottom-0 bg-[#1e1e1e] backdrop-blur-sm transition-all duration-300 ease-in-out ' + (!isAuthenticated ? 'left-0 right-0 pb-4 pt-0' : isSidebarCollapsed ? 'left-0 right-0 pb-4 pt-0' : 'left-72 right-0 pb-4 pt-0')
               }`
         }`}
         style={{

@@ -44,7 +44,7 @@ const ChatHeader: React.FC = () => {
   } = useChat();
 
   return (
-    <div className={`fixed top-0 ${isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#212121]'} backdrop-blur-sm z-30 transition-all duration-300 ease-in-out ${
+    <div className={`fixed top-0 ${isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#1e1e1e]'} backdrop-blur-sm z-30 transition-all duration-300 ease-in-out ${
       isMobile || !isAuthenticated
         ? 'left-0 right-0'
         : isSidebarCollapsed

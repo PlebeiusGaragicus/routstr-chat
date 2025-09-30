@@ -116,7 +116,7 @@ const SettingsModal = ({
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}
       >
-        <div className="bg-[#212121] flex justify-between items-center p-4 border-b border-white/10 flex-shrink-0">
+        <div className="bg-[#1e1e1e] flex justify-between items-center p-4 border-b border-white/10 flex-shrink-0">
           <h2 className="text-xl font-semibold text-white">Settings</h2>
           <button onClick={onClose} className="text-white/70 hover:text-white cursor-pointer">
             <X className="h-5 w-5" />
