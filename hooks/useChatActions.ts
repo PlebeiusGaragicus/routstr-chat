@@ -229,6 +229,11 @@ export const useChatActions = (): UseChatActionsReturn => {
     const activeUrl = cashuStore.getActiveMintUrl?.() ?? cashuStore.activeMintUrl;
     const activeBalance = activeUrl ? (mintBalances[activeUrl] ?? 0) : 0;
 
+    // Respect user manual selection, even if empty
+    if (cashuStore.userSelectedMintUrl && cashuStore.userSelectedMintUrl === activeUrl) {
+      return;
+    }
+
     // If current active has balance, keep it
     if (activeBalance > 0) return;
 

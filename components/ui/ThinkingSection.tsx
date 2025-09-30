@@ -2,8 +2,41 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, Brain, Lightbulb } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+
+const BrainIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    className={className}
+  >
+    <path d="M12 2a5 5 0 0 0-5 5v1a5 5 0 0 0-2 4v2a5 5 0 0 0 5 5h4a5 5 0 0 0 5-5v-2a5 5 0 0 0-2-4V7a5 5 0 0 0-5-5z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 12h6" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 16h6" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 8h6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const BulbIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
+    />
+  </svg>
+);
 
 // Ephemeral in-memory cache for thought durations keyed by content fingerprint
 const thoughtDurationCache = new Map<string, number>();
@@ -127,9 +160,9 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
         className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
       >
         {isStreaming ? (
-          <Brain className="w-3 h-3" />
+          <BrainIcon className="w-3 h-3" />
         ) : (
-          <Lightbulb className="w-3 h-3" />
+          <BulbIcon className="w-3 h-3" />
         )}
         <span>
           {isStreaming ? 'Thinking...' : (durationLabel || 'Thought')}

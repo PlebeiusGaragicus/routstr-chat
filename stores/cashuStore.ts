@@ -19,6 +19,7 @@ interface CashuStore {
   proofs: ProofWithEventId[];
   privkey?: string;
   activeMintUrl?: string;
+  userSelectedMintUrl?: string;
   pendingOnboardingToken?: string;
 
   addMint: (url: string) => void;
@@ -42,6 +43,8 @@ interface CashuStore {
   getMintQuote: (mintUrl: string, quoteId: string) => MintQuoteResponse;
   getMeltQuote: (mintUrl: string, quoteId: string) => MeltQuoteResponse;
   setActiveMintUrl: (url: string) => void;
+  setActiveMintUrlByUser: (url: string) => void;
+  clearUserSelectedMint: () => void;
   getActiveMintUrl: () => string | undefined;
   setPendingOnboardingToken: (token: string | undefined) => void;
   getPendingOnboardingToken: () => string | undefined;
@@ -187,6 +190,14 @@ export const useCashuStore = create<CashuStore>()(
 
       setActiveMintUrl(url: string) {
         set({ activeMintUrl: url });
+      },
+
+      setActiveMintUrlByUser(url: string) {
+        set({ activeMintUrl: url, userSelectedMintUrl: url });
+      },
+
+      clearUserSelectedMint() {
+        set({ userSelectedMintUrl: undefined });
       },
 
       getActiveMintUrl() {

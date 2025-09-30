@@ -699,11 +699,11 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                         value={mint}
                         checked={isActive}
                         onChange={() => {
-                          if ((mintBalances[mint] || 0) <= 0) {
-                            alert('No balance in this mint. Please add balance.');
-                            return;
+                          if (cashuStore.setActiveMintUrlByUser) {
+                            cashuStore.setActiveMintUrlByUser(mint);
+                          } else {
+                            cashuStore.setActiveMintUrl(mint);
                           }
-                          cashuStore.setActiveMintUrl(mint);
                         }}
                         className="form-radio h-4 w-4 text-white bg-white/10 border-white/30 focus:ring-white/50 shrink-0"
                       />
