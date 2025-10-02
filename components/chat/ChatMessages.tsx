@@ -19,6 +19,7 @@ interface ChatMessagesProps {
   getTextFromContent: (content: string | MessageContent[]) => string;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   isMobile: boolean;
+  textareaHeight?: number;
 }
 
 export default function ChatMessages({
@@ -34,7 +35,8 @@ export default function ChatMessages({
   retryMessage,
   getTextFromContent,
   messagesEndRef,
-  isMobile
+  isMobile,
+  textareaHeight
 }: ChatMessagesProps) {
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [expandedSystemGroups, setExpandedSystemGroups] = useState<Set<number>>(new Set());
@@ -131,12 +133,10 @@ export default function ChatMessages({
   return (
     <div
       ref={scrollContainerRef}
-      className={`flex-1 overflow-y-auto pt-[68px] ${isMobile ? 'pb-[96px]' : 'pb-[120px]'}`}
+      className={`flex-1 overflow-y-auto pt-[68px]`}
       style={{
         paddingTop: 'calc(68px + env(safe-area-inset-top))',
-        paddingBottom: isMobile
-          ? 'calc(96px + env(safe-area-inset-bottom))'
-          : 'calc(120px + env(safe-area-inset-bottom))'
+        paddingBottom: `calc(${Math.max((textareaHeight ?? 48) + 48, isMobile ? 96 : 120)}px + env(safe-area-inset-bottom))`
       }}
     >
       <div className="mx-auto w-full max-w-[44rem] px-3 py-4 md:px-0 md:py-0">

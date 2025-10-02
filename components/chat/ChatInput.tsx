@@ -37,6 +37,7 @@ export default function ChatInput({
   const [isCentered, setIsCentered] = useState(!hasMessages);
   const { isSidebarOpen } = useChat();
   const unifiedBgClass = isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#181818]';
+  const maxTextareaHeight = isMobile ? 176 : 240;
 
   // Handle animation when messages change from external updates
   useEffect(() => {
@@ -52,13 +53,20 @@ export default function ChatInput({
     }
   }, [hasMessages, isCentered]);
 
-  // Reset textarea height when input is cleared (e.g., after sending)
+  // Keep textarea height in sync with content and clamp to max height
   useEffect(() => {
-    if (inputMessage === '' && textareaRef.current) {
-      textareaRef.current.style.height = '48px';
+    if (!textareaRef.current) return;
+    const textarea = textareaRef.current;
+    if (inputMessage === '') {
+      textarea.style.height = '48px';
       setTextareaHeight(48);
+      return;
     }
-  }, [inputMessage, setTextareaHeight]);
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(textarea.scrollHeight, maxTextareaHeight);
+    textarea.style.height = newHeight + 'px';
+    setTextareaHeight(newHeight);
+  }, [inputMessage, maxTextareaHeight, setTextareaHeight]);
 
   const handleSendMessage = () => {
     if (isCentered) {
@@ -194,19 +202,20 @@ export default function ChatInput({
                 }
               }}
               placeholder={isAuthenticated ? (isCentered ? `Type your message...` : `Ask anything...`) : `Sign in to start chatting...`}
-              className="flex-1 bg-white/10 rounded-3xl px-4 py-3 text-[16.5px] sm:text-[16.5px] text-white focus:outline-none pl-14 pr-12 resize-none min-h-[48px] max-h-32 overflow-y-auto"
+              className="flex-1 bg-white/10 rounded-3xl px-4 py-3 text-[16.5px] sm:text-[16.5px] text-white focus:outline-none pl-14 pr-12 resize-none min-h-[48px] overflow-y-auto"
               autoComplete="off"
               data-tutorial="chat-input"
               rows={1}
               style={{
                 height: 'auto',
                 minHeight: '48px',
+                maxHeight: maxTextareaHeight,
                 fontSize: '16px' // prevent iOS zoom
               }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = 'auto';
-                const newHeight = Math.min(target.scrollHeight, 128);
+                const newHeight = Math.min(target.scrollHeight, maxTextareaHeight);
                 target.style.height = newHeight + 'px';
                 setTextareaHeight(newHeight);
               }}

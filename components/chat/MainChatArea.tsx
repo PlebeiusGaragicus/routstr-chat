@@ -126,6 +126,7 @@ const MainChatArea: React.FC = () => {
         getTextFromContent={getTextFromContent}
         messagesEndRef={messagesEndRef}
         isMobile={isMobile}
+        textareaHeight={textareaHeight}
       />
 
       {/* Chat Input */}
