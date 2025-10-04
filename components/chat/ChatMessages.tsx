@@ -133,13 +133,13 @@ export default function ChatMessages({
   return (
     <div
       ref={scrollContainerRef}
-      className={`flex-1 overflow-y-auto pt-[68px]`}
+      className={`flex-1 overflow-y-auto pt-[60px]`}
       style={{
-        paddingTop: 'calc(68px + env(safe-area-inset-top))',
+        paddingTop: 'calc(60px + env(safe-area-inset-top))',
         paddingBottom: `calc(${Math.max((textareaHeight ?? 48) + 48, isMobile ? 96 : 120)}px + env(safe-area-inset-bottom))`
       }}
     >
-      <div className="mx-auto w-full max-w-[44rem] px-3 py-4 md:px-0 md:py-0">
+      <div className="mx-auto w-full max-w-[44rem] px-4 sm:px-6 lg:px-0 py-4 md:py-2">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-400 min-h-[calc(100vh-200px)]">
             {/* Greeting message will be handled by the input component when centered */}
