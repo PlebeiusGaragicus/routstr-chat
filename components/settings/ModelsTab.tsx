@@ -32,6 +32,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [providerModels, setProviderModels] = useState<readonly Model[]>([]);
   const [isLoadingProviderModels, setIsLoadingProviderModels] = useState(false);
+  const [isProviderPopoverOpen, setIsProviderPopoverOpen] = useState(false);
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -198,7 +199,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
               </div>
             ) : providers.length > 0 ? (
               <div className="flex-1 min-w-0">
-                <Popover>
+                <Popover open={isProviderPopoverOpen} onOpenChange={setIsProviderPopoverOpen}>
                   <PopoverTrigger asChild>
                     <button
                       className="inline-flex items-center gap-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white/80 hover:bg-white/10 cursor-pointer w-full justify-between"
@@ -217,7 +218,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       <ChevronDown className="h-3 w-3 text-white/60 flex-shrink-0" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="bg-black border-white/10 text-white p-2 w-96">
+                  <PopoverContent align="start" className="bg-[#181818] border border-white/10 text-white p-2 w-96 rounded-md shadow-lg">
                     <div className="mb-2 relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                       <input
@@ -244,7 +245,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                           <button
                             key={`${p.name}-${normalized}`}
                             className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10 cursor-pointer ${isActive ? 'bg-white/10' : ''}`}
-                            onClick={() => setSelectedProvider(normalized)}
+                            onClick={() => { setSelectedProvider(normalized); setIsProviderPopoverOpen(false); }}
                             type="button"
                           >
                             <div className="truncate">
