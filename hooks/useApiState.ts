@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
-import { DEFAULT_BASE_URLS, DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
+import { DEFAULT_MINT_URL } from '@/lib/utils';
+import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl } from '@/utils/modelUtils';
 
 export interface UseApiStateReturn {
@@ -33,7 +33,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   const [mintUrl, setMintUrlState] = useState('');
   const [baseUrl, setBaseUrlState] = useState('');
   const [baseUrlsList, setBaseUrlsList] = useState<string[]>([]);
-  const [currentBaseUrlIndex, setCurrentBaseUrlIndex] = useState<number>(0);
+  // Removed unused currentBaseUrlIndex state
 
   // Initialize URLs from storage
   useEffect(() => {
@@ -44,12 +44,8 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
       const loadedBaseUrls = loadBaseUrlsList();
       setBaseUrlsList(loadedBaseUrls);
 
-      const currentBaseUrl = loadBaseUrl(DEFAULT_BASE_URLS[0]);
+      const currentBaseUrl = loadBaseUrl('');
       setBaseUrlState(currentBaseUrl);
-      console.log('settings agin')
-
-      const initialIndex = loadedBaseUrls.indexOf(currentBaseUrl);
-      setCurrentBaseUrlIndex(initialIndex !== -1 ? initialIndex : 0);
     }
   }, [isAuthenticated]);
 
@@ -183,25 +179,25 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
 
   // Fetch models when baseUrl or balance changes and user is authenticated
   useEffect(() => {
-    if (isAuthenticated && baseUrlsList.length > 0) { // Ensure baseUrlsList is loaded
+    if (isAuthenticated && baseUrlsList.length > 0) {
       fetchModels(balance);
     }
-  }, [isAuthenticated, balance, baseUrlsList.length]); // Removed baseUrl, added baseUrlsList.length
+  }, [isAuthenticated, balance, baseUrlsList.length]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
-    console.log("rdlogs: handleModelChange", modelId, configuredKeyOverride)
-
+    console.log('rdlogs: handleModelChange', modelId, configuredKeyOverride);
     // If a provider base is explicitly provided, prefer provider-specific model from storage
     if (configuredKeyOverride && configuredKeyOverride.includes('@@')) {
-      const fixedBaseRaw = parseModelKey(configuredKeyOverride!).base;
+      const parsed = parseModelKey(configuredKeyOverride!);
+      const fixedBaseRaw = parsed.base;
       const fixedBase = normalizeBaseUrl(fixedBaseRaw);
       if (!fixedBase) return;
       try {
         const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
         const allByProvider = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
-        const list = allByProvider?.[normalized] || allByProvider?.[configuredKeyOverride] || [];
-        const providerSpecific = Array.isArray(list) ? list.find((m: Model) => m.id === modelId) : undefined;
-        console.log("rdlogs: providerSpecific", providerSpecific)
+        const list = allByProvider?.[normalized] || allByProvider?.[configuredKeyOverride] || [] as any;
+        const providerSpecific = Array.isArray(list) ? list.find((m: Model) => m.id === parsed.id) : undefined;
+        console.log('rdlogs: providerSpecific', providerSpecific);
         if (providerSpecific) {
           setSelectedModel(providerSpecific);
           saveLastUsedModel(configuredKeyOverride);
@@ -222,7 +218,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
         try {
           const map = loadModelProviderMap();
           const mappedBase = map[modelId];
-          console.log("rdlogs: mappedBase", mappedBase)
+          console.log('rdlogs: mappedBase', mappedBase);
           if (mappedBase && typeof mappedBase === 'string' && mappedBase.length > 0) {
             const normalized = mappedBase.endsWith('/') ? mappedBase : `${mappedBase}/`;
             setBaseUrl(normalized);
@@ -244,12 +240,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     saveBaseUrl(normalizedUrl);
     const updatedBaseUrlsList = loadBaseUrlsList();
     setBaseUrlsList(updatedBaseUrlsList);
-    // Update the currentBaseUrlIndex if the URL is found in the list
-    const index = updatedBaseUrlsList.indexOf(normalizedUrl);
-    if (index !== -1) {
-      setCurrentBaseUrlIndex(index);
-    }
-  }, [baseUrlsList]);
+  }, []);
 
   return {
     models,

@@ -61,21 +61,21 @@ export let nodeInfo: Partial<RoutstrNodeInfo> = {
   version: "0.0.1"
 };
 
-// Fetch models from the API
+// Fetch models from the default provider (use provider_endpoint/v1/models)
 export async function fetchModels(): Promise<void> {
   try {
-    const response = await fetch('https://api.routstr.com/');
-    
+    const response = await fetch('https://api.routstr.com/v1/models');
+
     if (!response.ok) {
       throw new Error(`Failed to fetch models: ${response.status}`);
     }
-    
-    const data: RoutstrNodeInfo = await response.json();
-    
-    // Update the models and node info
-    models = data.models;
-    nodeInfo = data;
-    
+
+    const json: unknown = await response.json();
+    const list = Array.isArray((json as any)?.data) ? ((json as any).data as Model[]) : [];
+
+    // Update the models list; nodeInfo is not available from /v1/models
+    models = list;
+
     return;
   } catch (error) {
     console.error('Error fetching models:', error);

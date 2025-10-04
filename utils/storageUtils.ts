@@ -1,5 +1,4 @@
 import { TransactionHistory } from '@/types/chat';
-import { DEFAULT_BASE_URLS } from '../lib/utils';
 import { useCashuStore } from '../stores/cashuStore';
 
 /**
@@ -153,7 +152,7 @@ export const clearAllStorage = (): void => {
 export const migrateStorageItems = (): void => {
   if (!canUseLocalStorage()) return;
   const keysToMigrate = [
-    { key: 'base_url', defaultValue: 'https://api.routstr.com/' },
+    { key: 'base_url', defaultValue: '' },
     { key: 'mint_url', defaultValue: 'https://mint.minibits.cash/Bitcoin' },
     { key: 'lastUsedModel', defaultValue: null },
     { key: 'usingNip60', defaultValue: 'true' },
@@ -299,7 +298,9 @@ export const saveMintUrl = (mintUrl: string): void => {
  * @returns Stored or default base URL (normalized with trailing slash)
  */
 export const loadBaseUrl = (defaultBaseUrl: string): string => {
-  const baseUrl = getStorageItem<string>('base_url', DEFAULT_BASE_URLS[0]); // Use first default if not set
+  const baseUrl = getStorageItem<string>('base_url', defaultBaseUrl);
+  // If nothing set, return empty string (no default base URL)
+  if (!baseUrl) return '';
   return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 };
 
@@ -317,26 +318,8 @@ export const saveBaseUrl = (baseUrl: string): void => {
  * @returns Array of base URLs
  */
 export const loadBaseUrlsList = (): string[] => {
-  let storedBaseUrls = getStorageItem<string[]>(STORAGE_KEYS.BASE_URLS_LIST, []);
-
-  // If no URLs are stored, initialize with default URLs
-  if (storedBaseUrls.length === 0) {
-    storedBaseUrls = [...DEFAULT_BASE_URLS];
-    setStorageItem(STORAGE_KEYS.BASE_URLS_LIST, storedBaseUrls);
-  } else {
-    // Ensure all default URLs are present in the stored list
-    let updated = false;
-    DEFAULT_BASE_URLS.forEach(defaultUrl => {
-      if (!storedBaseUrls.includes(defaultUrl)) {
-        storedBaseUrls.push(defaultUrl);
-        updated = true;
-      }
-    });
-    if (updated) {
-      setStorageItem(STORAGE_KEYS.BASE_URLS_LIST, storedBaseUrls);
-    }
-  }
-  return storedBaseUrls;
+  // Load persisted list; no code-level defaults
+  return getStorageItem<string[]>(STORAGE_KEYS.BASE_URLS_LIST, []);
 };
 
 /**
@@ -344,24 +327,10 @@ export const loadBaseUrlsList = (): string[] => {
  * @param baseUrls Array of base URLs to save
  */
 export const saveBaseUrlsList = (baseUrls: string[]): void => {
-   setStorageItem(STORAGE_KEYS.BASE_URLS_LIST, baseUrls);
- };
+  setStorageItem(STORAGE_KEYS.BASE_URLS_LIST, baseUrls);
+};
 
- /**
-  * Load and manage the list of Nostr relays from localStorage.
-  * @returns Array of Nostr relay URLs
-  */
- export const loadNostrRelaysList = (): string[] => {
-   return getStorageItem<string[]>(STORAGE_KEYS.NOSTR_RELAYS_LIST, []);
- };
-
- /**
-  * Save the list of Nostr relays to localStorage
-  * @param relays Array of Nostr relay URLs to save
-  */
- export const saveNostrRelaysList = (relays: string[]): void => {
-   setStorageItem(STORAGE_KEYS.NOSTR_RELAYS_LIST, relays);
- };
+// Removed unused: loadNostrRelaysList, saveNostrRelaysList
 
 /**
  * Load configured Nostr relays from storage
@@ -473,7 +442,6 @@ export const STORAGE_KEYS = {
   MINT_URL: 'mint_url',
   BASE_URL: 'base_url',
   BASE_URLS_LIST: 'base_urls_list',
-  NOSTR_RELAYS_LIST: 'nostr_relays_list', // New key for Nostr relays
   USING_NIP60: 'usingNip60',
   TUTORIAL_SEEN: 'hasSeenTutorial',
   SIDEBAR_OPEN: 'sidebar_open',

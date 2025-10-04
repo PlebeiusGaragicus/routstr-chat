@@ -5,11 +5,8 @@ import { X } from 'lucide-react';
 import { Model } from '@/data/models';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { TransactionHistory } from '@/types/chat';
-
-// Import new components
 import GeneralTab from './settings/GeneralTab';
 import ModelsTab from '@/components/settings/ModelsTab';
-import WalletTab from './settings/WalletTab';
 import HistoryTab from './settings/HistoryTab';
 import ApiKeysTab from './settings/ApiKeysTab';
 import UnifiedWallet from './settings/UnifiedWallet';
@@ -74,27 +71,11 @@ const SettingsModal = ({
   const [activeTab, setActiveTab] = useState<'settings' | 'wallet' | 'history' | 'api-keys' | 'models'>(initialActiveTab || 'settings');
   const [baseUrls, setBaseUrls] = useState<string[]>([]); // State to hold base URLs
 
-  // Effect to load base URLs from localStorage
+  // Derive base URLs from current baseUrl only (no defaults)
   useEffect(() => {
-    const storedBaseUrls = localStorage.getItem('base_urls_list');
-    let initialBaseUrls: string[] = [];
-
-    if (storedBaseUrls) {
-      initialBaseUrls = JSON.parse(storedBaseUrls);
-    }
-
-    // Ensure baseUrl is always in the list if it's a valid URL
-    if (baseUrl && !initialBaseUrls.includes(baseUrl)) {
-      initialBaseUrls = [baseUrl, ...initialBaseUrls];
-    }
-
-    // If no URLs are stored and baseUrl is also empty, add a default
-    if (initialBaseUrls.length === 0) {
-      initialBaseUrls = ['https://api.routstr.com/'];
-    }
-
-    setBaseUrls(initialBaseUrls);
-  }, [baseUrl]); // Re-run if baseUrl prop changes
+    const list = baseUrl ? [baseUrl] : [];
+    setBaseUrls(list);
+  }, [baseUrl]);
 
 
   // Handle auto-saving mint URL changes

@@ -22,11 +22,67 @@ interface ApiKeysTabProps {
   mintUrl: string;
   baseUrl: string;
   usingNip60: boolean;
-  baseUrls: string[]; // Add baseUrls to props
-  setActiveTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void; // New prop
+  baseUrls: string[]; // kept for backwards compatibility but will be ignored
+  setActiveTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void;
 }
 
-const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls, setActiveTab }: ApiKeysTabProps) => {
+const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsProp, setActiveTab }: ApiKeysTabProps) => {
+  // Available provider base URLs (aggregated from providers API + current baseUrl)
+  const [availableBaseUrls, setAvailableBaseUrls] = useState<string[]>([]);
+  const [isLoadingBaseUrls, setIsLoadingBaseUrls] = useState<boolean>(false);
+
+  const normalizeBaseUrl = (url: string): string => {
+    if (!url) return '';
+    const withProto = url.startsWith('http') ? url : `https://${url}`;
+    return withProto.endsWith('/') ? withProto : `${withProto}/`;
+  };
+
+  // Fetch providers to populate all known base URLs
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        setIsLoadingBaseUrls(true);
+        const resp = await fetch('https://api.routstr.com/v1/providers/');
+        const urls = new Set<string>();
+        // Always include currently selected baseUrl if present
+        if (baseUrl) urls.add(normalizeBaseUrl(baseUrl));
+        if (resp.ok) {
+          const data = await resp.json();
+          const providers: any[] = Array.isArray(data?.providers) ? data.providers : [];
+          providers.forEach((p: any) => {
+            const primary = p?.endpoint_url;
+            const alternates: string[] = Array.isArray(p?.endpoint_urls) ? p.endpoint_urls : [];
+            if (primary) urls.add(normalizeBaseUrl(primary));
+            alternates.forEach(u => {
+              if (u) urls.add(normalizeBaseUrl(u));
+            });
+          });
+        }
+        const list = Array.from(urls);
+        // Prioritize api.routstr.com first
+        const preferred = 'api.routstr.com';
+        list.sort((a, b) => {
+          const ap = a.includes(preferred) ? 0 : 1;
+          const bp = b.includes(preferred) ? 0 : 1;
+          return ap - bp || a.localeCompare(b);
+        });
+        setAvailableBaseUrls(list);
+        // Initialize selections if not already set
+        setSelectedNewApiKeyBaseUrl(prev => prev || (list[0] || normalizeBaseUrl(baseUrl)));
+        setSelectedManualApiKeyBaseUrl(prev => prev || (list[0] || normalizeBaseUrl(baseUrl)));
+      } catch {
+        // On error, fall back to current baseUrl if any
+        const only = baseUrl ? [normalizeBaseUrl(baseUrl)] : [];
+        setAvailableBaseUrls(only);
+        setSelectedNewApiKeyBaseUrl(prev => prev || only[0] || '');
+        setSelectedManualApiKeyBaseUrl(prev => prev || only[0] || '');
+      } finally {
+        setIsLoadingBaseUrls(false);
+      }
+    };
+    void fetchProviders();
+  }, [baseUrl]);
+
   const { user } = useCurrentUser();
   const {
     syncedApiKeys,
@@ -121,9 +177,11 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls, setActiveTab }: Ap
     });
   };
 
-  // Effect to update selectedNewApiKeyBaseUrl if baseUrl prop changes
+  // Keep selections in sync when baseUrl prop changes (fallback)
   useEffect(() => {
-    setSelectedNewApiKeyBaseUrl(baseUrl);
+    const normalized = normalizeBaseUrl(baseUrl);
+    setSelectedNewApiKeyBaseUrl(prev => prev || normalized);
+    setSelectedManualApiKeyBaseUrl(prev => prev || normalized);
   }, [baseUrl]);
 
   // Effect to manage API keys based on cloud sync setting
@@ -951,21 +1009,23 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls, setActiveTab }: Ap
                     Max
                   </button>
                 </div>
-                {baseUrls.length > 1 && (
+                {availableBaseUrls.length >= 1 && (
                   <div className="mb-4">
                     <p className="text-sm text-white/70 mb-2">Select Base URL for this API Key:</p>
                     <div className="max-h-32 overflow-y-auto space-y-2">
-                      {baseUrls.map((url: string, index: number) => (
-                        <div className="flex items-center" key={index}>
+                      {availableBaseUrls.map((url: string, index: number) => (
+                        <div className="flex items-center gap-2" key={index}>
                           <input
                             type="radio"
                             id={`newApiKeyBaseUrl-${index}`}
                             name="newApiKeyBaseUrl"
-                            className="mr-2 accent-gray-500"
+                            className="accent-gray-500"
                             checked={selectedNewApiKeyBaseUrl === url}
                             onChange={() => setSelectedNewApiKeyBaseUrl(url)}
                           />
-                          <label htmlFor={`newApiKeyBaseUrl-${index}`} className="text-sm text-white">{url}</label>
+                          <div className="min-w-0 flex-1">
+                            <label htmlFor={`newApiKeyBaseUrl-${index}`} className="text-sm text-white truncate block" title={url}>{url}</label>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1159,21 +1219,23 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls, setActiveTab }: Ap
                     />
                   </div>
 
-                  {baseUrls.length > 1 && (
+                {availableBaseUrls.length >= 1 && (
                     <div>
                       <label className="block text-sm text-white/70 mb-2">Base URL</label>
                       <div className="max-h-32 overflow-y-auto space-y-2 bg-white/5 rounded-md p-2 border border-white/10">
-                        {baseUrls.map((url: string, index: number) => (
-                          <div className="flex items-center" key={index}>
+                      {availableBaseUrls.map((url: string, index: number) => (
+                          <div className="flex items-center gap-2" key={index}>
                             <input
                               type="radio"
                               id={`manualApiKeyBaseUrl-${index}`}
                               name="manualApiKeyBaseUrl"
-                              className="mr-2 accent-gray-500"
+                              className="accent-gray-500"
                               checked={selectedManualApiKeyBaseUrl === url}
                               onChange={() => setSelectedManualApiKeyBaseUrl(url)}
                             />
-                            <label htmlFor={`manualApiKeyBaseUrl-${index}`} className="text-sm text-white">{url}</label>
+                            <div className="min-w-0 flex-1">
+                              <label htmlFor={`manualApiKeyBaseUrl-${index}`} className="text-sm text-white truncate block" title={url}>{url}</label>
+                            </div>
                           </div>
                         ))}
                       </div>
