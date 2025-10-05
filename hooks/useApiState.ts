@@ -201,12 +201,13 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     }
   }, [searchParams, baseUrlsList]);
 
-  // Fetch models when baseUrl or balance changes and user is authenticated
+  // Fetch models when providers are available and user is authenticated
+  // Intentionally NOT dependent on balance to avoid reloading the selector on wallet updates
   useEffect(() => {
     if (isAuthenticated && baseUrlsList.length > 0) {
       fetchModels(balance);
     }
-  }, [isAuthenticated, balance, baseUrlsList.length]);
+  }, [isAuthenticated, baseUrlsList.length]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
     console.log('rdlogs: handleModelChange', modelId, configuredKeyOverride);
