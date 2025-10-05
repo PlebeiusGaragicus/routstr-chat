@@ -5,7 +5,7 @@ import { Model } from '@/data/models';
 import { getModelNameWithoutProvider, getProviderFromModelName } from '@/data/models';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { loadModelProviderMap } from '@/utils/storageUtils';
-import { parseModelKey, normalizeBaseUrl } from '@/utils/modelUtils';
+import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels } from '@/utils/modelUtils';
 
 interface ModelSelectorProps {
   selectedModel: Model | null;
@@ -86,6 +86,8 @@ export default function ModelSelector({
         map[m.id] = m;
       }
       setProviderModelCache(prev => ({ ...prev, [base]: map }));
+      // Also persist into localStorage modelsFromAllProviders so other parts can read it
+      upsertCachedProviderModels(base, list as Model[]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -275,7 +277,15 @@ export default function ModelSelector({
     return configuredModels
       .map((key) => {
         const { id, base } = parseModelKey(key);
-        const model = filteredModels.find(m => m.id === id);
+        let model = filteredModels.find(m => m.id === id);
+        if (!model && base) {
+          try {
+            const cached = getCachedProviderModels(base);
+            if (cached) {
+              model = cached.find(m => m.id === id);
+            }
+          } catch {}
+        }
         if (!model) return null;
         const mappedBase = base || modelProviderMap[key] || modelProviderMap[id];
         const providerLabel = formatProviderLabel(mappedBase, model);

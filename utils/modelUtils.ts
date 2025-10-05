@@ -11,3 +11,28 @@ export function normalizeBaseUrl(base?: string | null): string | null {
   const withProto = base.startsWith('http') ? base : `https://${base}`;
   return withProto.endsWith('/') ? withProto : `${withProto}/`;
 }
+
+// Provider models cache helpers shared across app
+// Kept here to avoid duplicating localStorage logic in components
+import type { Model } from '@/data/models';
+import { getStorageItem, setStorageItem } from '@/utils/storageUtils';
+
+export function upsertCachedProviderModels(baseUrl: string, models: Model[]): void {
+  try {
+    const normalized = normalizeBaseUrl(baseUrl);
+    if (!normalized) return;
+    const existing = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
+    setStorageItem('modelsFromAllProviders', { ...existing, [normalized]: models });
+  } catch {}
+}
+
+export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
+  try {
+    const normalized = normalizeBaseUrl(baseUrl);
+    if (!normalized) return undefined;
+    const all = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
+    return all[normalized];
+  } catch {
+    return undefined;
+  }
+}

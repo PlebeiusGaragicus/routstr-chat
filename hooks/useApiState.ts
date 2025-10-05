@@ -3,7 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
 import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
-import {parseModelKey, normalizeBaseUrl } from '@/utils/modelUtils';
+import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels } from '@/utils/modelUtils';
 
 export interface UseApiStateReturn {
   models: Model[];
@@ -163,6 +163,30 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
         }
       }
       if (!modelToSelect) {
+        // If last used was provider-specific but not found in cache, fetch it on-demand
+        if (lastUsedModelId && lastUsedModelId.includes('@@')) {
+          try {
+            const { id, base } = parseModelKey(lastUsedModelId);
+            const fixedBase = normalizeBaseUrl(base);
+            if (fixedBase) {
+              const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
+              const res = await fetch(`${normalized}v1/models`);
+              if (res.ok) {
+                const json = await res.json();
+                const providerList: Model[] = Array.isArray(json?.data) ? json.data : [];
+                const found = providerList.find((m: Model) => m.id === id) ?? null;
+                if (found) {
+                  // cache to storage for future
+                  upsertCachedProviderModels(normalized, providerList);
+                  modelToSelect = found;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (!modelToSelect) {
         const compatible = combinedModels.filter((m: Model) => m.sats_pricing && currentBalance >= (m.sats_pricing as any).max_cost);
         if (compatible.length > 0) modelToSelect = compatible[0];
       }
@@ -196,7 +220,34 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
         const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
         const allByProvider = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
         const list = allByProvider?.[normalized] || allByProvider?.[configuredKeyOverride] || [] as any;
-        const providerSpecific = Array.isArray(list) ? list.find((m: Model) => m.id === parsed.id) : undefined;
+        let providerSpecific = Array.isArray(list) ? list.find((m: Model) => m.id === parsed.id) : undefined;
+        // If not found locally, fetch on-demand from provider and cache
+        const ensureFetched = async (): Promise<Model | undefined> => {
+          if (providerSpecific) return providerSpecific;
+          try {
+            const res = await fetch(`${normalized}v1/models`);
+            if (!res.ok) throw new Error(`Failed ${res.status}`);
+            const json = await res.json();
+            const freshList: Model[] = Array.isArray(json?.data) ? json.data : [];
+            // cache back to storage
+            upsertCachedProviderModels(normalized, freshList);
+            return freshList.find((m: Model) => m.id === parsed.id);
+          } catch {
+            return undefined;
+          }
+        };
+        // Note: handleModelChange isn't async; fire-and-forget then early return after success
+        if (!providerSpecific) {
+          void (async () => {
+            const fetched = await ensureFetched();
+            if (fetched) {
+              setSelectedModel(fetched);
+              saveLastUsedModel(configuredKeyOverride!);
+              setBaseUrl(normalized);
+            }
+          })();
+          return;
+        }
         console.log('rdlogs: providerSpecific', providerSpecific);
         if (providerSpecific) {
           setSelectedModel(providerSpecific);

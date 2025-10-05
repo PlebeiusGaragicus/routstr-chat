@@ -5,6 +5,7 @@ import { Search, Check, XCircle, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { Model } from '@/data/models';
 import { getModelNameWithoutProvider } from '@/data/models';
+import { normalizeBaseUrl as normalizeBaseUrlUtil, parseModelKey as parseModelKeyUtil, getCachedProviderModels, upsertCachedProviderModels } from '@/utils/modelUtils';
 
 type ProviderItem = { name: string; endpoint_url: string; endpoint_urls?: string[] };
 
@@ -82,6 +83,10 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
         const data = await res.json();
         const list = (data?.data ?? []) as readonly Model[];
         setProviderModels(list);
+        // Persist into local cache for cross-tab use (e.g., favorites rendering)
+        try {
+          upsertCachedProviderModels(base, list as Model[]);
+        } catch {}
       } catch (e) {
         console.error(e);
         setProviderModels([]);
@@ -93,31 +98,31 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   }, [selectedProvider]);
 
   // Helpers to work with provider-qualified model keys: `${modelId}@@${baseUrl}`
-  const normalizeBaseUrl = (base: string): string => {
-    if (!base) return '';
-    const primary = base.startsWith('http') ? base : `https://${base}`;
-    return primary.endsWith('/') ? primary : `${primary}/`;
-  };
+  const normalizeBaseUrl = (base: string): string => normalizeBaseUrlUtil(base) || '';
 
   const buildModelKey = (modelId: string, baseUrl: string): string => {
     const normalized = normalizeBaseUrl(baseUrl);
     return `${modelId}@@${normalized}`;
   };
 
-  const parseModelKey = (key: string): { id: string; base: string | null } => {
-    const sep = key.indexOf('@@');
-    if (sep === -1) return { id: key, base: null };
-    return { id: key.slice(0, sep), base: key.slice(sep + 2) };
-  };
+  const parseModelKey = (key: string): { id: string; base: string | null } => parseModelKeyUtil(key);
 
   // Build configured list: each favorite is a specific (id, provider) pair if encoded
   const configuredModelsList = useMemo(() => {
-    // Map over configured keys -> { key, id, base, model }
+    // Map over configured keys -> { key, id, base, model }, falling back to cached provider models if not in main list
     return configuredModels.map((key) => {
       const { id, base } = parseModelKey(key);
-      const model = models.find(m => m.id === id);
+      let model = models.find(m => m.id === id);
+      if (!model && base) {
+        try {
+          const cached = getCachedProviderModels(base);
+          if (cached && Array.isArray(cached)) {
+            model = cached.find(m => m.id === id);
+          }
+        } catch {}
+      }
       return { key, id, base, model } as { key: string; id: string; base: string | null; model: Model | undefined };
-    }).filter(item => !!item.model);
+    });
   }, [models, configuredModels]);
 
   const clearAll = () => {
