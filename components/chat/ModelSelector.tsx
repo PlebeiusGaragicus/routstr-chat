@@ -21,6 +21,7 @@ interface ModelSelectorProps {
   openModelsConfig?: () => void;
   toggleConfiguredModel: (modelId: string) => void;
   setModelProviderFor?: (modelId: string, baseUrl: string) => void;
+  baseUrl?: string;
 }
 
 export default function ModelSelector({
@@ -37,6 +38,7 @@ export default function ModelSelector({
   openModelsConfig,
   toggleConfiguredModel,
   setModelProviderFor,
+  baseUrl,
 }: ModelSelectorProps) {
   const modelDrawerRef = useRef<HTMLDivElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
@@ -105,6 +107,22 @@ export default function ModelSelector({
     const anyKey = configuredModels.find(k => k === selectedModel.id);
     return anyKey;
   }, [configuredModels, selectedModel]);
+
+  // Determine the currently selected provider base from active API baseUrl when available
+  const currentSelectedBaseUrl: string | null = useMemo(() => {
+    const normFromApi = normalizeBaseUrl(baseUrl);
+    if (normFromApi) return normFromApi;
+    // Fallback to base encoded in the configured key
+    if (currentConfiguredKeyMemo && currentConfiguredKeyMemo.includes('@@')) {
+      const parsed = parseModelKey(currentConfiguredKeyMemo);
+      return normalizeBaseUrl(parsed.base);
+    }
+    // Final fallback to best-priced mapping
+    if (selectedModel) {
+      return normalizeBaseUrl(modelProviderMap[selectedModel.id]);
+    }
+    return null;
+  }, [baseUrl, currentConfiguredKeyMemo, selectedModel, modelProviderMap]);
 
   // Determine which provider bases we likely need and prefetch them
   const neededProviderBases: readonly string[] = useMemo(() => {
@@ -484,13 +502,20 @@ export default function ModelSelector({
     const isFav = isFavorite || isConfiguredModel(model.id);
     const effectiveProviderLabel = providerLabel || formatProviderLabel(baseForPricing, model);
     const isDynamicProvider = !isFixedProvider;
+    // Selection should be provider+model specific when provider is fixed
+    const idMatches = selectedModel?.id === model.id;
+    const itemBaseForSelection = baseForPricing || null;
+    const providerMatches = isFixedProvider
+      ? Boolean(currentSelectedBaseUrl && itemBaseForSelection && currentSelectedBaseUrl === itemBaseForSelection)
+      : true;
+    const isSelectedItem = Boolean(idMatches && providerMatches);
     return (
       <div
         key={`${configuredKeyOverride || model.id}`}
         className={`p-2 text-sm rounded-md transition-colors ${
-          !isAvailable 
-            ? 'opacity-40 cursor-not-allowed' 
-            : selectedModel?.id === model.id
+          !isAvailable
+            ? 'opacity-40 cursor-not-allowed'
+            : isSelectedItem
             ? 'bg-white/10 cursor-pointer'
             : 'hover:bg-white/5 cursor-pointer'
         }`}
@@ -546,7 +571,7 @@ export default function ModelSelector({
           </div>
           
           {/* Selected Indicator */}
-          {selectedModel?.id === model.id && (
+          {isSelectedItem && (
             <div className={`text-xs font-medium flex-shrink-0 text-green-400`}>
               ✓
             </div>
