@@ -116,14 +116,14 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                 <div key={acct.id} className="flex items-center gap-2">
                   <div className="flex-1 font-mono text-xs text-white/60 break-all">{acct.pubkey}</div>
                   <button
-                    className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-xs cursor-pointer"
+                    className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs transition-colors cursor-pointer"
                     onClick={() => setLogin(acct.id)}
                     type="button"
                   >
                     Use
                   </button>
                   <button
-                    className="px-2 py-1 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs cursor-pointer"
+                    className="px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs transition-colors cursor-pointer"
                     onClick={() => removeLogin(acct.id)}
                     type="button"
                   >
@@ -145,7 +145,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
               onChange={(e) => setNewNsec(e.target.value)}
             />
             <button
-              className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20 text-sm cursor-pointer"
+              className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm transition-colors cursor-pointer"
               onClick={() => {
                 const trimmed = newNsec.trim();
                 if (!trimmed.startsWith('nsec1')) return;
@@ -163,7 +163,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
         <div className="flex gap-2 mt-2">
           {loginType === 'nsec' && nsecData && (
             <button
-              className="flex-grow flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
+              className="flex-grow flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
               onClick={() => {
                 const nsec = nsecData && 'nsec' in nsecData && typeof nsecData.nsec === 'string' && nsecData.nsec.startsWith('nsec1') ? nsecData.nsec : '';
                 setNsecValue(nsec);
@@ -176,7 +176,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
           )}
           {logout && router && (
             <button
-              className="flex-grow flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
+              className="flex-grow flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 text-white px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
               onClick={() => {
                 if (window.confirm('Are you sure you want to sign out?')) {
                   logout();
