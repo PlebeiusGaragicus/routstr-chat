@@ -199,6 +199,12 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
           placeholder="Amount (sats)"
           value={customAmount}
           onChange={(e) => setCustomAmount(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void handleCreateInvoice();
+            }
+          }}
           className="flex-1 bg-white/5 border border-white/20 rounded-md px-3 py-2 text-sm text-white focus:border-white/40 focus:outline-none"
         />
         <button
