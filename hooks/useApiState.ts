@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
+import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels } from '@/utils/modelUtils';
 
 export interface UseApiStateReturn {
@@ -49,6 +49,45 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     }
   }, [isAuthenticated]);
 
+  // Helper: normalize a provider base URL
+  const normalizeBase = useCallback((url: string | undefined | null): string | null => {
+    if (!url || typeof url !== 'string' || url.length === 0) return null;
+    const withProto = url.startsWith('http') ? url : `https://${url}`;
+    return withProto.endsWith('/') ? withProto : `${withProto}/`;
+  }, []);
+
+  // Bootstrap provider bases from the directory when none are configured
+  const bootstrapProviders = useCallback(async (): Promise<string[]> => {
+    try {
+      setIsLoadingModels(true);
+      const res = await fetch('https://api.routstr.com/v1/providers/');
+      if (!res.ok) throw new Error(`Failed providers ${res.status}`);
+      const data = await res.json();
+      const providers = Array.isArray(data?.providers) ? data.providers : [];
+      const bases = new Set<string>();
+      for (const p of providers) {
+        const primary = normalizeBase(p?.endpoint_url);
+        if (primary && !primary.startsWith('http://')) bases.add(primary);
+        const alts: string[] = Array.isArray(p?.endpoint_urls) ? p.endpoint_urls : [];
+        for (const alt of alts) {
+          const n = normalizeBase(alt);
+          if (n && !n.startsWith('http://')) bases.add(n);
+        }
+      }
+      const list = Array.from(bases);
+      if (list.length > 0) {
+        saveBaseUrlsList(list);
+        setBaseUrlsList(list);
+      }
+      return list;
+    } catch (e) {
+      console.error('Failed to bootstrap providers', e);
+      return [];
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, [normalizeBase]);
+
   // Migrate old cashu token format on load
   useEffect(() => {
     if (baseUrl) {
@@ -60,13 +99,18 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   const fetchModels = useCallback(async (currentBalance: number) => {
     try {
       setIsLoadingModels(true);
-      if (!baseUrlsList || baseUrlsList.length === 0) {
-        setModels([]);
-        return;
+      let bases = baseUrlsList;
+      if (!bases || bases.length === 0) {
+        bases = await bootstrapProviders();
+        if (!bases || bases.length === 0) {
+          setModels([]);
+          setSelectedModel(null);
+          return;
+        }
       }
 
       const results = await Promise.allSettled(
-        baseUrlsList.map(async (url) => {
+        bases.map(async (url) => {
           const base = url.endsWith('/') ? url : `${url}/`;
           const res = await fetch(`${base}v1/models`);
           if (!res.ok) throw new Error(`Failed ${res.status}`);
@@ -92,21 +136,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
       const bestById = new Map<string, { model: Model; base: string }>();
 
       function estimateMinCost(m: Model): number {
-        try {
-          const sp: any = m?.sats_pricing || {};
-          const maxCompletion = typeof sp?.max_completion_cost === 'number' ? sp.max_completion_cost : undefined;
-          const maxCost = typeof sp?.max_cost === 'number' ? sp.max_cost : undefined;
-          if (typeof maxCompletion === 'number') {
-            const promptRate = typeof sp?.prompt === 'number' ? sp.prompt : 0;
-            const approxTokens = 2000;
-            const promptCosts = promptRate * approxTokens;
-            return promptCosts + maxCompletion;
-          }
-          if (typeof maxCost === 'number') return maxCost;
-          return 0;
-        } catch {
-          return 0;
-        }
+        return m?.sats_pricing?.completion ?? 0;
       }
 
       for (const r of results) {
@@ -199,14 +229,14 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     } finally {
       setIsLoadingModels(false);
     }
-  }, [searchParams, baseUrlsList]);
+  }, [searchParams, baseUrlsList, bootstrapProviders]);
 
   // Fetch models when providers are available and user is authenticated
   // Intentionally NOT dependent on balance to avoid reloading the selector on wallet updates
   useEffect(() => {
-    if (isAuthenticated && baseUrlsList.length > 0) {
-      fetchModels(balance);
-    }
+    if (!isAuthenticated) return;
+    // Always attempt to fetch; will bootstrap providers if missing
+    fetchModels(balance);
   }, [isAuthenticated, baseUrlsList.length]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
