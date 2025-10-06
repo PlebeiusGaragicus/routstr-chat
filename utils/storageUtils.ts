@@ -418,7 +418,7 @@ export const saveSidebarOpen = (isOpen: boolean): void => {
  * @returns Sidebar collapsed state, defaults to false
  */
 export const loadSidebarCollapsed = (): boolean => {
-  return getStorageItem<boolean>('sidebar_collapsed', false);
+  return getStorageItem<boolean>('sidebar_collapsed', true);
 };
 
 /**
