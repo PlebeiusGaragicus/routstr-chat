@@ -43,13 +43,9 @@ export const useUiState = (isAuthenticated: boolean): UseUiStateReturn => {
   const modelDrawerRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  // Handle authentication state changes
+  // Disable onboarding/login modal regardless of auth state
   useEffect(() => {
-    if (!isAuthenticated) {
-      setIsLoginModalOpen(true);
-    } else {
-      setIsLoginModalOpen(false);
-    }
+    setIsLoginModalOpen(false);
   }, [isAuthenticated]);
 
   // Check for first visit and show tutorial

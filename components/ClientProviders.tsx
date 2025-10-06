@@ -1,6 +1,10 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { useEffect as useReactEffect } from 'react';
+import { useNostrLogin } from '@nostrify/react/login';
+import { useLoginActions } from '@/hooks/useLoginActions';
+import { generateSecretKey, nip19 } from 'nostr-tools';
 import NostrProvider from '@/components/NostrProvider'
 import dynamic from 'next/dynamic';
 import { migrateStorageItems } from '@/utils/storageUtils';
@@ -41,6 +45,24 @@ const defaultConfig: AppConfig = {
 };
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
+  function AutoLogin() {
+    const { logins } = useNostrLogin();
+    const loginActions = useLoginActions();
+
+    useReactEffect(() => {
+      if (logins.length === 0) {
+        try {
+          const sk = generateSecretKey();
+          const nsec = nip19.nsecEncode(sk);
+          loginActions.nsec(nsec);
+        } catch (err) {
+          // no-op
+        }
+      }
+    }, [logins.length]);
+
+    return null;
+  }
   // Run storage migration on app startup
   useEffect(() => {
     migrateStorageItems();
@@ -67,6 +89,7 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
     <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
       <DynamicNostrLoginProvider storageKey='nostr:login'>
         <NostrProvider>
+          <AutoLogin />
           <QueryClientProvider client={queryClient}>
             <InvoiceRecoveryProvider>
             {children}
