@@ -868,7 +868,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       type="button"
                     >
                       <Zap className="h-4 w-4 mr-2 inline" />
-                      {isProcessing ? 'Creating Invoice...' : 'Create Lightning Invoice'}
+                      {isProcessing ? 'Creating...' : 'Create'}
                     </button>
                   </div>
                 </div>

@@ -12,6 +12,8 @@ import ApiKeysTab from './settings/ApiKeysTab';
 import UnifiedWallet from './settings/UnifiedWallet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrLogin } from '@nostrify/react/login';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Drawer } from 'vaul';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ interface SettingsModalProps {
   setModelProviderFor?: (modelId: string, baseUrl: string) => void;
   usingNip60: boolean;
   setUsingNip60: (usingNip60: boolean) => void;
+  isMobile?: boolean;
 }
 
 const SettingsModal = ({
@@ -64,12 +67,15 @@ const SettingsModal = ({
   modelProviderMap,
   setModelProviderFor,
   usingNip60,
-  setUsingNip60
+  setUsingNip60,
+  isMobile: propIsMobile
 }: SettingsModalProps) => {
   const { user } = useCurrentUser();
   const {logins} = useNostrLogin();
   const [activeTab, setActiveTab] = useState<'settings' | 'wallet' | 'history' | 'api-keys' | 'models'>(initialActiveTab || 'settings');
   const [baseUrls, setBaseUrls] = useState<string[]>([]); // State to hold base URLs
+  const mediaQueryIsMobile = useMediaQuery('(max-width: 640px)');
+  const isMobile = propIsMobile ?? mediaQueryIsMobile;
 
   // Derive base URLs from current baseUrl only (no defaults)
   useEffect(() => {
@@ -87,6 +93,126 @@ const SettingsModal = ({
 
   if (!isOpen) return null;
 
+  const contentBody = (
+    <>
+      <div className="bg-[#181818] flex justify-between items-center p-4 border-b border-white/10 flex-shrink-0">
+        <h2 className="text-xl font-semibold text-white">Settings</h2>
+        <button onClick={onClose} className="text-white/70 hover:text-white cursor-pointer">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-white/10 flex-shrink-0 overflow-x-auto">
+        <button
+          className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'settings' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
+          onClick={() => setActiveTab('settings')}
+          type="button"
+        >
+          General
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'models' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
+          onClick={() => setActiveTab('models')}
+          type="button"
+        >
+          Models
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'wallet' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
+          onClick={() => setActiveTab('wallet')}
+          type="button"
+        >
+          Wallet
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'history' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
+          onClick={() => setActiveTab('history')}
+          type="button"
+        >
+          History
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'api-keys' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
+          onClick={() => setActiveTab('api-keys')}
+          type="button"
+        >
+          API Keys
+        </button>
+      </div>
+
+      <div className="p-4 flex-1 overflow-y-auto">
+        {activeTab === 'settings' ? (
+          <GeneralTab
+              publicKey={user?.pubkey}
+              nsecData={logins[0].data}
+              loginType={user?.method}
+              logout={logout}
+              router={router}
+              onClose={onClose}
+              mintUrl={mintUrl}
+              setMintUrl={handleMintUrlChange}
+          />
+        ) : activeTab === 'models' ? (
+          <ModelsTab
+            models={models}
+            configuredModels={configuredModels}
+            toggleConfiguredModel={toggleConfiguredModel}
+            setConfiguredModels={setConfiguredModels}
+            modelProviderMap={modelProviderMap}
+            setModelProviderFor={setModelProviderFor}
+          />
+        ) : activeTab === 'history' ? (
+          <HistoryTab
+              transactionHistory={transactionHistory}
+              setTransactionHistory={setTransactionHistory}
+              clearConversations={clearConversations}
+              onClose={onClose}
+          />
+        ) : activeTab === 'api-keys' ? (
+          <ApiKeysTab
+              mintUrl={mintUrl}
+              baseUrl={baseUrl}
+              usingNip60={usingNip60}
+              baseUrls={baseUrls}
+              setActiveTab={setActiveTab}
+              isMobile={isMobile}
+          />
+        ) : activeTab === 'wallet' ? (
+          <UnifiedWallet
+            balance={balance}
+            setBalance={setBalance}
+            mintUrl={mintUrl}
+            baseUrl={baseUrl}
+            transactionHistory={transactionHistory}
+            setTransactionHistory={setTransactionHistory}
+            usingNip60={usingNip60}
+            setUsingNip60={setUsingNip60}
+          />
+        ) : null}
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/40 z-[60]" />
+          <Drawer.Content className="bg-[#181818] flex flex-col rounded-t-[10px] mt-24 h-[80%] lg:h-fit max-h-[96%] fixed bottom-0 left-0 right-0 outline-none z-[60]">
+            <div className="pt-4 pb-4 bg-[#181818] rounded-t-[10px] flex-1 overflow-y-auto">
+              <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-white/20 mb-4" aria-hidden />
+              <Drawer.Title className="sr-only">Settings</Drawer.Title>
+              <div className="max-w-2xl mx-auto flex flex-col h-full">
+                {contentBody}
+              </div>
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
       <div
@@ -97,101 +223,7 @@ const SettingsModal = ({
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}
       >
-        <div className="bg-[#181818] flex justify-between items-center p-4 border-b border-white/10 flex-shrink-0">
-          <h2 className="text-xl font-semibold text-white">Settings</h2>
-          <button onClick={onClose} className="text-white/70 hover:text-white cursor-pointer">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-white/10 flex-shrink-0 overflow-x-auto">
-          <button
-            className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'settings' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
-            onClick={() => setActiveTab('settings')}
-            type="button"
-          >
-            General
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'models' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
-            onClick={() => setActiveTab('models')}
-            type="button"
-          >
-            Models
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'wallet' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
-            onClick={() => setActiveTab('wallet')}
-            type="button"
-          >
-            Wallet
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'history' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
-            onClick={() => setActiveTab('history')}
-            type="button"
-          >
-            History
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium flex-shrink-0 whitespace-nowrap ${activeTab === 'api-keys' ? 'text-white border-b-2 border-white' : 'text-white/50 hover:text-white'} cursor-pointer`}
-            onClick={() => setActiveTab('api-keys')}
-            type="button"
-          >
-            API Keys
-          </button>
-        </div>
-
-        <div className="p-4 flex-1 overflow-y-auto">
-          {activeTab === 'settings' ? (
-            <GeneralTab
-                publicKey={user?.pubkey}
-                nsecData={logins[0].data}
-                loginType={user?.method}
-                logout={logout}
-                router={router}
-                onClose={onClose}
-                mintUrl={mintUrl}
-                setMintUrl={handleMintUrlChange}
-            />
-          ) : activeTab === 'models' ? (
-            <ModelsTab
-              models={models}
-              configuredModels={configuredModels}
-              toggleConfiguredModel={toggleConfiguredModel}
-              setConfiguredModels={setConfiguredModels}
-              modelProviderMap={modelProviderMap}
-              setModelProviderFor={setModelProviderFor}
-            />
-          ) : activeTab === 'history' ? (
-            <HistoryTab
-                transactionHistory={transactionHistory}
-                setTransactionHistory={setTransactionHistory}
-                clearConversations={clearConversations}
-                onClose={onClose}
-            />
-          ) : activeTab === 'api-keys' ? (
-            <ApiKeysTab
-                mintUrl={mintUrl}
-                baseUrl={baseUrl}
-                usingNip60={usingNip60}
-                baseUrls={baseUrls} // Pass baseUrls to ApiKeysTab
-                setActiveTab={setActiveTab} // Pass setActiveTab to ApiKeysTab
-            />
-          ) : activeTab === 'wallet' ? (
-            <UnifiedWallet
-              balance={balance}
-              setBalance={setBalance}
-              mintUrl={mintUrl}
-              baseUrl={baseUrl}
-              transactionHistory={transactionHistory}
-              setTransactionHistory={setTransactionHistory}
-              usingNip60={usingNip60}
-              setUsingNip60={setUsingNip60}
-            />
-          ) : null}
-        </div>
+        {contentBody}
       </div>
     </div>
   );

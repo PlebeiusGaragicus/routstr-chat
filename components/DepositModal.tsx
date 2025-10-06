@@ -375,7 +375,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                   type="button"
                 >
                   <Zap className="h-4 w-4 mr-2 inline" />
-                  {isProcessing ? 'Creating Invoice...' : 'Create Lightning Invoice'}
+                  {isProcessing ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </div>
