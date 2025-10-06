@@ -8,12 +8,13 @@ import ChatContainer from '@/components/chat/ChatContainer';
 import SettingsModal from '@/components/SettingsModal';
 import LoginModal from '@/components/LoginModal';
 import TutorialOverlay from '@/components/TutorialOverlay';
-import DepositModal from '@/components/DepositModal';
+import TopUpPromptModal from '@/components/TopUpPromptModal';
 import { QueryTimeoutModal } from '@/components/QueryTimeoutModal';
 import { useAuth } from '@/context/AuthProvider';
 import { useChat } from '@/context/ChatProvider';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCashuWallet } from '@/hooks/useCashuWallet';
+import { hasSeenTopUpPrompt } from '@/utils/storageUtils';
 
 function ChatPageContent() {
   const router = useRouter();
@@ -64,19 +65,35 @@ function ChatPageContent() {
     conversationsLoaded,
   } = useChat();
 
-  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [isTopUpPromptOpen, setIsTopUpPromptOpen] = useState(false);
+  const [topUpPromptDismissed, setTopUpPromptDismissed] = useState(false);
   const { showQueryTimeoutModal, setShowQueryTimeoutModal, didRelaysTimeout, isLoading: isWalletLoading } = useCashuWallet();
   const pendingUrlSyncRef = useRef(false);
   const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
   const chatIdFromUrl = useMemo(() => searchParams.get('chatId'), [searchParams]);
 
   useEffect(() => {
-    if (!isBalanceLoading && balance === 0 && isAuthenticated && !isSettingsOpen && !usingNip60) {
-      setIsDepositModalOpen(true);
+    let topUpTimer: NodeJS.Timeout | null = null;
+
+    if (!isBalanceLoading && balance === 0 && isAuthenticated && !isSettingsOpen) {
+      if (!hasSeenTopUpPrompt() && !topUpPromptDismissed) {
+        setIsTopUpPromptOpen(false);
+        topUpTimer = setTimeout(() => {
+          setIsTopUpPromptOpen(true);
+        }, 500);
+      } else {
+        setIsTopUpPromptOpen(false);
+      }
     } else {
-      setIsDepositModalOpen(false);
+      setIsTopUpPromptOpen(false);
     }
-  }, [balance, isBalanceLoading, isAuthenticated, usingNip60]);
+
+    return () => {
+      if (topUpTimer) clearTimeout(topUpTimer);
+    };
+  }, [balance, isBalanceLoading, isAuthenticated, isSettingsOpen, topUpPromptDismissed]);
+
+  const handleTopUp = (_amount?: number) => {};
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -195,15 +212,13 @@ function ChatPageContent() {
         onClose={handleTutorialClose}
       />)}
 
-      {/* Deposit Modal */}
-      {isDepositModalOpen && (
-        <DepositModal
-          isOpen={isDepositModalOpen}
-          onClose={() => setIsDepositModalOpen(false)}
-          mintUrl={mintUrl}
-          balance={balance}
-          setBalance={setBalance}
-          usingNip60={usingNip60}
+      {/* Top-up Prompt */}
+      {isTopUpPromptOpen && (
+        <TopUpPromptModal
+          isOpen={isTopUpPromptOpen}
+          onClose={() => { setIsTopUpPromptOpen(false); setTopUpPromptDismissed(true); }}
+          onTopUp={handleTopUp}
+          onDontShowAgain={() => { setTopUpPromptDismissed(true); }}
         />
       )}
 

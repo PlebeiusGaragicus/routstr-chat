@@ -32,10 +32,13 @@ interface DepositModalProps {
   balance: number;
   setBalance: React.Dispatch<React.SetStateAction<number>>;
   usingNip60: boolean;
+  initialAmount?: number;
+  autoCreate?: boolean;
 }
 
-const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, balance, setBalance, usingNip60 }) => {
+const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, balance, setBalance, usingNip60, initialAmount, autoCreate }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const hasAutoCreatedRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -79,6 +82,21 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
       setError(hookError);
     }
   }, [hookError]);
+
+  // Initialize amount and optionally auto-create invoice when opened
+  useEffect(() => {
+    if (!isOpen) {
+      hasAutoCreatedRef.current = false;
+      return;
+    }
+    if (initialAmount && initialAmount > 0) {
+      setReceiveAmount(String(initialAmount));
+    }
+    if (autoCreate && initialAmount && initialAmount > 0 && !hasAutoCreatedRef.current) {
+      hasAutoCreatedRef.current = true;
+      void handleCreateInvoice(initialAmount);
+    }
+  }, [isOpen, autoCreate, initialAmount]);
 
   const { balances: mintBalances, units: mintUnits } = React.useMemo(() => {
     if (!cashuStore.proofs) return { balances: {}, units: {} };
@@ -280,6 +298,11 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
           </svg>
         </button>
         <h2 className="text-xl font-semibold text-white mb-4">Deposit Funds</h2>
+        {initialAmount && initialAmount > 0 && (
+          <div className="bg-white/5 border border-white/20 rounded-md p-2 text-white/70 text-xs mb-3">
+            Suggested amount: {initialAmount} sats
+          </div>
+        )}
 
         {isLoading && (
           <div className="bg-blue-500/10 border border-blue-500/30 text-blue-200 p-3 rounded-md text-sm mb-4 flex items-center">

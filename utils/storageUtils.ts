@@ -398,6 +398,21 @@ export const markTutorialAsSeen = (): void => {
 };
 
 /**
+ * Check if user has seen the top-up prompt
+ * @returns True if top-up prompt has been seen
+ */
+export const hasSeenTopUpPrompt = (): boolean => {
+  return hasStorageItem(STORAGE_KEYS.TOPUP_PROMPT_SEEN);
+};
+
+/**
+ * Mark top-up prompt as seen
+ */
+export const markTopUpPromptSeen = (): void => {
+  setStorageItem(STORAGE_KEYS.TOPUP_PROMPT_SEEN, 'true');
+};
+
+/**
  * Load sidebar open state from localStorage
  * @returns Sidebar open state, defaults to false for first use
  */
@@ -449,7 +464,8 @@ export const STORAGE_KEYS = {
   LOCAL_CASHU_TOKENS: 'local_cashu_tokens',
   CASHU_PROOFS: 'cashu_proofs',
   WRAPPED_CASHU_TOKENS: 'wrapped_cashu_tokens',
-  RELAYS: 'nostr_relays'
+  RELAYS: 'nostr_relays',
+  TOPUP_PROMPT_SEEN: 'topup_prompt_seen'
 } as const;
 
 /**
