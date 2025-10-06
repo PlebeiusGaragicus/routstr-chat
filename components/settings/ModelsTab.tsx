@@ -246,6 +246,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                         const primary = p.endpoint_url?.startsWith('http') ? p.endpoint_url : `https://${p.endpoint_url}`;
                         const normalized = primary.endsWith('/') ? primary : `${primary}/`;
                         const isActive = normalized === selectedProvider;
+                        if (normalized.includes('http://')) return null;
                         return (
                           <button
                             key={`${p.name}-${normalized}`}

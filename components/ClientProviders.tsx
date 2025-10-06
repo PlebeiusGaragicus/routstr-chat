@@ -46,6 +46,23 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
     migrateStorageItems();
   }, []); 
 
+  // Start MSW in development only
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // dynamic import to avoid including in prod bundles
+      import('@/mocks/browser').then(({ worker }) => {
+        worker.start({
+          onUnhandledRequest: 'bypass',
+          serviceWorker: {
+            url: '/mockServiceWorker.js',
+          },
+        });
+      }).catch(() => {
+        // no-op if MSW is not available
+      });
+    }
+  }, []);
+
   return (
     <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
       <DynamicNostrLoginProvider storageKey='nostr:login'>

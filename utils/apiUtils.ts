@@ -98,12 +98,24 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
     }
 
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+
+    // Optional dev-only mock controls via localStorage
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      try {
+        const scenario = window.localStorage.getItem('msw:scenario');
+        const latency = window.localStorage.getItem('msw:latency');
+        if (scenario) headers['X-Mock-Scenario'] = scenario;
+        if (latency) headers['X-Mock-Latency'] = latency;
+      } catch {}
+    }
+
     const response = await fetch(`${baseUrl}v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers,
       body: JSON.stringify({
         model: selectedModel?.id,
         messages: apiMessages,
@@ -183,7 +195,11 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
 
   } catch (error) {
     console.log('API Error: ', error);
-    handleApiResponseError(error, onMessageAppend);
+    if (error instanceof Error) {
+      handleApiResponseError(error.message, onMessageAppend);
+    } else {
+      handleApiResponseError('An unknown error occurred', onMessageAppend);
+    }
   }
 };
 
@@ -225,7 +241,7 @@ async function handleApiError(
   if (response.status === 401 || response.status === 403) {
     console.log('rdlogs: ,',response.body)
     const requestId = response.headers.get('x-routstr-request-id');
-    const mainMessage = response.statusText + ". Trying to get a refund.";
+    const mainMessage = response.body?.toString() + ". Trying to get a refund.";
     const requestIdText = requestId ? `Request ID: ${requestId}` : '';
     const providerText = `Provider: ${baseUrl}`;
     const fullMessage = requestId
