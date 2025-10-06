@@ -30,6 +30,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const { updateProofs } = useCashuWallet();
   const { error: tokenError } = useCashuToken();
@@ -37,6 +38,11 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const transactionHistoryStore = useTransactionHistoryStore();
   const isMobile = useMediaQuery('(max-width: 640px)');
+
+  // Prevent hydration mismatch by waiting for client-side hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -53,7 +59,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isHydrated) return null;
 
   const quickAmounts = [500, 1000, 5000];
 
