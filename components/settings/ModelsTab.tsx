@@ -47,19 +47,13 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
           endpoint_url: p.endpoint_url,
           endpoint_urls: p.endpoint_urls
         }));
-        // Prioritize api.routstr.com as first
-        const preferred = 'api.routstr.com';
-        const prioritized = list.slice().sort((a: ProviderItem, b: ProviderItem) => {
-          const aMatch = (a.endpoint_url && a.endpoint_url.includes(preferred)) || (a.endpoint_urls || []).some((u: string) => u.includes(preferred)) ? 0 : 1;
-          const bMatch = (b.endpoint_url && b.endpoint_url.includes(preferred)) || (b.endpoint_urls || []).some((u: string) => u.includes(preferred)) ? 0 : 1;
-          return aMatch - bMatch;
-        });
-        setProviders(prioritized);
+        // Keep provided order; optionally alphabetical by name for UX
+        const sorted = list.slice().sort((a, b) => (a.name || a.endpoint_url).localeCompare(b.name || b.endpoint_url));
+        setProviders(sorted);
 
-        // Default selection: api.routstr.com if available; otherwise first entry
-        if (prioritized.length > 0 && !selectedProvider) {
-          const preferredEntry = prioritized.find((p: ProviderItem) => (p.endpoint_url && p.endpoint_url.includes(preferred)) || (p.endpoint_urls || []).some((u: string) => u.includes(preferred)));
-          const baseUrlRaw = preferredEntry?.endpoint_url || prioritized[0].endpoint_url;
+        // Default selection: first entry only (no special host preference)
+        if (sorted.length > 0 && !selectedProvider) {
+          const baseUrlRaw = sorted[0].endpoint_url;
           const primary = baseUrlRaw?.startsWith('http') ? baseUrlRaw : `https://${baseUrlRaw}`;
           setSelectedProvider(primary.endsWith('/') ? primary : `${primary}/`);
         }

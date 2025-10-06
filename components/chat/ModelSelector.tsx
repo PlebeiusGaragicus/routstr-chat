@@ -167,6 +167,7 @@ export default function ModelSelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [neededProviderBases]);
 
+
   // Deduplicate models across providers by picking the best-priced variant per id
   const dedupedModels = useMemo(() => {
     const bestById = new Map<string, Model>();
@@ -176,8 +177,8 @@ export default function ModelSelector({
         bestById.set(m.id, m);
         continue;
       }
-      const currentCost = getEstimatedMinCost(m);
-      const existingCost = getEstimatedMinCost(existing);
+      const currentCost = m?.sats_pricing?.completion ?? 0;
+      const existingCost = existing?.sats_pricing?.completion ?? 0;
       if (currentCost < existingCost) {
         bestById.set(m.id, m);
       }
@@ -256,7 +257,7 @@ export default function ModelSelector({
   const formatProviderLabel = (baseUrl: string | null | undefined, model: Model): string => {
     try {
       if (baseUrl) {
-        const url = new URL(baseUrl);
+        const url = new URL(normalizeBaseUrl(baseUrl) || '');
         return url.host;
       }
     } catch {}
@@ -312,7 +313,7 @@ export default function ModelSelector({
   const isModelAvailable = (model: Model) => {
     try {
       if (!model?.sats_pricing) return true; // If no pricing, assume available
-      const estimatedMinCost = getEstimatedMinCost(model);
+      const estimatedMinCost = model?.sats_pricing?.completion ?? 0;
       if (!estimatedMinCost || estimatedMinCost <= 0) return true;
       return balance >= estimatedMinCost;
     }
@@ -322,28 +323,7 @@ export default function ModelSelector({
     }
   };
 
-  // Calculate the minimum estimated sats needed to run this model
-  const getEstimatedMinCost = (model: Model): number => {
-    try {
-      if (!model?.sats_pricing) return 0;
-      const { prompt, max_cost, max_completion_cost } = model.sats_pricing as any;
-
-      // Fallback to max_cost when max_completion_cost isn't provided
-      if (typeof max_completion_cost !== 'number') {
-        return typeof max_cost === 'number' ? max_cost : 0;
-      }
-
-      const approximateTokens = 2000;
-      const promptCosts = typeof prompt === 'number' ? prompt * approximateTokens : 0;
-      const totalEstimatedCosts = promptCosts + max_completion_cost;
-      return typeof totalEstimatedCosts === 'number' && isFinite(totalEstimatedCosts)
-        ? totalEstimatedCosts
-        : 0;
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  };
+  
 
   // Focus search input when drawer opens
   useEffect(() => {
@@ -508,7 +488,7 @@ export default function ModelSelector({
     const providerSpecificModel = providerModels ? providerModels[model.id] : undefined;
     const effectiveModelForPricing = providerSpecificModel || model;
     const isAvailable = isModelAvailable(effectiveModelForPricing);
-    const estimatedMinCost = getEstimatedMinCost(effectiveModelForPricing);
+    const estimatedMinCost = effectiveModelForPricing?.sats_pricing?.completion ?? 0;
     const isFav = isFavorite || isConfiguredModel(model.id);
     const effectiveProviderLabel = providerLabel || formatProviderLabel(baseForPricing, model);
     const isDynamicProvider = !isFixedProvider;
@@ -732,7 +712,7 @@ export default function ModelSelector({
           </div>
           {(effectiveModel?.sats_pricing?.max_cost || effectiveModel?.sats_pricing?.max_completion_cost) && (
             <div className="text-[11px] text-white/50">
-              Est. min: {getEstimatedMinCost(effectiveModel).toFixed(0)} sats
+              Est. min: {(effectiveModel?.sats_pricing?.completion ?? 0).toFixed(0)} sats
             </div>
           )}
         </div>
