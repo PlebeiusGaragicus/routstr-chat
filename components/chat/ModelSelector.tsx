@@ -319,17 +319,36 @@ export default function ModelSelector({
     return formatProviderLabel(mappedBase, selectedModel);
   }, [selectedModel, currentConfiguredKey, modelProviderMap]);
 
+  // Determine required minimum sats to run a request for a model
+  const getRequiredMinSats = (model: Model): number => {
+    try {
+      const sp: any = model?.sats_pricing as any;
+      if (!sp) return 0;
+      const candidates: number[] = [
+        Number(sp.max_cost) || 0,
+        Number(sp.max_completion_cost) || 0,
+        Number(sp.completion) || 0
+      ];
+      // Take the maximum available constraint as the required threshold
+      const required = Math.max(...candidates.filter(n => Number.isFinite(n) && n > 0));
+      return Number.isFinite(required) ? required : 0;
+    } catch (e) {
+      console.error(e);
+      return 0;
+    }
+  };
+
   // Check if a model is available based on balance
   const isModelAvailable = (model: Model) => {
     try {
-      if (!model?.sats_pricing) return true; // If no pricing, assume available
-      const estimatedMinCost = model?.sats_pricing?.completion ?? 0;
-      if (!estimatedMinCost || estimatedMinCost <= 0) return true;
-      return balance >= estimatedMinCost;
+      const required = getRequiredMinSats(model);
+      if (!required || required <= 0) return true;
+      return balance >= required;
     }
     catch(error){ 
       console.log(model);
       console.error(error);
+      return true;
     }
   };
 
@@ -498,7 +517,7 @@ export default function ModelSelector({
     const providerSpecificModel = providerModels ? providerModels[model.id] : undefined;
     const effectiveModelForPricing = providerSpecificModel || model;
     const isAvailable = isModelAvailable(effectiveModelForPricing);
-    const estimatedMinCost = effectiveModelForPricing?.sats_pricing?.completion ?? 0;
+    const requiredMin = getRequiredMinSats(effectiveModelForPricing);
     const isFav = isFavorite || isConfiguredModel(model.id);
     const effectiveProviderLabel = providerLabel || formatProviderLabel(baseForPricing, model);
     const isDynamicProvider = !isFixedProvider;
@@ -564,8 +583,8 @@ export default function ModelSelector({
                 )}
               </span>
               <span className="mx-2 flex-shrink-0">{formatTokensPerSat(effectiveModelForPricing?.sats_pricing?.completion)}</span>
-              {!isAvailable && estimatedMinCost > 0 && (
-                <span className="text-yellow-400 font-medium flex-shrink-0">• Min: {estimatedMinCost.toFixed(0)} sats</span>
+              {!isAvailable && requiredMin > 0 && (
+                <span className="text-yellow-400 font-medium flex-shrink-0">• Min: {requiredMin.toFixed(0)} sats</span>
               )}
             </div>
           </div>
@@ -720,9 +739,9 @@ export default function ModelSelector({
               </div>
             </div>
           </div>
-          {(effectiveModel?.sats_pricing?.max_cost || effectiveModel?.sats_pricing?.max_completion_cost) && (
+          {(effectiveModel?.sats_pricing) && (
             <div className="text-[11px] text-white/50">
-              Est. min: {(effectiveModel?.sats_pricing?.completion ?? 0).toFixed(0)} sats
+              Est. min: {getRequiredMinSats(effectiveModel).toFixed(0)} sats
             </div>
           )}
         </div>
