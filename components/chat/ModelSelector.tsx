@@ -67,6 +67,16 @@ export default function ModelSelector({
     }
   }, []);
 
+  // Reload modelProviderMap when models change (in case it was updated by useApiState)
+  useEffect(() => {
+    try {
+      const updatedMap = loadModelProviderMap();
+      setModelProviderMap(updatedMap);
+    } catch {
+      // Keep existing map if loading fails
+    }
+  }, [models]);
+
   // Normalize base URL to ensure trailing slash and protocol (moved to utils)
 
   // Fetch and cache models for a specific provider base URL
