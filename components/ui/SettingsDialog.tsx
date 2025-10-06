@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Drawer } from 'vaul';
+import { Dialog, DialogContent, DialogTitle } from '@radix-ui/react-dialog';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface SettingsDialogProps {
@@ -11,9 +12,10 @@ interface SettingsDialogProps {
   isMobile?: boolean;
   nested?: boolean;
   maxWidthClassName?: string; // allow overriding max width for desktop container
+  title?: string; // optional title for accessibility
 }
 
-const SettingsDialog = ({ open, onOpenChange, children, isMobile: propIsMobile, nested, maxWidthClassName }: SettingsDialogProps) => {
+const SettingsDialog = ({ open, onOpenChange, children, isMobile: propIsMobile, nested, maxWidthClassName, title = "Dialog" }: SettingsDialogProps) => {
   const isMobile = propIsMobile ?? useMediaQuery('(max-width: 640px)');
 
   if (isMobile) {
@@ -26,6 +28,7 @@ const SettingsDialog = ({ open, onOpenChange, children, isMobile: propIsMobile, 
             <div className="pt-4 pb-4 bg-[#181818] rounded-t-[10px] flex-1 overflow-y-auto">
               <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-white/20 mb-8" aria-hidden />
               <div className="max-w-2xl mx-auto flex flex-col h-full">
+                <DialogTitle className="sr-only">{title}</DialogTitle>
                 {children}
               </div>
             </div>
@@ -38,14 +41,17 @@ const SettingsDialog = ({ open, onOpenChange, children, isMobile: propIsMobile, 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => onOpenChange(false)}>
-      <div
-        className={`bg-[#181818] rounded-lg p-6 w-full border border-white/10 shadow-lg ${maxWidthClassName || 'max-w-md'}`}
-        onClick={e => e.stopPropagation()}
-      >
-        {children}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => onOpenChange(false)}>
+        <DialogContent 
+          className={`bg-[#181818] rounded-lg p-6 w-full border border-white/10 shadow-lg ${maxWidthClassName || 'max-w-md'}`}
+          onClick={e => e.stopPropagation()}
+        >
+          <DialogTitle className="sr-only">{title}</DialogTitle>
+          {children}
+        </DialogContent>
       </div>
-    </div>
+    </Dialog>
   );
 };
 

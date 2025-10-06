@@ -973,8 +973,9 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
           onOpenChange={(open) => { if (!open) setShowConfirmation(false); }}
           isMobile={isMobile}
           nested
+          title="Create API Key"
         >
-          <div className="px-4">
+          <div className={isMobile ? "px-4" : ""}>
                 {isLoading || isSyncingApiKeys ? (
                   <>
                     <h4 className="text-lg font-semibold text-white mb-4">Creating API Key...</h4>
@@ -1192,8 +1193,9 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
           }}
           isMobile={isMobile}
           nested
+          title="Add API Key"
         >
-          <div className="px-4">
+          <div className={isMobile ? "px-4" : ""}>
                 {isAddingApiKey ? (
                   <>
                     <h4 className="text-lg font-semibold text-white mb-4">Adding API Key...</h4>
