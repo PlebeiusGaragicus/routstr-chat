@@ -82,17 +82,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
           </button>
         </div>
       )}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-white/80 mb-2">Cashu Mint URL</h3>
-        <input
-          type="text"
-          className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
-          placeholder="https://mint.minibits.cash/Bitcoin"
-          value={mintUrl}
-          onChange={(e) => setMintUrl(e.target.value)}
-        />
-        <p className="text-xs text-white/50 mt-1">The Cashu mint used for token generation</p>
-      </div>
+
 
       {/* Nostr Relays */}
       <NostrRelayManager />
@@ -193,7 +183,9 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
         </div>
         {showNsec && (
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-md text-sm text-white break-all mt-2">
-            <span className="flex-grow">{nsecValue}</span>
+            <span className="flex-grow">
+              {nsecValue ? `${nsecValue.slice(0, 4)}${'•'.repeat(Math.max(0, nsecValue.length - 4))}` : ''}
+            </span>
             <button
               className="p-1 rounded-md hover:bg-white/10"
               onClick={() => {
