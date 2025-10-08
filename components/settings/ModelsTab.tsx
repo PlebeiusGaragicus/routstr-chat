@@ -34,6 +34,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   const [providerModels, setProviderModels] = useState<readonly Model[]>([]);
   const [isLoadingProviderModels, setIsLoadingProviderModels] = useState(false);
   const [isProviderPopoverOpen, setIsProviderPopoverOpen] = useState(false);
+  console.log("rdlogs: models", isProviderPopoverOpen)
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -140,11 +141,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   };
 
   return (
-    <div className="h-full min-h-0 flex flex-col">
-      
-
+    <div className="flex flex-col min-h-[600px]">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-        <div className="bg-white/5 border border-white/10 rounded-md p-3 h-full flex flex-col min-h-0">
+        <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-white flex items-center gap-1.5">
               Favorite Models
@@ -159,7 +158,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
               </button>
             )}
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-white/5">
+          <div className="overflow-y-auto divide-y divide-white/5 max-h-[400px]">
             {configuredModelsList.length > 0 ? configuredModelsList.map(item => (
               <div key={item.key} className="flex items-center justify-between py-2">
                 <div className="min-w-0">
@@ -188,7 +187,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-md p-3 h-full flex flex-col min-h-0">
+        <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col min-h-[300px]">
           <h4 className="text-sm font-medium text-white mb-2">All Models</h4>
           <div className="mb-2 flex items-center gap-2">
             <span className="text-[11px] text-white/60 flex-shrink-0">Provider</span>
@@ -217,7 +216,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       <ChevronDown className="h-3 w-3 text-white/60 flex-shrink-0" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="bg-[#181818] border border-white/10 text-white p-2 w-96 rounded-md shadow-lg">
+                  <PopoverContent align="start" className="bg-[#181818] border border-white/10 text-white p-2 w-96 rounded-md shadow-lg z-[9999]">
                     <div className="mb-2 relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                       <input
@@ -273,7 +272,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
               onChange={(e) => setProviderSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-white/5">
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-white/5 max-h-[400px]">
             {isLoadingProviders || isLoadingProviderModels ? (
               <div className="p-2 space-y-2">
                 {[...Array(6)].map((_, i) => (
