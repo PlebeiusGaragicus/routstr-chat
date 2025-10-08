@@ -463,14 +463,12 @@ export function useCashuToken() {
       }
 
       const { mint: mintUrl, proofs: tokenProofs, unit: unit } = decodedToken;
-      console.log("rdlogs profs: ", tokenProofs, unit)
 
       // if we don't have the mintUrl yet, add it
       const normalizedMintUrl = await addMintIfNotExists(mintUrl);
 
       // Setup wallet for receiving
       const mint = new CashuMint(normalizedMintUrl);
-      console.log('rdlogs:  ---recevie- biew mind', mintUrl);
       const keysets = await mint.getKeySets();
       
       // Get preferred unit: msat over sat if both are active
@@ -482,7 +480,6 @@ export function useCashuToken() {
 
       // Load mint keysets
       await wallet.loadMint();
-      console.log(wallet.keysets)
 
       // Receive proofs from token
       const receivedProofs = await wallet.receive(token);

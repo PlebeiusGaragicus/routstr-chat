@@ -449,7 +449,6 @@ export function useCashuWallet() {
         // remove proofs from store
         const proofsToRemoveFiltered = proofsToRemove.filter(proof => !newProofs.map(p => p.secret).includes(proof.secret));
         cashuStore.removeProofs(proofsToRemoveFiltered);
-        console.log('rdlogs dleted ', deletionEvent)
 
         // publish deletion event
         try {

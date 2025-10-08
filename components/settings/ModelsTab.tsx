@@ -34,7 +34,6 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   const [providerModels, setProviderModels] = useState<readonly Model[]>([]);
   const [isLoadingProviderModels, setIsLoadingProviderModels] = useState(false);
   const [isProviderPopoverOpen, setIsProviderPopoverOpen] = useState(false);
-  console.log("rdlogs: models", isProviderPopoverOpen)
 
   useEffect(() => {
     const fetchProviders = async () => {
