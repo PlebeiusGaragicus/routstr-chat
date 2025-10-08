@@ -61,7 +61,7 @@ export interface UseChatActionsReturn {
     selectedModel: any,
     baseUrl: string,
     mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => Promise<void>;
@@ -72,7 +72,7 @@ export interface UseChatActionsReturn {
     selectedModel: any,
     baseUrl: string,
     mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => void;
@@ -320,7 +320,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     selectedModel: any,
     baseUrl: string,
     mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
@@ -337,14 +337,17 @@ export const useChatActions = (): UseChatActionsReturn => {
       setEditingMessageIndex(null);
       setEditingContent('');
 
-      const originId = originConversationId;
+      const originConversationId = activeConversationId ?? getActiveConversationId();
+      if (!originConversationId) {
+        throw new Error('No active conversation ID found');
+      }
       await performAIRequest(
         truncatedMessages,
         setMessages,
         selectedModel,
         baseUrl,
         mintUrl,
-        originId,
+        originConversationId,
         saveConversationById,
         getActiveConversationId
       );
@@ -358,12 +361,16 @@ export const useChatActions = (): UseChatActionsReturn => {
     selectedModel: any,
     baseUrl: string,
     mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     const newMessages = messages.slice(0, index);
     setMessages(newMessages);
+    const originConversationId = activeConversationId ?? getActiveConversationId();
+    if (!originConversationId) {
+      throw new Error('No active conversation ID found');
+    }
     performAIRequest(
       newMessages,
       setMessages,
@@ -382,7 +389,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     selectedModel: any,
     baseUrl: string,
     mintUrl: string,
-    originConversationId: string | null,
+    originConversationId: string,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
@@ -401,11 +408,12 @@ export const useChatActions = (): UseChatActionsReturn => {
     const updateMessages = (newMessages: Message[]) => {
       currentMessages = newMessages;
       const currentlyActive = getActiveConversationId();
-      if (originConversationId && currentlyActive !== originConversationId) {
+      if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
         // Persist to the origin conversation without disrupting the UI of the current one
         saveConversationById(originConversationId, newMessages);
       } else {
         setMessages(newMessages);
+        saveConversationById(originConversationId, newMessages);
       }
     };
 

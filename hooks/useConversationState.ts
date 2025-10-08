@@ -9,6 +9,7 @@ import {
   clearAllConversations
 } from '@/utils/conversationUtils';
 import { getTextFromContent } from '@/utils/messageUtils';
+import { loadActiveConversationId, saveActiveConversationId } from '@/utils/storageUtils';
 import { useChatHistorySync } from './useChatHistorySync';
 
 export interface UseConversationStateReturn {
@@ -55,11 +56,12 @@ export const useConversationState = (): UseConversationStateReturn => {
     conversationsLoaded
   });
 
-  // Load conversations from storage on mount
+  // Load conversations and active conversation ID from storage on mount
   useEffect(() => {
     const loadedConversations = loadConversationsFromStorage();
     setConversations(loadedConversations);
     setConversationsLoaded(true);
+
   }, []);
 
   // Save current conversation whenever messages change
@@ -90,29 +92,36 @@ export const useConversationState = (): UseConversationStateReturn => {
     }
   }, [editingMessageIndex, messages]);
 
+  // Wrapper function to set active conversation ID and save to localStorage
+  const setActiveConversationIdWithStorage = useCallback((conversationId: string | null) => {
+    setActiveConversationId(conversationId);
+    saveActiveConversationId(conversationId);
+  }, []);
+
   const createNewConversationHandler = useCallback((initialMessages: Message[] = []) => {
     let createdId: string = '';
     setConversations(prevConversations => {
       const { newConversation, updatedConversations } = createNewConversation(prevConversations, initialMessages);
       createdId = newConversation.id;
-      setActiveConversationId(newConversation.id);
+      setActiveConversationIdWithStorage(newConversation.id);
       // Set messages to the initial messages (empty array if none provided)
       setMessages(initialMessages);
       return updatedConversations;
     });
     return createdId;
-  }, []);
+  }, [setActiveConversationIdWithStorage]);
 
   const loadConversation = useCallback((conversationId: string) => {
     setConversations(prevConversations => {
       const conversation = findConversationById(prevConversations, conversationId);
       if (conversation) {
-        setActiveConversationId(conversationId);
+        setActiveConversationIdWithStorage(conversationId);
+        console.log("rdlogs: loadConversation", conversationId)
         setMessages(conversation.messages);
       }
       return prevConversations;
     });
-  }, []);
+  }, [setActiveConversationIdWithStorage]);
 
   const deleteConversation = useCallback((conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -121,20 +130,20 @@ export const useConversationState = (): UseConversationStateReturn => {
       const updatedConversations = deleteConversationFromStorage(prevConversations, conversationId);
       
       if (conversationId === activeConversationId) {
-        setActiveConversationId(null);
+        setActiveConversationIdWithStorage(null);
         setMessages([]);
       }
       
       return updatedConversations;
     });
-  }, [activeConversationId]);
+  }, [activeConversationId, setActiveConversationIdWithStorage]);
 
   const clearConversations = useCallback(() => {
     setConversations([]);
-    setActiveConversationId(null);
+    setActiveConversationIdWithStorage(null);
     setMessages([]);
     clearAllConversations();
-  }, []);
+  }, [setActiveConversationIdWithStorage]);
 
   const startEditingMessage = useCallback((index: number) => {
     setEditingMessageIndex(index);
@@ -154,7 +163,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     editingMessageIndex,
     editingContent,
     setConversations,
-    setActiveConversationId,
+    setActiveConversationId: setActiveConversationIdWithStorage,
     setMessages,
     setEditingMessageIndex,
     setEditingContent,
@@ -170,7 +179,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         return saveConversationToStorage(prevConversations, conversationId, newMessages);
       });
     },
-    getActiveConversationId: () => activeConversationId,
+    getActiveConversationId: () => loadActiveConversationId(),
     conversationsLoaded
   };
 };
