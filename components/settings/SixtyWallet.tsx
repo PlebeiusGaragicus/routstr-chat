@@ -751,6 +751,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     type="text"
                     value={customMintUrl}
                     onChange={(e) => setCustomMintUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleAddCustomMint();
+                      }
+                    }}
                     className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
                     placeholder="Enter new mint URL"
                   />
@@ -938,6 +944,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       placeholder="Lightning invoice"
                       value={sendInvoice}
                       onChange={(e) => handleInvoiceInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handlePayInvoice();
+                        }
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 pr-10 text-sm text-white focus:border-white/30 focus:outline-none"
                     />
                     <button
@@ -1015,6 +1027,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     type="number"
                     value={sendAmount}
                     onChange={(e) => setSendAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handlesendToken();
+                      }
+                    }}
                     className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
                     placeholder={`Amount in ${currentMintUnit}s`}
                   />

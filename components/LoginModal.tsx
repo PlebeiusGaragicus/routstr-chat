@@ -333,6 +333,12 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                   type="password"
                   value={nsec}
                   onChange={(e) => setNsec(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleKeyLogin();
+                    }
+                  }}
                   placeholder="nsec1..."
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors"
                 />

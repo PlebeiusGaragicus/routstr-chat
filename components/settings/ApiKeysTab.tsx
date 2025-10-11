@@ -1146,6 +1146,12 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
                   placeholder="Enter amount"
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void confirmTopUp();
+                    }
+                  }}
                   className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
@@ -1224,6 +1230,12 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
                           placeholder="e.g., Production Key"
                           value={manualApiKeyLabel}
                           onChange={(e) => setManualApiKeyLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void confirmAddApiKey();
+                            }
+                          }}
                           className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                       </div>
@@ -1235,6 +1247,12 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
                           placeholder="Enter your API key"
                           value={manualApiKey}
                           onChange={(e) => setManualApiKey(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void confirmAddApiKey();
+                            }
+                          }}
                           className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                       </div>

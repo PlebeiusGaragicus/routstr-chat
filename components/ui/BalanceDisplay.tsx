@@ -1095,6 +1095,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                       type="text"
                       value={sendAmount}
                       onChange={(e) => handleAmountChange(e, 'send')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void generateSendToken();
+                        }
+                      }}
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-lg font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
                       placeholder="0"
                       autoFocus
@@ -1182,6 +1188,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                     <textarea
                       value={usingNip60 ? nip60SendInvoice : lightningInvoice}
                       onChange={(e) => usingNip60 ? handleNip60InvoiceInput(e.target.value) : setLightningInvoice(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          void handlePayLightningInvoice();
+                        }
+                      }}
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-xs font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 min-h-[80px] resize-y"
                       placeholder="Paste lightning invoice here..."
                       autoFocus
