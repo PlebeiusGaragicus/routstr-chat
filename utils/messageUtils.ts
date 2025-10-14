@@ -79,3 +79,51 @@ export const stripImageDataFromMessages = (messages: Message[]): Message[] => {
     return msg;
   });
 };
+
+export const extractThinkingFromStream = (chunk: string, accumulatedThinking: string = ''): {
+  thinking: string;
+  content: string;
+  isInThinking: boolean;
+} => {
+  const thinkingStart = /<(?:antml:)?thinking>/;
+  const thinkingEnd = /<\/(?:antml:)?thinking>/;
+  
+  let thinking = accumulatedThinking;
+  let content = '';
+  let isInThinking = accumulatedThinking.length > 0 && !accumulatedThinking.includes('</thinking>');
+  
+  if (isInThinking) {
+    const endMatch = chunk.match(thinkingEnd);
+    if (endMatch) {
+      const endIndex = chunk.indexOf(endMatch[0]);
+      thinking += chunk.slice(0, endIndex);
+      content = chunk.slice(endIndex + endMatch[0].length);
+      isInThinking = false;
+    } else {
+      thinking += chunk;
+    }
+  } else {
+    const startMatch = chunk.match(thinkingStart);
+    if (startMatch) {
+      const startIndex = chunk.indexOf(startMatch[0]);
+      content = chunk.slice(0, startIndex);
+      
+      const remainingChunk = chunk.slice(startIndex + startMatch[0].length);
+      const endMatch = remainingChunk.match(thinkingEnd);
+      
+      if (endMatch) {
+        const endIndex = remainingChunk.indexOf(endMatch[0]);
+        thinking = remainingChunk.slice(0, endIndex);
+        content += remainingChunk.slice(endIndex + endMatch[0].length);
+        isInThinking = false;
+      } else {
+        thinking = remainingChunk;
+        isInThinking = true;
+      }
+    } else {
+      content = chunk;
+    }
+  }
+  
+  return { thinking, content, isInThinking };
+};

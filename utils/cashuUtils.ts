@@ -1,5 +1,4 @@
 import { Event } from "nostr-tools";
-import { GiftWrap, wrapCashuToken, unwrapCashuToken } from "./nip60Utils";
 import { CashuMint, CashuWallet, getEncodedTokenV4, getDecodedToken } from "@cashu/cashu-ts";
 import { getLocalCashuToken, setLocalCashuToken, removeLocalCashuToken, getLocalCashuTokens, CashuTokenEntry } from '@/utils/storageUtils';
 

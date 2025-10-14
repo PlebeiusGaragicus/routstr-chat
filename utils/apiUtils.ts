@@ -1,9 +1,8 @@
 import { Message, TransactionHistory } from '@/types/chat';
-import { convertMessageForAPI, createTextMessage } from './messageUtils';
+import { convertMessageForAPI, createTextMessage, extractThinkingFromStream } from './messageUtils';
 import { getTokenForRequest, getTokenAmountForModel, clearCurrentApiToken } from './tokenUtils';
 import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund } from '@/utils/cashuUtils';
 import { getLocalCashuToken } from './storageUtils';
-import { extractThinkingFromStream, isThinkingCapableModel } from './thinkingParser';
 import { getDecodedToken } from '@cashu/cashu-ts';
 
 export interface FetchAIResponseParams {
@@ -417,7 +416,7 @@ async function processStreamingResponse(
 
               const newContent = parsedData.choices[0].delta.content;
               
-              if (modelId && isThinkingCapableModel(modelId)) {
+              if (modelId) {
                 const thinkingResult = extractThinkingFromStream(newContent, accumulatedThinking);
                 accumulatedThinking = thinkingResult.thinking;
                 isInThinking = thinkingResult.isInThinking;
