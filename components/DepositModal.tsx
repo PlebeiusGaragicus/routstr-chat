@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AlertCircle, Copy, Loader2, QrCode, Zap, ArrowRight, Info } from "lucide-react";
 import QRCode from "react-qr-code";
-import { getEncodedTokenV4, Proof, MeltQuoteResponse, MintQuoteResponse } from "@cashu/cashu-ts";
 import { useCashuWallet } from "@/hooks/useCashuWallet";
-import { useCreateCashuWallet } from "@/hooks/useCreateCashuWallet";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCashuToken } from "@/hooks/useCashuToken";
 import { useCashuStore } from "@/stores/cashuStore";
 import { formatBalance, calculateBalance } from "@/lib/cashu";
-import { cn } from "@/lib/utils";
 import {
   createLightningInvoice,
   mintTokensFromPaidInvoice,
@@ -17,7 +13,6 @@ import {
   useTransactionHistoryStore,
   PendingTransaction,
 } from "@/stores/transactionHistoryStore";
-import { getBalanceFromStoredProofs } from "@/utils/cashuUtils";
 import { useInvoiceSync } from "@/hooks/useInvoiceSync";
 import { useInvoiceChecker } from "@/hooks/useInvoiceChecker";
 import { MintQuoteState } from "@cashu/cashu-ts";
