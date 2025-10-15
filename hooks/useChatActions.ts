@@ -434,6 +434,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     let currentMessages = messageHistory;
     const updateMessages = (newMessages: Message[]) => {
       currentMessages = newMessages;
+      console.log('rdlogs: Updating messages: ', currentMessages, originConversationId);
       const currentlyActive = getActiveConversationId();
       if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
         // Persist to the origin conversation without disrupting the UI of the current one
