@@ -4,6 +4,7 @@ import { getTokenForRequest, getTokenAmountForModel, clearCurrentApiToken } from
 import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund } from '@/utils/cashuUtils';
 import { getLocalCashuToken } from './storageUtils';
 import { getDecodedToken } from '@cashu/cashu-ts';
+import { isThinkingCapableModel } from './thinkingParser';
 
 export interface FetchAIResponseParams {
   messageHistory: Message[];
@@ -416,7 +417,7 @@ async function processStreamingResponse(
 
               const newContent = parsedData.choices[0].delta.content;
               
-              if (modelId) {
+              if (modelId && isThinkingCapableModel(modelId)) {
                 const thinkingResult = extractThinkingFromStream(newContent, accumulatedThinking);
                 accumulatedThinking = thinkingResult.thinking;
                 isInThinking = thinkingResult.isInThinking;
