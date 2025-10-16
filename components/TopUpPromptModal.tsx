@@ -161,7 +161,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
 
   const modalContent = (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-white">Top up</h2>
+      <h2 className="text-xl font-semibold text-white">Top Up with Lightning⚡</h2>
 
       {/* QR / placeholder - match DepositModal style */}
       <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
