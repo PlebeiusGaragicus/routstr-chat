@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Message, TransactionHistory } from '@/types/chat';
+import { Message, MessageContent, MessageAttachment, TransactionHistory } from '@/types/chat';
 import { createTextMessage, createMultimodalMessage } from '@/utils/messageUtils';
 import { fetchAIResponse } from '@/utils/apiUtils';
 import { loadTransactionHistory, saveTransactionHistory, loadUsingNip60, saveUsingNip60 } from '@/utils/storageUtils';
@@ -26,7 +26,7 @@ export interface UseChatActionsReturn {
   mintBalances: Record<string, number>;
   mintUnits: Record<string, string>;
   isBalanceLoading: boolean;
-  uploadedImages: string[];
+  uploadedAttachments: MessageAttachment[];
   transactionHistory: TransactionHistory[];
   hotTokenBalance: number;
   usingNip60: boolean;
@@ -35,7 +35,7 @@ export interface UseChatActionsReturn {
   setIsLoading: (loading: boolean) => void;
   setStreamingContent: (content: string) => void;
   setBalance: React.Dispatch<React.SetStateAction<number>>;
-  setUploadedImages: React.Dispatch<React.SetStateAction<string[]>>;
+  setUploadedAttachments: React.Dispatch<React.SetStateAction<MessageAttachment[]>>;
   setTransactionHistory: React.Dispatch<React.SetStateAction<TransactionHistory[]>>;
   setUsingNip60: (using: boolean) => void;
   sendMessage: (
@@ -103,7 +103,7 @@ export const useChatActions = (): UseChatActionsReturn => {
   const [balance, setBalance] = useState(0);
   const [currentMintUnit, setCurrentMintUnit] = useState('sat');
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<MessageAttachment[]>([]);
   const [pendingCashuAmountState, setPendingCashuAmountState] = useState(0);
   const [transactionHistory, setTransactionHistoryState] = useState<TransactionHistory[]>([]);
   const [hotTokenBalance, setHotTokenBalance] = useState<number>(0);
@@ -280,11 +280,11 @@ export const useChatActions = (): UseChatActionsReturn => {
       return;
     }
 
-    if (!inputMessage.trim() && uploadedImages.length === 0) return;
+    if (!inputMessage.trim() && uploadedAttachments.length === 0) return;
 
     // Create user message with text and images
-    const userMessage = uploadedImages.length > 0
-      ? createMultimodalMessage('user', inputMessage, uploadedImages)
+    const userMessage = uploadedAttachments.length > 0
+      ? createMultimodalMessage('user', inputMessage, uploadedAttachments)
       : createTextMessage('user', inputMessage);
 
     const updatedMessages = [...messages, userMessage];
@@ -296,7 +296,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     }
 
     setInputMessage('');
-    setUploadedImages([]);
+    setUploadedAttachments([]);
 
     await performAIRequest(
       updatedMessages,
@@ -308,7 +308,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       saveConversationById,
       getActiveConversationId
     );
-  }, [inputMessage, uploadedImages]);
+  }, [inputMessage, uploadedAttachments]);
 
   const saveInlineEdit = useCallback(async (
     editingMessageIndex: number | null,
@@ -326,9 +326,39 @@ export const useChatActions = (): UseChatActionsReturn => {
   ) => {
     if (editingMessageIndex !== null && editingContent.trim()) {
       const updatedMessages = [...messages];
+      const originalMessage = updatedMessages[editingMessageIndex];
+      
+      // Preserve attachments from original message
+      let newContent: string | MessageContent[];
+      if (typeof originalMessage.content === 'string') {
+        // Simple case: was just text, remains just text
+        newContent = editingContent;
+      } else {
+        // Complex case: preserve attachments and hidden text, update the visible text
+        const updatedContent: MessageContent[] = [];
+        let textReplaced = false;
+
+        originalMessage.content.forEach(item => {
+          if (item.type === 'text' && !item.hidden) {
+            if (!textReplaced) {
+              updatedContent.push({ ...item, text: editingContent });
+              textReplaced = true;
+            }
+            return;
+          }
+          updatedContent.push(item);
+        });
+
+        if (!textReplaced) {
+          updatedContent.unshift({ type: 'text', text: editingContent });
+        }
+        
+        newContent = updatedContent;
+      }
+      
       updatedMessages[editingMessageIndex] = {
-        ...updatedMessages[editingMessageIndex],
-        content: editingContent
+        ...originalMessage,
+        content: newContent
       };
 
       const truncatedMessages = updatedMessages.slice(0, editingMessageIndex + 1);
@@ -486,7 +516,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     mintBalances,
     mintUnits,
     isBalanceLoading,
-    uploadedImages,
+    uploadedAttachments,
     transactionHistory,
     hotTokenBalance,
     usingNip60,
@@ -495,7 +525,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     setIsLoading,
     setStreamingContent,
     setBalance: setBalance,
-    setUploadedImages,
+    setUploadedAttachments,
     setTransactionHistory,
     setUsingNip60,
     sendMessage,
