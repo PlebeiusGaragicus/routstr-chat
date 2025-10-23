@@ -311,7 +311,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       if (typeof result === 'string') {
         setGeneratedToken(result);
         setSuccessMessage(`Token generated for ${formatBalance(amountValue, currentMintUnit)}`);
-      } else if (result && 'hasTokens' in result && !result.hasTokens) {
+      } else if (result === null) {
         setError("No tokens available in your wallet");
       } else {
         setError("Failed to generate token");

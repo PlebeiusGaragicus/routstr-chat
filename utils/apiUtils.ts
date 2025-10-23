@@ -60,7 +60,7 @@ async function routstrRequest(params: {
   mintUrl: string;
   usingNip60: boolean;
   tokenAmount: number;
-  spendCashu: (mintUrl: string, amount: number, baseUrl: string, p2pkPubkey?: string) => Promise<string | null | { hasTokens: false }>;
+  spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<string | null>;
   storeCashu: (token: string) => Promise<any[]>;
   activeMintUrl?: string | null;
   onMessageAppend: (message: Message) => void;
@@ -288,7 +288,7 @@ async function handleApiError(
     storeCashu: (token: string) => Promise<any[]>;
     tokenAmount: number;
     selectedModel: any;
-    spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<string | null | { hasTokens: false }>;
+    spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<string | null>;
     activeMintUrl?: string | null;
     retryOnInsufficientBalance: boolean;
     onMessageAppend: (message: Message) => void;
@@ -357,7 +357,7 @@ async function handleApiError(
         baseUrl
       );
 
-      if (!newToken || (typeof newToken === 'object' && 'hasTokens' in newToken && !newToken.hasTokens)) {
+      if (!newToken) {
         throw new Error(`Insufficient balance (retryOnInsurrifientBal). Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
       }
     }
