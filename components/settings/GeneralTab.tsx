@@ -200,6 +200,13 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Version Information */}
+      <div className="mt-8 pt-4 border-t border-white/10">
+        <div className="text-xs text-white/40 text-center">
+          Version 0.1.0-beta
+        </div>
+      </div>
     </>
   );
 };

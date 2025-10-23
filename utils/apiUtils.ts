@@ -379,8 +379,19 @@ async function handleApiError(
       logApiError(fullMessage, onMessageAppend);
     }
   }
-  else if (response.status === 500) {
-    console.error("rdlogs:rdlogs:internal errror finassld");
+  else if (response.status === 500 || response.status === 502) {
+    const responseBodyText = await readResponseBodyText(response);
+    logApiError(responseBodyText, onMessageAppend);
+    const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
+    if (!refundStatus.success){
+      const mainMessage = `Refund failed: ${refundStatus.message}.`;
+      const requestIdText = refundStatus.requestId ? `Request ID: ${refundStatus.requestId}` : '';
+      const providerText = `Provider: ${baseUrl}`;
+      const fullMessage = refundStatus.requestId
+        ? `${mainMessage}\n${requestIdText}\n${providerText}`
+        : `${mainMessage} | ${providerText}`;
+      logApiError(fullMessage, onMessageAppend);
+    }
   }
   else {
     console.error("rdlogs:rdlogs:smh else else ", response);
