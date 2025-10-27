@@ -10,6 +10,10 @@ import { PendingTransaction } from '@/features/wallet/state/transactionHistorySt
 import { createLightningInvoice, mintTokensFromPaidInvoice } from '@/lib/cashuLightning';
 import { MintQuoteState } from '@cashu/cashu-ts';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import dynamic from 'next/dynamic';
+
+const BCButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.Button), { ssr: false });
+const BCPayButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.PayButton), { ssr: false });
 
 interface TopUpPromptModalProps {
   isOpen: boolean;
@@ -28,6 +32,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
 
   const { updateProofs } = useCashuWallet();
   const cashuStore = useCashuStore();
@@ -90,6 +95,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       const invoiceData = await createLightningInvoice(cashuStore.activeMintUrl, amt);
       setInvoice(invoiceData.paymentRequest);
       setQuoteId(invoiceData.quoteId);
+      setPendingAmount(amt);
 
       await addInvoice({
         type: 'mint',
@@ -121,6 +127,25 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       setError('Failed to create invoice');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handlePaid = async (_response: any) => {
+    if (!cashuStore.activeMintUrl || !quoteId || !pendingAmount) return;
+    try {
+      const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, quoteId, pendingAmount);
+      if (proofs.length > 0) {
+        await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
+        await updateInvoice(quoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
+        if (pendingTransactionId) transactionHistoryStore.removePendingTransaction(pendingTransactionId);
+        setPendingTransactionId(null);
+        setSuccessMessage(`Received ${formatBalance(pendingAmount, 'sats')}!`);
+        setInvoice('');
+        setQuoteId('');
+        setPendingAmount(null);
+      }
+    } catch (_e) {
+      // Fallback to existing polling which is already in progress
     }
   };
 
@@ -158,6 +183,15 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const modalContent = (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-white">Top Up with Lightning⚡</h2>
+
+      {/* Bitcoin Connect: Connect Wallet */}
+      <div className="bg-white/5 border border-white/20 rounded-md p-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-white/70">Connect a wallet (NWC)</span>
+          {/* @ts-ignore - web component props are managed by library */}
+          <BCButton />
+        </div>
+      </div>
 
       {/* QR / placeholder - match DepositModal style */}
       <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
@@ -213,7 +247,17 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       </div>
 
       {invoice && (
-        <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
+        <div className="space-y-3">
+          <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
+          {/* Bitcoin Connect: Pay Button */}
+          <div className="bg-white/5 border border-white/20 rounded-md p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-white/70">Pay with connected wallet</span>
+              {/* @ts-ignore */}
+              <BCPayButton invoice={invoice} onPaid={handlePaid} />
+            </div>
+          </div>
+        </div>
       )}
 
       {error && (

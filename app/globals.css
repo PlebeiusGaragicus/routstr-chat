@@ -125,6 +125,15 @@ body {
   }
 }
 
+/* Bitcoin Connect theme variables */
+html {
+  --bc-color-brand: #196ce7;
+  --bc-color-brand-dark: #3994ff;
+  --bc-brand-mix: 100%;
+  --bc-color-brand-button-text: #ffffff;
+  --bc-color-brand-button-text-dark: #ffffff;
+}
+
 /* Custom container sizing for narrower max-width */
 .container {
   width: 100%;

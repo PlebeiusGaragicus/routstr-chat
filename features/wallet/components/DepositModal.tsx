@@ -17,6 +17,10 @@ import {
 import { useInvoiceSync } from "@/hooks/useInvoiceSync";
 import { useInvoiceChecker } from "@/hooks/useInvoiceChecker";
 import { MintQuoteState } from "@cashu/cashu-ts";
+import dynamic from 'next/dynamic';
+
+const BCButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.Button), { ssr: false });
+const BCPayButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.PayButton), { ssr: false });
 
 // Helper function to generate unique IDs
 const generateId = () => crypto.randomUUID();
@@ -65,6 +69,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
 
   const { wallet, isLoading, updateProofs } = useCashuWallet();
   const cashuStore = useCashuStore();
@@ -140,6 +145,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
       setInvoice(invoiceData.paymentRequest);
       setcurrentMeltQuoteId(invoiceData.quoteId);
       setPaymentRequest(invoiceData.paymentRequest);
+      setPendingAmount(amount);
 
       // Store invoice persistently
       await addInvoice({
@@ -181,6 +187,26 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
       );
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handlePaid = async (_response: any) => {
+    if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount) return;
+    try {
+      const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, currentMeltQuoteId, pendingAmount);
+      if (proofs.length > 0) {
+        await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
+        await updateInvoice(currentMeltQuoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
+        if (pendingTransactionId) transactionHistoryStore.removePendingTransaction(pendingTransactionId);
+        setPendingTransactionId(null);
+        setSuccessMessage(`Received ${formatBalance(pendingAmount, 'sats')}!`);
+        setInvoice("");
+        setcurrentMeltQuoteId("");
+        setReceiveAmount("");
+        setPendingAmount(null);
+      }
+    } catch (_e) {
+      // Fallback to existing polling which is already in progress
     }
   };
 
@@ -330,6 +356,15 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-white/80">Via Lightning</h3>
 
+            {/* Bitcoin Connect: Connect Wallet */}
+            <div className="bg-white/5 border border-white/20 rounded-md p-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-white/70">Connect a wallet (NWC)</span>
+                {/* @ts-ignore */}
+                <BCButton />
+              </div>
+            </div>
+
             {/* Quick Mint Buttons */}
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -408,6 +443,15 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                   <p className="text-xs text-white/50">
                     Waiting for payment...
                   </p>
+                </div>
+
+                {/* Bitcoin Connect: Pay Button */}
+                <div className="bg-white/5 border border-white/20 rounded-md p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-white/70">Pay with connected wallet</span>
+                    {/* @ts-ignore */}
+                    <BCPayButton invoice={invoice} onPaid={handlePaid} />
+                  </div>
                 </div>
 
                 <button
