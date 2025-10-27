@@ -9,7 +9,6 @@ import { loadTransactionHistory, saveTransactionHistory } from '@/utils/storageU
 import { DEFAULT_MINT_URL } from '@/lib/utils';
 import { TransactionHistory } from '@/types/chat';
 import { Proof } from '@cashu/cashu-ts';
-import { getEncodedTokenV4 } from '@cashu/cashu-ts';
 import { useAuth } from '@/context/AuthProvider';
 import React from 'react';
 
@@ -196,7 +195,7 @@ export function useCashuWithXYZ() {
       }
     };
 
-    if (isAuthenticated && false) {
+  if (isAuthenticated && process.env.NODE_ENV === 'production') {
       void initializeWallet();
     }
   }, [initWallet]);
@@ -325,6 +324,9 @@ export function useCashuWithXYZ() {
         try {
           token = await sendToken(selectedMintUrl, adjustedAmount, p2pkPubkey);
         } catch (error) {
+          if (error instanceof Error && error.message.includes('Not enough funds on mint') && error.message.includes('after cleaning spent proofs')) {
+            return spendCashu(selectedMintUrl, adjustedAmount, baseUrl);
+          }
           console.error("Error generating token from alternate mint:", error);
           console.error(error instanceof Error ? error.message : String(error));
         }

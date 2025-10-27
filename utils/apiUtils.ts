@@ -180,6 +180,8 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
   const apiMessages = messageHistory
     .filter(message => message.role !== 'system')
     .map(convertMessageForAPI);
+  
+  console.log(apiMessages);
 
   let tokenAmount = getTokenAmountForModel(selectedModel, apiMessages);
 

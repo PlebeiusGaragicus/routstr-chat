@@ -270,21 +270,6 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     }, 150);
   };
 
-  // Initialize wallet when component mounts or mintUrl changes
-  useEffect(() => {
-    const initializeWallet = async () => {
-      try {
-        await initWallet();
-      } catch (error) {
-        setError('Failed to initialize wallet. Please try again.');
-      }
-    };
-
-    if (isAuthenticated) {
-      void initializeWallet();
-    }
-  }, [mintUrl, initWallet]);
-
   // Clean up intervals on unmount
   useEffect(() => {
     return () => {

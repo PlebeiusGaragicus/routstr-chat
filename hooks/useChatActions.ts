@@ -290,12 +290,13 @@ export const useChatActions = (): UseChatActionsReturn => {
     let currentMessages = messageHistory;
     const updateMessages = (newMessages: Message[]) => {
       currentMessages = newMessages;
-      console.log('rdlogs: Updating messages: ', currentMessages, originConversationId);
       const currentlyActive = getActiveConversationId();
       if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
+        console.log('rdlogs: ONE messages: ', currentMessages, originConversationId);
         // Persist to the origin conversation without disrupting the UI of the current one
         saveConversationById(originConversationId, newMessages);
       } else {
+        console.log('rdlogs: TWO messages: ', currentMessages, originConversationId);
         setMessages(newMessages);
         saveConversationById(originConversationId, newMessages);
       }
