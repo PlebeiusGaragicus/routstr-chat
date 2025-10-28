@@ -22,7 +22,7 @@ interface TopUpPromptModalProps {
   onDontShowAgain: () => void;
 }
 
-const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) => {
+const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [invoice, setInvoice] = useState('');
@@ -39,6 +39,68 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const transactionHistoryStore = useTransactionHistoryStore();
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [bcBalance, setBcBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    let unsubConnect: undefined | (() => void);
+    let unsubDisconnect: undefined | (() => void);
+    let unsubConnecting: undefined | (() => void);
+
+    (async () => {
+      try {
+        const mod = await import('@getalby/bitcoin-connect-react');
+        const fetchBalance = async (provider: any): Promise<number | null> => {
+          try {
+            if (provider && typeof provider.getBalance === 'function') {
+              const res = await provider.getBalance();
+              if (typeof res === 'number') return res;
+              if (res && typeof res === 'object') {
+                if ('balance' in res && typeof (res as any).balance === 'number') {
+                  const unit = ((res as any).unit || '').toString().toLowerCase();
+                  const n = (res as any).balance as number;
+                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                }
+                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                  return Math.floor((res as any).balanceMsats / 1000);
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        unsubConnecting = mod.onConnecting?.(() => setBcStatus('connecting'));
+        unsubConnect = mod.onConnected?.(async (provider: any) => {
+          setBcStatus('connected');
+          const sats = await fetchBalance(provider);
+          if (sats !== null) setBcBalance(sats);
+        });
+        unsubDisconnect = mod.onDisconnected?.(() => {
+          setBcStatus('disconnected');
+          setBcBalance(null);
+        });
+
+        try {
+          const cfg = mod.getConnectorConfig?.();
+          if (cfg) {
+            setBcStatus('connected');
+            try {
+              const provider = await mod.requestProvider();
+              const sats = await fetchBalance(provider);
+              if (sats !== null) setBcBalance(sats);
+            } catch {}
+          }
+        } catch {}
+      } catch {}
+    })();
+
+    return () => {
+      try { unsubConnect && unsubConnect(); } catch {}
+      try { unsubDisconnect && unsubDisconnect(); } catch {}
+      try { unsubConnecting && unsubConnecting(); } catch {}
+    };
+  }, []);
 
   // Prevent hydration mismatch by waiting for client-side hydration
   useEffect(() => {
@@ -187,9 +249,26 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       {/* Bitcoin Connect: Connect Wallet */}
       <div className="bg-white/5 border border-white/20 rounded-md p-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-white/70">Connect a wallet (NWC)</span>
-          {/* @ts-ignore - web component props are managed by library */}
-          <BCButton />
+          <span className="text-xs text-white/70">Wallet (NWC)</span>
+          {bcStatus === 'connected' ? (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-green-400">Connected</span>
+              {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  const mod = await import('@getalby/bitcoin-connect-react');
+                  mod.launchModal();
+                } catch {}
+              }}
+              className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+              type="button"
+            >
+              {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -253,8 +332,40 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
           <div className="bg-white/5 border border-white/20 rounded-md p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-white/70">Pay with connected wallet</span>
-              {/* @ts-ignore */}
-              <BCPayButton invoice={invoice} onPaid={handlePaid} />
+              <button
+                onClick={async () => {
+                  setIsProcessing(true);
+                  try {
+                    const mod = await import('@getalby/bitcoin-connect-react');
+                    const provider = await mod.requestProvider();
+                    try {
+                      const res = await provider.sendPayment(invoice);
+                      if (res && (res as any).preimage) {
+                        await handlePaid(res);
+                      } else {
+                        await handlePaid(null);
+                      }
+                    } catch {
+                      await handlePaid(null);
+                    }
+                  } catch {}
+                  setIsProcessing(false);
+                }}
+                disabled={isProcessing}
+                className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="inline mr-2 h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                    </svg>
+                    Paying...
+                  </>
+                ) : (
+                  'Pay'
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -267,6 +378,17 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       {successMessage && (
         <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-2 rounded-md text-xs">{successMessage}</div>
       )}
+
+      {/* Don't show again action */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => { onDontShowAgain(); onClose(); }}
+          className="text-xs text-white/50 hover:text-white/80"
+          type="button"
+        >
+          Don’t show again
+        </button>
+      </div>
     </div>
   );
 

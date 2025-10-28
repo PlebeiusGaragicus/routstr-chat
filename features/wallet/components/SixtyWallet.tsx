@@ -29,6 +29,7 @@ import { MintQuoteState, MeltQuoteState } from "@cashu/cashu-ts";
 import InvoiceHistory from './InvoiceHistory';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
+import dynamic from 'next/dynamic';
 
 // Helper function to generate unique IDs
 const generateId = () => crypto.randomUUID();
@@ -65,6 +66,10 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   const [showAddMintInput, setShowAddMintInput] = useState(false);
   const [showRemoveMintMode, setShowRemoveMintMode] = useState(false);
   const [isRemovingMint, setIsRemovingMint] = useState(false);
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
+  const [isPayingWithWallet, setIsPayingWithWallet] = useState(false);
+  const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [bcBalance, setBcBalance] = useState<number | null>(null);
   
   // Migration state
   const [localWalletBalance, setLocalWalletBalance] = useState(0);
@@ -73,6 +78,109 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
   // Invoice modal state
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const handlePaidAfterWallet = async () => {
+    if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount) return;
+    try {
+      const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, currentMeltQuoteId, pendingAmount);
+      if (proofs.length > 0) {
+        await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
+        await updateInvoice(currentMeltQuoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
+        if (pendingTransactionId) transactionHistoryStore.removePendingTransaction(pendingTransactionId);
+        setPendingTransactionId(null);
+        setSuccessMessage(`Received ${formatBalance(pendingAmount, 'sats')}!`);
+        setInvoice("");
+        setcurrentMeltQuoteId("");
+        setReceiveAmount("");
+        setPendingAmount(null);
+      }
+    } catch (_e) {
+      // rely on existing polling/looping in mintTokensFromPaidInvoice
+    }
+  };
+
+  useEffect(() => {
+    let unsubConnect: undefined | (() => void);
+    let unsubDisconnect: undefined | (() => void);
+    let unsubConnecting: undefined | (() => void);
+
+    (async () => {
+      try {
+        const mod = await import('@getalby/bitcoin-connect-react');
+        const fetchBalance = async (provider: any): Promise<number | null> => {
+          try {
+            if (provider && typeof provider.getBalance === 'function') {
+              const res = await provider.getBalance();
+              if (typeof res === 'number') return res;
+              if (res && typeof res === 'object') {
+                if ('balance' in res && typeof (res as any).balance === 'number') {
+                  const unit = ((res as any).unit || '').toString().toLowerCase();
+                  const n = (res as any).balance as number;
+                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                }
+                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                  return Math.floor((res as any).balanceMsats / 1000);
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        unsubConnecting = mod.onConnecting?.(() => setBcStatus('connecting'));
+        unsubConnect = mod.onConnected?.(async (provider: any) => {
+          setBcStatus('connected');
+          const sats = await fetchBalance(provider);
+          if (sats !== null) setBcBalance(sats);
+        });
+        unsubDisconnect = mod.onDisconnected?.(() => {
+          setBcStatus('disconnected');
+          setBcBalance(null);
+        });
+
+        try {
+          const cfg = mod.getConnectorConfig?.();
+          if (cfg) {
+            setBcStatus('connected');
+            try {
+              const provider = await mod.requestProvider();
+              const sats = await fetchBalance(provider);
+              if (sats !== null) setBcBalance(sats);
+            } catch {}
+          }
+        } catch {}
+      } catch {}
+    })();
+
+    return () => {
+      try { unsubConnect && unsubConnect(); } catch {}
+      try { unsubDisconnect && unsubDisconnect(); } catch {}
+      try { unsubConnecting && unsubConnecting(); } catch {}
+    };
+  }, []);
+  const payWithConnectedWallet = async () => {
+    if (!invoice) return;
+    setIsPayingWithWallet(true);
+    try {
+      const mod = await import('@getalby/bitcoin-connect-react');
+      const provider = await mod.requestProvider();
+      try {
+        const res = await provider.sendPayment(invoice);
+        if (res && (res as any).preimage) {
+          await handlePaidAfterWallet();
+        } else {
+          // No preimage provided; proceed to polling-based redemption
+          await handlePaidAfterWallet();
+        }
+      } catch (_err) {
+        // Some wallets return no preimage and throw; ignore and rely on polling
+        await handlePaidAfterWallet();
+      }
+    } catch (_e) {
+      // ignore provider errors; user can still pay externally via QR
+    } finally {
+      setIsPayingWithWallet(false);
+    }
+  };
 
   // Handle lightning invoice creation
   const handleCreateInvoice = async (quickMintAmount?: number) => {
@@ -104,6 +212,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       setInvoice(invoiceData.paymentRequest);
       setcurrentMeltQuoteId(invoiceData.quoteId);
       setPaymentRequest(invoiceData.paymentRequest);
+      setPendingAmount(amount);
       setShowInvoiceModal(true); // Automatically show QR code modal
 
       // Store invoice persistently
@@ -823,6 +932,32 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-white/80">Via Lightning</h3>
 
+                {/* Bitcoin Connect: Connect Wallet */}
+                <div className="bg-white/5 border border-white/20 rounded-md p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-white/70">Wallet (NWC)</span>
+                    {bcStatus === 'connected' ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-green-400">Connected</span>
+                        {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const mod = await import('@getalby/bitcoin-connect-react');
+                            mod.launchModal();
+                          } catch {}
+                        }}
+                        className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                        type="button"
+                      >
+                        {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Quick Mint Buttons */}
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -883,6 +1018,23 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       </div>
                       <div className="font-mono text-xs break-all text-white/70">
                         {invoice}
+                      </div>
+                    </div>
+
+                    {/* Pay with connected wallet */}
+                    <div className="bg-white/5 border border-white/20 rounded-md p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-white/70">Pay with connected wallet</span>
+                        <button onClick={() => { void payWithConnectedWallet(); }} disabled={isPayingWithWallet} className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" type="button">
+                          {isPayingWithWallet ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-2 animate-spin inline" />
+                              Paying...
+                            </>
+                          ) : (
+                            'Pay'
+                          )}
+                        </button>
                       </div>
                     </div>
 
@@ -1084,6 +1236,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
         countdownIntervalRef={{ current: null }}
         setIsAutoChecking={() => {}}
         checkMintQuote={() => Promise.resolve()}
+        onPayWithWallet={async () => { await payWithConnectedWallet(); }}
+        isPayingWithWallet={isPayingWithWallet}
+        showWalletConnect
       />
     </div>
   );

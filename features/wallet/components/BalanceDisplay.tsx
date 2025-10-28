@@ -132,6 +132,101 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
 
   // Use shared mint helpers
   const truncateMintUrl = utilTruncateMintUrl;
+  // Bitcoin Connect (NWC) connection state for UI
+  const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [bcBalance, setBcBalance] = useState<number | null>(null);
+  const [isBcPaying, setIsBcPaying] = useState(false);
+
+  useEffect(() => {
+    let unsubConnect: undefined | (() => void);
+    let unsubDisconnect: undefined | (() => void);
+    let unsubConnecting: undefined | (() => void);
+
+    (async () => {
+      try {
+        const mod = await import('@getalby/bitcoin-connect-react');
+        const fetchBalance = async (provider: any): Promise<number | null> => {
+          try {
+            if (provider && typeof provider.getBalance === 'function') {
+              const res = await provider.getBalance();
+              if (typeof res === 'number') return res;
+              if (res && typeof res === 'object') {
+                if ('balance' in res && typeof (res as any).balance === 'number') {
+                  const unit = ((res as any).unit || '').toString().toLowerCase();
+                  const n = (res as any).balance as number;
+                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                }
+                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                  return Math.floor((res as any).balanceMsats / 1000);
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        unsubConnecting = mod.onConnecting?.(() => setBcStatus('connecting'));
+        unsubConnect = mod.onConnected?.(async (provider: any) => {
+          setBcStatus('connected');
+          const sats = await fetchBalance(provider);
+          if (sats !== null) setBcBalance(sats);
+        });
+        unsubDisconnect = mod.onDisconnected?.(() => {
+          setBcStatus('disconnected');
+          setBcBalance(null);
+        });
+
+        try {
+          const cfg = mod.getConnectorConfig?.();
+          if (cfg) {
+            setBcStatus('connected');
+            try {
+              const provider = await mod.requestProvider();
+              const sats = await fetchBalance(provider);
+              if (sats !== null) setBcBalance(sats);
+            } catch {}
+          }
+        } catch {}
+      } catch {}
+    })();
+
+    return () => {
+      try { unsubConnect && unsubConnect(); } catch {}
+      try { unsubDisconnect && unsubDisconnect(); } catch {}
+      try { unsubConnecting && unsubConnecting(); } catch {}
+    };
+  }, []);
+
+  const handlePayWithBitcoinConnect = async () => {
+    const invoiceToPay = usingNip60 ? nip60Invoice : mintInvoice;
+    if (!invoiceToPay) return;
+    setIsBcPaying(true);
+    try {
+      const mod = await import('@getalby/bitcoin-connect-react');
+      const provider = await mod.requestProvider();
+      try {
+        await provider.sendPayment(invoiceToPay);
+      } catch {
+        // Some wallets may not return preimage or may throw; rely on polling below
+      }
+      // Trigger a manual check for NIP-60
+      if (usingNip60 && nip60QuoteId && cashuStore.activeMintUrl) {
+        const amt = parseInt(mintAmount || '0', 10) || 0;
+        if (amt > 0) {
+          try {
+            await checkNip60PaymentStatus(cashuStore.activeMintUrl, nip60QuoteId, amt, crypto.randomUUID());
+          } catch {}
+        }
+      } else {
+        // For local wallet, auto-check is already running; optionally nudge once
+        try { await handleCheckMintQuote(); } catch {}
+      }
+    } catch {
+      // ignore provider errors
+    } finally {
+      setIsBcPaying(false);
+    }
+  };
 
   // Handle mint selection
   const handleMintSelection = (mintUrl: string) => {
@@ -1276,6 +1371,29 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
 
               {receiveTab === 'lightning' && (
                 <div className="space-y-3">
+                  {/* NWC Wallet row */}
+                  <div className="bg-white/5 border border-white/20 rounded-lg p-2 flex items-center justify-between">
+                    <span className="text-xs text-white/70">Wallet (NWC)</span>
+                    {bcStatus === 'connected' ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-green-400">Connected</span>
+                        {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const mod = await import('@getalby/bitcoin-connect-react');
+                            mod.launchModal();
+                          } catch {}
+                        }}
+                        className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                        type="button"
+                      >
+                        {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+                      </button>
+                    )}
+                  </div>
                   <div>
                     <label className="block text-white/70 text-xs font-medium mb-2">
                       Amount ({currentMintUnit}s)
@@ -1441,6 +1559,30 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                 <ArrowLeft className="h-5 w-5" />
               </button>
 
+              {/* NWC Wallet row */}
+              <div className="bg-white/5 border border-white/20 rounded-lg p-2 flex items-center justify-between">
+                <span className="text-xs text-white/70">Wallet (NWC)</span>
+                {bcStatus === 'connected' ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-green-400">Connected</span>
+                    {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+                  </div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const mod = await import('@getalby/bitcoin-connect-react');
+                        mod.launchModal();
+                      } catch {}
+                    }}
+                    className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                    type="button"
+                  >
+                    {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+                  </button>
+                )}
+              </div>
+
               {(usingNip60 ? nip60Invoice : mintInvoice) ? (
                 <div className="space-y-3">
                   {/* Amount Display */}
@@ -1467,6 +1609,22 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                       <div className="text-yellow-200 text-xs">Waiting for payment...</div>
                     </div>
                   </div>
+
+                  {/* Pay with wallet */}
+                  <button
+                    onClick={() => { void handlePayWithBitcoinConnect(); }}
+                    disabled={isBcPaying || bcStatus !== 'connected'}
+                    className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isBcPaying ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                        Paying...
+                      </>
+                    ) : (
+                      'Pay with wallet'
+                    )}
+                  </button>
 
                   {/* Invoice String Display */}
                   <div className="bg-white/5 border border-white/20 rounded-lg p-2">
