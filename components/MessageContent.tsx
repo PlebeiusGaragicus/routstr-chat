@@ -65,14 +65,26 @@ export default function MessageContentRenderer({ content }: MessageContentProps)
 
       {/* Render images in a flex container */}
       {imageContent.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-4">
           {imageContent.map((item, index) => (
-            <img
+            <div
               key={`image-${index}`}
-              src={item.image_url?.url}
-              alt="Image"
-              className="w-16 h-16 object-cover rounded-lg border border-white/10"
-            />
+              className="relative group flex-shrink-0 overflow-hidden rounded-xl border border-white/15 bg-white/5"
+            >
+              <img
+                src={item.image_url?.url}
+                alt="Image"
+                className="block max-w-[320px] w-full h-full max-h-[360px] object-contain bg-black/40"
+              />
+              <button
+                type="button"
+                onClick={() => item.image_url?.url && downloadImageFromSrc(item.image_url.url)}
+                className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-black/60 hover:bg-black/80 text-white text-xs rounded-md px-2 py-1 border border-white/20"
+                aria-label="Download image"
+              >
+                Download
+              </button>
+            </div>
           ))}
         </div>
       )}
