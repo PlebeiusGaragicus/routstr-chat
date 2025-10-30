@@ -309,7 +309,7 @@ export default function ChatInput({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!isAuthenticated}
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
+                className="absolute left-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
                 aria-label="Upload attachment"
               >
                 <Paperclip className="h-5 w-5 text-white" />
@@ -319,7 +319,7 @@ export default function ChatInput({
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || (!isAuthenticated && !inputMessage.trim() && uploadedAttachments.length === 0)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
+                className="absolute right-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
                 aria-label="Send message"
               >
                 {isLoading ? (
