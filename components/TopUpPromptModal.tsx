@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QrCode } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { Drawer } from 'vaul';
@@ -23,7 +23,6 @@ interface TopUpPromptModalProps {
 }
 
 const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [invoice, setInvoice] = useState('');
   const [quoteId, setQuoteId] = useState('');
@@ -106,21 +105,6 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
   useEffect(() => {
     setIsHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
 
   if (!isOpen || !isHydrated) return null;
 
@@ -412,8 +396,15 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div ref={modalRef} className="bg-[#181818] border border-white/20 rounded-md p-5 max-w-sm w-full relative">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-[#181818] border border-white/20 rounded-md p-5 max-w-sm w-full relative">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-white/50 hover:text-white"
