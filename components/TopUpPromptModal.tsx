@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QrCode } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { Drawer } from 'vaul';
@@ -10,6 +10,10 @@ import { PendingTransaction } from '@/features/wallet/state/transactionHistorySt
 import { createLightningInvoice, mintTokensFromPaidInvoice } from '@/lib/cashuLightning';
 import { MintQuoteState } from '@cashu/cashu-ts';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import dynamic from 'next/dynamic';
+
+const BCButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.Button), { ssr: false });
+const BCPayButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.PayButton), { ssr: false });
 
 interface TopUpPromptModalProps {
   isOpen: boolean;
@@ -18,8 +22,7 @@ interface TopUpPromptModalProps {
   onDontShowAgain: () => void;
 }
 
-const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
+const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain }) => {
   const [customAmount, setCustomAmount] = useState('');
   const [invoice, setInvoice] = useState('');
   const [quoteId, setQuoteId] = useState('');
@@ -28,32 +31,80 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
 
   const { updateProofs } = useCashuWallet();
   const cashuStore = useCashuStore();
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const transactionHistoryStore = useTransactionHistoryStore();
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [bcBalance, setBcBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    let unsubConnect: undefined | (() => void);
+    let unsubDisconnect: undefined | (() => void);
+    let unsubConnecting: undefined | (() => void);
+
+    (async () => {
+      try {
+        const mod = await import('@getalby/bitcoin-connect-react');
+        const fetchBalance = async (provider: any): Promise<number | null> => {
+          try {
+            if (provider && typeof provider.getBalance === 'function') {
+              const res = await provider.getBalance();
+              if (typeof res === 'number') return res;
+              if (res && typeof res === 'object') {
+                if ('balance' in res && typeof (res as any).balance === 'number') {
+                  const unit = ((res as any).unit || '').toString().toLowerCase();
+                  const n = (res as any).balance as number;
+                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                }
+                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                  return Math.floor((res as any).balanceMsats / 1000);
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        unsubConnecting = mod.onConnecting?.(() => setBcStatus('connecting'));
+        unsubConnect = mod.onConnected?.(async (provider: any) => {
+          setBcStatus('connected');
+          const sats = await fetchBalance(provider);
+          if (sats !== null) setBcBalance(sats);
+        });
+        unsubDisconnect = mod.onDisconnected?.(() => {
+          setBcStatus('disconnected');
+          setBcBalance(null);
+        });
+
+        try {
+          const cfg = mod.getConnectorConfig?.();
+          if (cfg) {
+            setBcStatus('connected');
+            try {
+              const provider = await mod.requestProvider();
+              const sats = await fetchBalance(provider);
+              if (sats !== null) setBcBalance(sats);
+            } catch {}
+          }
+        } catch {}
+      } catch {}
+    })();
+
+    return () => {
+      try { unsubConnect && unsubConnect(); } catch {}
+      try { unsubDisconnect && unsubDisconnect(); } catch {}
+      try { unsubConnecting && unsubConnecting(); } catch {}
+    };
+  }, []);
 
   // Prevent hydration mismatch by waiting for client-side hydration
   useEffect(() => {
     setIsHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
 
   if (!isOpen || !isHydrated) return null;
 
@@ -90,6 +141,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       const invoiceData = await createLightningInvoice(cashuStore.activeMintUrl, amt);
       setInvoice(invoiceData.paymentRequest);
       setQuoteId(invoiceData.quoteId);
+      setPendingAmount(amt);
 
       await addInvoice({
         type: 'mint',
@@ -121,6 +173,25 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       setError('Failed to create invoice');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handlePaid = async (_response: any) => {
+    if (!cashuStore.activeMintUrl || !quoteId || !pendingAmount) return;
+    try {
+      const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, quoteId, pendingAmount);
+      if (proofs.length > 0) {
+        await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
+        await updateInvoice(quoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
+        if (pendingTransactionId) transactionHistoryStore.removePendingTransaction(pendingTransactionId);
+        setPendingTransactionId(null);
+        setSuccessMessage(`Received ${formatBalance(pendingAmount, 'sats')}!`);
+        setInvoice('');
+        setQuoteId('');
+        setPendingAmount(null);
+      }
+    } catch (_e) {
+      // Fallback to existing polling which is already in progress
     }
   };
 
@@ -158,6 +229,32 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   const modalContent = (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-white">Top Up with Lightning⚡</h2>
+
+      {/* Bitcoin Connect: Connect Wallet */}
+      <div className="bg-white/5 border border-white/20 rounded-md p-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-white/70">Wallet (NWC)</span>
+          {bcStatus === 'connected' ? (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-green-400">Connected</span>
+              {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  const mod = await import('@getalby/bitcoin-connect-react');
+                  mod.launchModal();
+                } catch {}
+              }}
+              className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+              type="button"
+            >
+              {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* QR / placeholder - match DepositModal style */}
       <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
@@ -213,7 +310,49 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       </div>
 
       {invoice && (
-        <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
+        <div className="space-y-3">
+          <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
+          {/* Bitcoin Connect: Pay Button */}
+          <div className="bg-white/5 border border-white/20 rounded-md p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-white/70">Pay with connected wallet</span>
+              <button
+                onClick={async () => {
+                  setIsProcessing(true);
+                  try {
+                    const mod = await import('@getalby/bitcoin-connect-react');
+                    const provider = await mod.requestProvider();
+                    try {
+                      const res = await provider.sendPayment(invoice);
+                      if (res && (res as any).preimage) {
+                        await handlePaid(res);
+                      } else {
+                        await handlePaid(null);
+                      }
+                    } catch {
+                      await handlePaid(null);
+                    }
+                  } catch {}
+                  setIsProcessing(false);
+                }}
+                disabled={isProcessing}
+                className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="inline mr-2 h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                    </svg>
+                    Paying...
+                  </>
+                ) : (
+                  'Pay'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {error && (
@@ -223,6 +362,17 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
       {successMessage && (
         <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-2 rounded-md text-xs">{successMessage}</div>
       )}
+
+      {/* Don't show again action */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => { onDontShowAgain(); onClose(); }}
+          className="text-xs text-white/50 hover:text-white/80"
+          type="button"
+        >
+          Don’t show again
+        </button>
+      </div>
     </div>
   );
 
@@ -246,8 +396,15 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose }) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div ref={modalRef} className="bg-[#181818] border border-white/20 rounded-md p-5 max-w-sm w-full relative">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-[#181818] border border-white/20 rounded-md p-5 max-w-sm w-full relative">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-white/50 hover:text-white"

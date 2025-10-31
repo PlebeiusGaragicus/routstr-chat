@@ -131,7 +131,7 @@ export async function updateMintKeys(mintUrl: string, keysets: MintKeyset[]): Pr
 
 export function getTokenAmount(token: string): number {
   const tokenObj = getDecodedToken(token);
-  return tokenObj.proofs.reduce((acc, proof) => acc + proof.amount, 0);
+  return tokenObj.proofs.reduce((acc: number, proof: Proof) => acc + proof.amount, 0);
 }
 
 /**

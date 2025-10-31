@@ -200,19 +200,19 @@ export default function ChatInput({
       {/* Chat Input Container */}
         <div 
         className={`${
-          isCentered
+          isCentered && !isMobile
             ? `fixed z-20 flex items-start justify-center transition-all duration-500 ease-out ${
-                isMobile || !isAuthenticated ? 'inset-x-0' : isSidebarCollapsed ? 'inset-x-0' : 'left-72 right-0'
-              } ${isMobile ? `w-screen ${unifiedBgClass} backdrop-blur-sm px-0 pb-2 pt-0` : ''}`
-              : `${
+                !isAuthenticated ? 'inset-x-0' : isSidebarCollapsed ? 'inset-x-0' : 'left-72 right-0'
+              }`
+            : `${
                 isMobile
                   ? `fixed z-20 left-0 right-0 w-screen ${unifiedBgClass} backdrop-blur-sm transition-all duration-300 ease-in-out px-0 pb-2 pt-0`
                   : 'fixed z-20 bg-[#181818] backdrop-blur-sm transition-all duration-300 ease-in-out ' + (!isAuthenticated ? 'left-0 right-0 pb-4 pt-0' : isSidebarCollapsed ? 'left-0 right-0 pb-4 pt-0' : 'left-72 right-0 pb-4 pt-0')
               }`
         }`}
         style={{
-          top: isCentered ? (isMobile ? 'calc(50% - 40px)' : 'calc(50% - 56px)') : undefined,
-          bottom: isCentered ? undefined : (isMobile ? '0px' : '16px'),
+          top: isCentered && !isMobile ? 'calc(50% - 56px)' : undefined,
+          bottom: isMobile || !isCentered ? (isMobile ? '0px' : '16px') : undefined,
           paddingBottom: 'env(safe-area-inset-bottom)'
         }}
       >
@@ -309,7 +309,7 @@ export default function ChatInput({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!isAuthenticated}
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
+                className="absolute left-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
                 aria-label="Upload attachment"
               >
                 <Paperclip className="h-5 w-5 text-white" />
@@ -319,7 +319,7 @@ export default function ChatInput({
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || (!isAuthenticated && !inputMessage.trim() && uploadedAttachments.length === 0)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
+                className="absolute right-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
                 aria-label="Send message"
               >
                 {isLoading ? (
@@ -333,7 +333,7 @@ export default function ChatInput({
         </div>
       </div>
       {/* Bottom spacer for visible padding below the input */}
-      {!isCentered && (
+      {(!isCentered || isMobile) && (
         <div
           className={`fixed bottom-0 z-20 pointer-events-none ${
             !isAuthenticated ? 'left-0 right-0' : isSidebarCollapsed ? 'left-0 right-0' : 'left-72 right-0'
