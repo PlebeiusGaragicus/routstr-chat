@@ -9,6 +9,10 @@ import {
   loadConversationsFromStorage,
   persistConversationsSnapshot
 } from '@/utils/conversationUtils';
+import { EventFactory } from 'applesauce-factory';
+import { relayPool } from '@/lib/applesauce-core';
+import { loadRelays } from '@/utils/storageUtils';
+import type { NostrEvent } from 'nostr-tools';
 
 interface ChunkDescriptor {
   id: string;
@@ -166,10 +170,19 @@ export const useChatHistorySync = ({
   }, [getLocalUpdatedAt]);
 
   const publishSnapshot = useCallback(async (targetUpdatedAt: number) => {
-    if (!nostr || !user) return;
+    if (!user) return;
     if (!user.signer?.nip44) return;
 
     try {
+      // Create EventFactory with the user's signer
+      const factory = new EventFactory({ signer: user.signer });
+      const relays = loadRelays();
+      
+      if (relays.length === 0) {
+        console.warn('No relays configured; skipping cloud sync.');
+        return;
+      }
+
       const snapshot = loadConversationsFromStorage();
       const snapshotJson = JSON.stringify(snapshot);
       const encodedBytes = new TextEncoder().encode(snapshotJson);
@@ -192,14 +205,16 @@ export const useChatHistorySync = ({
           JSON.stringify(envelope)
         );
 
-        const event = await user.signer.signEvent({
+        const eventTemplate: NostrEvent = {
           kind: KINDS.ARBITRARY_APP_DATA,
           content: encrypted,
           tags: [['d', CHAT_HISTORY_D_TAG]],
-          created_at: Math.floor(Date.now() / 1000)
-        });
+          created_at: Math.floor(Date.now() / 1000),
+          pubkey: user.pubkey
+        } as NostrEvent;
 
-        await nostr.event(event);
+        const signedEvent = await factory.sign(eventTemplate);
+        await relayPool.publish(relays, signedEvent);
         lastSyncedAtRef.current = targetUpdatedAt;
         return;
       }
@@ -218,7 +233,7 @@ export const useChatHistorySync = ({
         const chunkContent = chunks[index];
         const encryptedChunk = await nip44.encrypt(user.pubkey, chunkContent);
 
-        const chunkEvent = await user.signer.signEvent({
+        const chunkEventTemplate: NostrEvent = {
           kind: KINDS.ARBITRARY_APP_DATA,
           content: encryptedChunk,
           tags: [
@@ -226,10 +241,12 @@ export const useChatHistorySync = ({
             ['parent', CHAT_HISTORY_D_TAG],
             ['i', index.toString()]
           ],
-          created_at: Math.floor(Date.now() / 1000)
-        });
+          created_at: Math.floor(Date.now() / 1000),
+          pubkey: user.pubkey
+        } as NostrEvent;
 
-        await nostr.event(chunkEvent);
+        const signedChunkEvent = await factory.sign(chunkEventTemplate);
+        await relayPool.publish(relays, signedChunkEvent);
         chunkDescriptors.push({ id: chunkId, index, size: chunkContent.length });
       }
 
@@ -244,22 +261,24 @@ export const useChatHistorySync = ({
         JSON.stringify(envelope)
       );
 
-      const envelopeEvent = await user.signer.signEvent({
+      const envelopeEventTemplate: NostrEvent = {
         kind: KINDS.ARBITRARY_APP_DATA,
         content: encryptedEnvelope,
         tags: [['d', CHAT_HISTORY_D_TAG]],
-        created_at: Math.floor(Date.now() / 1000)
-      });
+        created_at: Math.floor(Date.now() / 1000),
+        pubkey: user.pubkey
+      } as NostrEvent;
 
-      await nostr.event(envelopeEvent);
+      const signedEnvelopeEvent = await factory.sign(envelopeEventTemplate);
+      await relayPool.publish(relays, signedEnvelopeEvent);
       lastSyncedAtRef.current = targetUpdatedAt;
     } catch (error) {
       console.error('Failed to sync chat history to Nostr:', error);
     }
-  }, [nostr, user]);
+  }, [user]);
 
   const schedulePublish = useCallback((updatedAt: number) => {
-    if (!nostr || !user) return;
+    if (!user) return;
     if (!user.signer?.nip44) return;
 
     if (pendingPublishTimeoutRef.current) {
@@ -270,7 +289,7 @@ export const useChatHistorySync = ({
       pendingPublishTimeoutRef.current = null;
       publishSnapshot(updatedAt);
     }, PUBLISH_DEBOUNCE_MS);
-  }, [nostr, publishSnapshot, user]);
+  }, [publishSnapshot, user]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -334,11 +353,13 @@ export const useChatHistorySync = ({
         }
 
         const decrypted = await nip44.decrypt(user.pubkey, latestEvent.content);
+        console.log("rdlogs: CHAT HISOT DECRE", decrypted)
         const {
           conversations: directConversations,
           updatedAt: cloudUpdatedAt,
           chunks
         } = parseChatHistoryEnvelope(decrypted, fallbackUpdatedAt);
+        console.log("rdlogs: chat history: ", cloudUpdatedAt, directConversations)
 
         let cloudConversations = directConversations;
 
@@ -352,6 +373,7 @@ export const useChatHistorySync = ({
           }));
 
           const chunkEvents = await nostr.query(filters, { signal: controller.signal });
+          console.log(chunkEvents)
           const eventsByDTag = new Map<string, typeof chunkEvents[number]>();
 
           chunkEvents.forEach(event => {
@@ -370,11 +392,12 @@ export const useChatHistorySync = ({
             if (!chunkEvent) {
               console.warn('Missing chunk event for chat history sync:', dTag);
               chunkFailure = true;
-              break;
+              continue;
             }
 
             try {
               const decryptedChunk = await nip44.decrypt(user.pubkey, chunkEvent.content);
+              console.log(decryptedChunk)
               reconstructedParts.push(decryptedChunk);
             } catch (error) {
               console.error('Failed to decrypt chat history chunk:', error);
@@ -429,7 +452,7 @@ export const useChatHistorySync = ({
   // Publish local updates to Nostr after initial sync
   useEffect(() => {
     if (!conversationsLoaded) return;
-    if (!nostr || !user) return;
+    if (!user) return;
     if (!user.signer?.nip44) return;
     if (!hasLoadedFromCloudRef.current) return;
 
@@ -438,5 +461,5 @@ export const useChatHistorySync = ({
     if (localUpdatedAt <= lastSyncedAtRef.current) return;
 
     schedulePublish(localUpdatedAt);
-  }, [conversations, conversationsLoaded, getLocalUpdatedAt, nostr, schedulePublish, user]);
+  }, [conversations, conversationsLoaded, getLocalUpdatedAt, schedulePublish, user]);
 };

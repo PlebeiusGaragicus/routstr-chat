@@ -59,7 +59,7 @@ export function useCashuWallet() {
         });
         
         const events = await Promise.race([queryPromise, timeoutPromise]);
-        console.log("rdlogs:  l wtf", events, queryPromise, nostr.relays)
+        console.log("rdlogs: Wallet Event Found: ", events, queryPromise, nostr.relays)
 
         if ((events as any[]).length === 0) {
           // No events found, but query completed successfully: clear timeout indicators
@@ -283,14 +283,24 @@ export function useCashuWallet() {
       const queryPromise = nostr.query([filter], { signal });
       
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout')), 15000);
+        setTimeout(() => reject(new Error('Cashu events query timeout')), 15000);
       });
       
       const events = await Promise.race([queryPromise, timeoutPromise]);
 
-      if (events.length === 0) {
+      if ((events as any[]).length === 0) {
+        // No events found, but query completed successfully: clear timeout indicators
+        try { localStorage.setItem('cashu_relays_timeout', 'false'); } catch {}
+        setShowQueryTimeoutModal(false);
+        setDidRelaysTimeout(false);
         return [];
       }
+
+      try { localStorage.setItem('cashu_relays_timeout', 'false'); } catch {}
+      setShowQueryTimeoutModal(false);
+      setDidRelaysTimeout(false);
+
+      console.log("rdlogs: Cashu events: ", events)
 
       const nip60TokenEvents: Nip60TokenEvent[] = [];
       const deletedEventsTemp = new Set<DeletedEvents>();
