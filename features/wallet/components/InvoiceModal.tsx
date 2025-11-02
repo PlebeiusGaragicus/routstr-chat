@@ -1,6 +1,8 @@
-import React from 'react';
+"use client";
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import QRCode from 'react-qr-code';
+import dynamic from 'next/dynamic';
 
 interface InvoiceModalProps {
   showInvoiceModal: boolean;
@@ -16,6 +18,9 @@ interface InvoiceModalProps {
   countdownIntervalRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>;
   setIsAutoChecking: (checking: boolean) => void;
   checkMintQuote: () => Promise<void>;
+  onPayWithWallet?: (invoice: string) => Promise<void>;
+  isPayingWithWallet?: boolean;
+  showWalletConnect?: boolean;
 }
 
 const InvoiceModal: React.FC<InvoiceModalProps> = ({
@@ -32,8 +37,76 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
   countdownIntervalRef,
   setIsAutoChecking,
   checkMintQuote,
+  onPayWithWallet,
+  isPayingWithWallet,
+  showWalletConnect,
 }) => {
   if (!showInvoiceModal || !mintInvoice) return null;
+
+  const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [bcBalance, setBcBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    let unsubConnect: undefined | (() => void);
+    let unsubDisconnect: undefined | (() => void);
+    let unsubConnecting: undefined | (() => void);
+
+    (async () => {
+      try {
+        const mod = await import('@getalby/bitcoin-connect-react');
+        const fetchBalance = async (provider: any): Promise<number | null> => {
+          try {
+            if (provider && typeof provider.getBalance === 'function') {
+              const res = await provider.getBalance();
+              if (typeof res === 'number') return res;
+              if (res && typeof res === 'object') {
+                // Common shapes
+                if ('balance' in res && typeof (res as any).balance === 'number') {
+                  const unit = ((res as any).unit || '').toString().toLowerCase();
+                  const n = (res as any).balance as number;
+                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                }
+                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                  return Math.floor((res as any).balanceMsats / 1000);
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        unsubConnecting = mod.onConnecting?.(() => setBcStatus('connecting'));
+        unsubConnect = mod.onConnected?.(async (provider: any) => {
+          setBcStatus('connected');
+          const sats = await fetchBalance(provider);
+          if (sats !== null) setBcBalance(sats);
+        });
+        unsubDisconnect = mod.onDisconnected?.(() => {
+          setBcStatus('disconnected');
+          setBcBalance(null);
+        });
+
+        // Initial snapshot
+        try {
+          const cfg = mod.getConnectorConfig?.();
+          if (cfg) {
+            setBcStatus('connected');
+            try {
+              const provider = await mod.requestProvider();
+              const sats = await fetchBalance(provider);
+              if (sats !== null) setBcBalance(sats);
+            } catch {}
+          }
+        } catch {}
+      } catch {}
+    })();
+
+    return () => {
+      try { unsubConnect && unsubConnect(); } catch {}
+      try { unsubDisconnect && unsubDisconnect(); } catch {}
+      try { unsubConnecting && unsubConnecting(); } catch {}
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center" onClick={() => setShowInvoiceModal(false)}>
@@ -46,6 +119,33 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto">
+          {showWalletConnect && (
+            <div className="bg-white/5 border border-white/20 rounded-md p-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-white/70">Wallet (NWC)</span>
+                {bcStatus === 'connected' ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-green-400">Connected</span>
+                    {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+                  </div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const mod = await import('@getalby/bitcoin-connect-react');
+                        mod.launchModal();
+                      } catch {}
+                    }}
+                    className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                    type="button"
+                  >
+                    {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
             <div className="w-56 h-56 flex items-center justify-center p-2 rounded-md">
               <QRCode 
@@ -96,6 +196,24 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
               >
                 Copy Invoice
               </button>
+              {onPayWithWallet && (
+                <button
+                  onClick={() => { void onPayWithWallet(mintInvoice); }}
+                  disabled={!!isPayingWithWallet}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-md text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPayingWithWallet ? (
+                    <>
+                      <svg className="inline mr-2 h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                      </svg>
+                      Paying...
+                    </>
+                  ) : (
+                    'Pay with wallet'
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowInvoiceModal(false);

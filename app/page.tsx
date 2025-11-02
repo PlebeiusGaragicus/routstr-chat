@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthProvider';
 import { useChat } from '@/context/ChatProvider';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCashuWallet } from '@/features/wallet';
-import { hasSeenTopUpPrompt } from '@/utils/storageUtils';
+import { hasSeenTopUpPrompt, markTopUpPromptSeen } from '@/utils/storageUtils';
 
 function ChatPageContent() {
   const router = useRouter();
@@ -202,7 +202,7 @@ function ChatPageContent() {
           isOpen={isTopUpPromptOpen}
           onClose={() => { setIsTopUpPromptOpen(false); setTopUpPromptDismissed(true); }}
           onTopUp={handleTopUp}
-          onDontShowAgain={() => { setTopUpPromptDismissed(true); }}
+          onDontShowAgain={() => { setTopUpPromptDismissed(true); markTopUpPromptSeen(); }}
         />
       )}
 
