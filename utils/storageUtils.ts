@@ -383,21 +383,6 @@ export const saveUsingNip60 = (usingNip60: boolean): void => {
 };
 
 /**
- * Check if user has seen the tutorial
- * @returns True if tutorial has been seen
- */
-export const hasSeenTutorial = (): boolean => {
-  return hasStorageItem('hasSeenTutorial');
-};
-
-/**
- * Mark tutorial as seen
- */
-export const markTutorialAsSeen = (): void => {
-  setStorageItem('hasSeenTutorial', 'true');
-};
-
-/**
  * Check if user has seen the top-up prompt
  * @returns True if top-up prompt has been seen
  */
@@ -475,7 +460,6 @@ export const STORAGE_KEYS = {
   BASE_URL: 'base_url',
   BASE_URLS_LIST: 'base_urls_list',
   USING_NIP60: 'usingNip60',
-  TUTORIAL_SEEN: 'hasSeenTutorial',
   SIDEBAR_OPEN: 'sidebar_open',
   SIDEBAR_COLLAPSED: 'sidebar_collapsed',
   LOCAL_CASHU_TOKENS: 'local_cashu_tokens',

@@ -9,7 +9,13 @@
     "lint": "next lint",
     "test:invoices": "node test/invoice-persistence.test.js",
     "test:invoices:integration": "node test/invoice-integration.test.js",
-    "test:setup": "./test/setup-regtest-mint.sh"
+    "test:setup": "./test/setup-regtest-mint.sh",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:onboarding": "playwright test tests/e2e/onboarding.spec.ts",
+    "test:e2e:features": "playwright test tests/e2e/basic-features.spec.ts",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@cashu/cashu-ts": "^2.5.2",
@@ -54,6 +60,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -63,6 +70,7 @@
     "eslint-config-next": "15.3.1",
     "eslint-config-prettier": "^10.1.8",
     "msw": "^2.11.3",
+    "playwright": "^1.56.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
