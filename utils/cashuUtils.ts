@@ -29,7 +29,7 @@ export const fetchBalances = async (mintUrl: string, baseUrl: string): Promise<{
       if (!response.ok) {
         if (response.status === 402) {
           // Invalidate current token since it's out of balance
-          invalidateApiToken(baseUrl); // Pass baseUrl
+          removeLocalCashuToken(baseUrl);
           console.warn('rdlogs: API token invalidated due to insufficient balance.');
         } else {
           console.error(`Failed to fetch wallet balance: ${response.status} ${response.statusText}`);
@@ -142,7 +142,7 @@ export const fetchRefundToken = async (baseUrl: string, storedToken: string): Pr
     if (!response.ok) {
       const errorData = await response.json();
       if (response.status === 400 && errorData?.detail === "No balance to refund") {
-        invalidateApiToken(baseUrl);
+        removeLocalCashuToken(baseUrl);
         return {
           success: false,
           requestId,
@@ -218,7 +218,7 @@ export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, a
       const refundResult = await fetchRefundToken(baseUrl, storedToken);
       if (refundResult.success && refundResult.token) {
         await storeCashuToken(mintUrl, refundResult.token);
-        invalidateApiToken(baseUrl); // Pass baseUrl
+        removeLocalCashuToken(baseUrl);
         return { success: true, message: 'Refund completed successfully' };
       } else if (refundResult.error === 'No balance to refund') {
         return { success: true, message: 'No balance to refund' };
@@ -236,15 +236,6 @@ export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, a
     };
   }
 };
-
-/**
- * Invalidates the current API token
- */
-export const invalidateApiToken = (baseUrl: string) => { // Add baseUrl parameter
-  removeLocalCashuToken(baseUrl); // Use removeLocalCashuToken
-};
-
-
 
 export type UnifiedRefundResult = {
   success: boolean;
@@ -289,7 +280,7 @@ export const unifiedRefund = async (
       const proofs = await receiveTokenFn(refundResult.token);
       const totalAmount = proofs.reduce((sum: number, p: any) => sum + p.amount, 0);
       if (!apiKey) {
-        invalidateApiToken(baseUrl); // Pass baseUrl
+        removeLocalCashuToken(baseUrl);
       }
       
       return {

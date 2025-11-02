@@ -123,7 +123,6 @@ export function useCashuWithXYZ() {
         }
         
         if (wallet) {
-          console.log('rdlogs: Wallet found: ', wallet);
           // Call cleanSpentProofs for each mint in the wallet
           wallet.mints?.forEach(mint => {
             cleanSpentProofs(mint);

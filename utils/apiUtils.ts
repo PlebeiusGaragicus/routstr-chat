@@ -1,6 +1,6 @@
 import { Message, MessageContent, TransactionHistory } from '@/types/chat';
 import { convertMessageForAPI, createTextMessage, extractThinkingFromStream } from './messageUtils';
-import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund } from '@/utils/cashuUtils';
+import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund, UnifiedRefundResult } from '@/utils/cashuUtils';
 import { getLocalCashuToken, removeLocalCashuToken } from './storageUtils';
 import { getDecodedToken } from '@cashu/cashu-ts';
 import { isThinkingCapableModel } from './thinkingParser';
@@ -183,9 +183,12 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
   
   console.log(apiMessages);
 
-  let tokenAmount = getTokenAmountForModel(selectedModel, apiMessages);
+  const tokenAmount = getTokenAmountForModel(selectedModel, apiMessages);
+  let tokenBalance = 0;
 
   try {
+    const storedToken = getLocalCashuToken(baseUrl);
+
     const token = await spendCashu(
       mintUrl,
       tokenAmount,
@@ -195,6 +198,20 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
 
     if (!token || typeof token !== 'string') {
       throw new Error(`Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
+    }
+
+    if (storedToken == token) {
+      const response = await fetch(`${baseUrl}v1/wallet/info`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      tokenBalance = data.balance;
+    }
+    else {
+      tokenBalance = tokenAmount;
     }
   
     const decodedToken = getDecodedToken(token)
@@ -254,14 +271,12 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       baseUrl,
       usingNip60,
       storeCashu,
-      tokenAmount,
+      tokenBalance,
       initialBalance,
       selectedModel,
       onBalanceUpdate,
       onTransactionUpdate,
       transactionHistory,
-      messageHistory,
-      onMessagesUpdate,
       onMessageAppend,
       estimatedCosts,
       unit: decodedToken.unit ?? 'sat'
@@ -310,16 +325,7 @@ async function handleApiError(
   } = params;
 
   if (response.status === 401 || response.status === 403) {
-    const responseBodyText = await readResponseBodyText(response);
-    console.log('rdlogs: ,', responseBodyText);
-    const requestId = response.headers.get('x-routstr-request-id');
-    const mainMessage = responseBodyText + ". Trying to get a refund.";
-    const requestIdText = requestId ? `Request ID: ${requestId}` : '';
-    const providerText = `Provider: ${baseUrl}`;
-    const fullMessage = requestId
-      ? `${mainMessage}\n${requestIdText}\n${providerText}`
-      : `${mainMessage} | ${providerText}`;
-    logApiError(fullMessage, onMessageAppend);
+    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
     const storedToken = getLocalCashuToken(baseUrl);
     let shouldAttemptUnifiedRefund = true;
 
@@ -340,59 +346,27 @@ async function handleApiError(
     if (shouldAttemptUnifiedRefund) {
       const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
       if (!refundStatus.success){
-        const mainMessage = `Refund failed: ${refundStatus.message}.`;
-        const requestIdText = refundStatus.requestId ? `Request ID: ${refundStatus.requestId}` : '';
-        const providerText = `Provider: ${baseUrl}`;
-        const fullMessage = refundStatus.requestId
-          ? `${mainMessage}\n${requestIdText}\n${providerText}`
-          : `${mainMessage} | ${providerText}`;
-        logApiError(fullMessage, onMessageAppend);
+        await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
       }
     }
     
     removeLocalCashuToken(baseUrl); // Pass baseUrl here
-    
-    if (retryOnInsufficientBalance) {
-      const newToken = await spendCashu(
-        mintUrl,
-        tokenAmount,
-        baseUrl
-      );
-
-      if (!newToken) {
-        throw new Error(`Insufficient balance (retryOnInsurrifientBal). Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
-      }
-    }
   } 
   else if (response.status === 402) {
     removeLocalCashuToken(baseUrl); // Pass baseUrl here
   } 
   else if (response.status === 413) {
-    const responseBodyText = await readResponseBodyText(response);
-    logApiError(responseBodyText, onMessageAppend);
-    const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
-    if (!refundStatus.success){
-      const mainMessage = `Refund failed: ${refundStatus.message}.`;
-      const requestIdText = refundStatus.requestId ? `Request ID: ${refundStatus.requestId}` : '';
-      const providerText = `Provider: ${baseUrl}`;
-      const fullMessage = refundStatus.requestId
-        ? `${mainMessage}\n${requestIdText}\n${providerText}`
-        : `${mainMessage} | ${providerText}`;
-      logApiError(fullMessage, onMessageAppend);
-    }
+    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
+    // const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
+    // if (!refundStatus.success){
+    //   await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
+    // }
   }
   else if (response.status === 500 || response.status === 502) {
-    const responseBodyText = await readResponseBodyText(response);
-    logApiError(responseBodyText, onMessageAppend);
+    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
     const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
     if (!refundStatus.success){
-      const mainMessage = `Refund failed: ${refundStatus.message}.`;
-      const requestIdText = refundStatus.requestId ? `Request ID: ${refundStatus.requestId}` : '';
-      const providerText = `Provider: ${baseUrl}`;
-      const fullMessage = refundStatus.requestId
-        ? `${mainMessage}\n${requestIdText}\n${providerText}`
-        : `${mainMessage} | ${providerText}`;
-      logApiError(fullMessage, onMessageAppend);
+      await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
     }
   }
   else {
@@ -743,14 +717,12 @@ async function handlePostResponseRefund(params: {
   baseUrl: string;
   usingNip60: boolean;
   storeCashu: (token: string) => Promise<any[]>;
-  tokenAmount: number;
+  tokenBalance: number;
   initialBalance: number;
   selectedModel: any;
   onBalanceUpdate: (balance: number) => void;
   onTransactionUpdate: (transaction: TransactionHistory) => void;
   transactionHistory: TransactionHistory[];
-  messageHistory: Message[];
-  onMessagesUpdate: (messages: Message[]) => void;
   onMessageAppend: (message: Message) => void;
   estimatedCosts: number; // Add estimatedCosts here
   unit: string; // Add unit here
@@ -760,14 +732,12 @@ async function handlePostResponseRefund(params: {
     baseUrl,
     usingNip60,
     storeCashu,
-    tokenAmount,
+    tokenBalance,
     initialBalance,
     selectedModel,
     onBalanceUpdate,
     onTransactionUpdate,
     transactionHistory,
-    messageHistory,
-    onMessagesUpdate,
     onMessageAppend,
     estimatedCosts, // Destructure estimatedCosts here
     unit // Destructure unit here
@@ -778,14 +748,20 @@ async function handlePostResponseRefund(params: {
 
   const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
   if (refundStatus.success) {
-    if (usingNip60 && refundStatus.refundedAmount !== undefined) {
-      // For msats, keep decimal precision; for sats, use Math.ceil
-      satsSpent = (unit === 'msat' ? tokenAmount : Math.ceil(tokenAmount)) - refundStatus.refundedAmount;
-      onBalanceUpdate(initialBalance - satsSpent);
-    } else {
-      const { apiBalance, proofsBalance } = await fetchBalances(mintUrl, baseUrl);
-      onBalanceUpdate(Math.floor(apiBalance / 1000) + Math.floor(proofsBalance / 1000));
-      satsSpent = initialBalance - getBalanceFromStoredProofs();
+    console.log("rdlogs: refundStatus: ", refundStatus)
+    if (refundStatus.refundedAmount === undefined) {
+      satsSpent = tokenBalance;
+    }
+    else {
+      if (usingNip60) {
+        // For msats, keep decimal precision; for sats, use Math.ceil
+        satsSpent = (unit === 'msat' ? tokenBalance : Math.ceil(tokenBalance)) - refundStatus.refundedAmount;
+        onBalanceUpdate(initialBalance - satsSpent);
+      } else {
+        const { apiBalance, proofsBalance } = await fetchBalances(mintUrl, baseUrl);
+        onBalanceUpdate(Math.floor(apiBalance / 1000) + Math.floor(proofsBalance / 1000));
+        satsSpent = initialBalance - getBalanceFromStoredProofs();
+      }
     }
   } else {
     console.error("Refund failed:", refundStatus.message, refundStatus, refundStatus, refundStatus, refundStatus, refundStatus);
@@ -803,16 +779,10 @@ async function handlePostResponseRefund(params: {
       removeLocalCashuToken(baseUrl); // Pass baseUrl here
     }
     else {
-      const mainMessage = `Refund failed: ${refundStatus.message}.`;
-      const requestIdText = refundStatus.requestId ? `Request ID: ${refundStatus.requestId}` : '';
-      const providerText = `Provider: ${baseUrl}`;
-      const fullMessage = refundStatus.requestId
-        ? `${mainMessage}\n${requestIdText}\n${providerText}`
-        : `${mainMessage} | ${providerText}`;
-      logApiError(fullMessage, onMessageAppend);
+      await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
     }
     // For msats, keep decimal precision; for sats, use Math.ceil
-    satsSpent = unit === 'msat' ? tokenAmount : Math.ceil(tokenAmount);
+    satsSpent = unit === 'msat' ? tokenBalance : Math.ceil(tokenBalance);
   }
   console.log("spent: ", satsSpent)
   const netCosts = satsSpent - estimatedCosts;
@@ -837,6 +807,28 @@ async function handlePostResponseRefund(params: {
 
   localStorage.setItem('transaction_history', JSON.stringify([...transactionHistory, newTransaction]));
   onTransactionUpdate(newTransaction);
+}
+
+async function logApiErrorForResponse(response: Response, baseUrl: string, onMessageAppend: (message: Message) => void): Promise<void> {
+  const responseBodyText = await readResponseBodyText(response);
+  const requestId = response.headers.get('x-routstr-request-id');
+  const mainMessage = responseBodyText + ". Trying to get a refund.";
+  const requestIdText = requestId ? `Request ID: ${requestId}` : '';
+  const providerText = `Provider: ${baseUrl}`;
+  const fullMessage = requestId
+    ? `${mainMessage}\n${requestIdText}\n${providerText}`
+    : `${mainMessage} | ${providerText}`;
+  logApiError(fullMessage, onMessageAppend);
+}
+
+async function logApiErrorForRefund(refundStatus: UnifiedRefundResult, baseUrl: string, onMessageAppend: (message: Message) => void): Promise<void> {
+  const mainMessage = `Refund failed: ${refundStatus.message}.`;
+  const requestIdText = refundStatus.requestId ? `Request ID: ${refundStatus.requestId}` : '';
+  const providerText = `Provider: ${baseUrl}`;
+  const fullMessage = refundStatus.requestId
+    ? `${mainMessage}\n${requestIdText}\n${providerText}`
+    : `${mainMessage} | ${providerText}`;
+  logApiError(fullMessage, onMessageAppend);
 }
 
 /**

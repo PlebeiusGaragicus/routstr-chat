@@ -353,13 +353,11 @@ export const useChatHistorySync = ({
         }
 
         const decrypted = await nip44.decrypt(user.pubkey, latestEvent.content);
-        console.log("rdlogs: CHAT HISOT DECRE", decrypted)
         const {
           conversations: directConversations,
           updatedAt: cloudUpdatedAt,
           chunks
         } = parseChatHistoryEnvelope(decrypted, fallbackUpdatedAt);
-        console.log("rdlogs: chat history: ", cloudUpdatedAt, directConversations)
 
         let cloudConversations = directConversations;
 

@@ -300,8 +300,6 @@ export function useCashuWallet() {
       setShowQueryTimeoutModal(false);
       setDidRelaysTimeout(false);
 
-      console.log("rdlogs: Cashu events: ", events)
-
       const nip60TokenEvents: Nip60TokenEvent[] = [];
       const deletedEventsTemp = new Set<DeletedEvents>();
 
