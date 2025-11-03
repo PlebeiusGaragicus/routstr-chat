@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
+import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels } from '@/utils/modelUtils';
 
 export interface UseApiStateReturn {
@@ -68,7 +68,12 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
           if (n && !n.startsWith('http://')) bases.add(n);
         }
       }
-      const list = Array.from(bases);
+      // Filter out disabled providers
+      const disabledProviders = loadDisabledProviders();
+      const list = Array.from(bases).filter(base => {
+        const normalized = base.endsWith('/') ? base : `${base}/`;
+        return !disabledProviders.includes(normalized);
+      });
       if (list.length > 0) {
         saveBaseUrlsList(list);
         setBaseUrlsList(list);
@@ -102,6 +107,13 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
           return;
         }
       }
+
+      // Filter out disabled providers
+      const disabledProviders = loadDisabledProviders();
+      bases = bases.filter(base => {
+        const normalized = base.endsWith('/') ? base : `${base}/`;
+        return !disabledProviders.includes(normalized);
+      });
 
       const results = await Promise.allSettled(
         bases.map(async (url) => {
