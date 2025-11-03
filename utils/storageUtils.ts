@@ -482,7 +482,8 @@ export const STORAGE_KEYS = {
   CASHU_PROOFS: 'cashu_proofs',
   WRAPPED_CASHU_TOKENS: 'wrapped_cashu_tokens',
   RELAYS: 'nostr_relays',
-  TOPUP_PROMPT_SEEN: 'topup_prompt_seen'
+  TOPUP_PROMPT_SEEN: 'topup_prompt_seen',
+  DISABLED_PROVIDERS: 'disabled_providers'
 } as const;
 
 /**
@@ -551,4 +552,20 @@ export const migrateCurrentCashuToken = (baseUrl: string): void => {
   } catch (error) {
     console.error('Error migrating current_cashu_token:', error);
   }
+};
+
+/**
+ * Load disabled providers from localStorage
+ * @returns Array of disabled provider base URLs
+ */
+export const loadDisabledProviders = (): string[] => {
+  return getStorageItem<string[]>(STORAGE_KEYS.DISABLED_PROVIDERS, []);
+};
+
+/**
+ * Save disabled providers to localStorage
+ * @param disabledProviders Array of disabled provider base URLs
+ */
+export const saveDisabledProviders = (disabledProviders: string[]): void => {
+  setStorageItem(STORAGE_KEYS.DISABLED_PROVIDERS, disabledProviders);
 };
