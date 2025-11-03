@@ -4,6 +4,7 @@ import { createTextMessage, createMultimodalMessage } from '@/utils/messageUtils
 import { fetchAIResponse } from '@/utils/apiUtils';
 import { getPendingCashuTokenAmount } from '@/utils/cashuUtils';
 import { useCashuWithXYZ } from './useCashuWithXYZ';
+import { DEFAULT_MINT_URL } from '@/lib/utils';
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -36,7 +37,6 @@ export interface UseChatActionsReturn {
     createNewConversation: (initialMessages?: Message[]) => string,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
@@ -51,7 +51,6 @@ export interface UseChatActionsReturn {
     setEditingContent: (content: string) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
@@ -62,7 +61,6 @@ export interface UseChatActionsReturn {
     setMessages: (messages: Message[]) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
@@ -122,7 +120,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     createNewConversation: (initialMessages?: Message[]) => string,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
@@ -156,7 +153,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       setMessages,
       selectedModel,
       baseUrl,
-      mintUrl,
       originConversationId,
       saveConversationById,
       getActiveConversationId
@@ -172,7 +168,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     setEditingContent: (content: string) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
@@ -229,7 +224,6 @@ export const useChatActions = (): UseChatActionsReturn => {
         setMessages,
         selectedModel,
         baseUrl,
-        mintUrl,
         originConversationId,
         saveConversationById,
         getActiveConversationId
@@ -243,7 +237,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     setMessages: (messages: Message[]) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
@@ -259,7 +252,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       setMessages,
       selectedModel,
       baseUrl,
-      mintUrl,
       originConversationId,
       saveConversationById,
       getActiveConversationId
@@ -271,7 +263,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     setMessages: (messages: Message[]) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     originConversationId: string,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
@@ -303,6 +294,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     };
 
     try {
+      const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
       await fetchAIResponse({
         messageHistory,
         selectedModel,

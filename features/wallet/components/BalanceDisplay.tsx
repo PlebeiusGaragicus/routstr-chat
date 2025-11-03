@@ -631,13 +631,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
       const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
       const result = await spendCashu(mintUrl, amountValue, '');
 
-      if (typeof result === 'string') {
-        setGeneratedToken(result);
+      if (result.status === 'success' && result.token) {
+        setGeneratedToken(result.token);
         setSuccessMessage(`Token generated for ${formatBalance(amountValue, currentMintUnit)}`);
-      } else if (result === null) {
-        setError("No tokens available in your wallet");
       } else {
-        setError("Failed to generate token");
+        setError(result.error || "Failed to generate token");
       }
 
     } catch (error) {

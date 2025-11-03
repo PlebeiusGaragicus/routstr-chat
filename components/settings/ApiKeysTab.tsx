@@ -280,16 +280,18 @@ const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiv
         toast.error('No active mint selected');
         return;
       }
-      token = await spendCashu(
+      const result = await spendCashu(
         cashuStore.activeMintUrl,
         parseInt(apiKeyAmount),
         selectedNewApiKeyBaseUrl
       );
 
-      if (!token) {
-        toast.error('Failed to generate Cashu token for API key creation.');
+      if (result.status === 'failed' || !result.token) {
+        toast.error(result.error || 'Failed to generate Cashu token for API key creation.');
         return;
       }
+
+      token = result.token;
 
       const response = await fetch(`${selectedNewApiKeyBaseUrl}v1/wallet/info`, {
         headers: {
@@ -566,20 +568,22 @@ const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiv
         return;
       }
 
-      cashuToken = await spendCashu(
+      const result = await spendCashu(
         cashuStore.activeMintUrl,
         parseInt(topUpAmount),
         urlToUse
       );
       
-      if (!cashuToken || typeof cashuToken !== 'string') {
-        toast.error('Failed to generate Cashu token for top up.');
+      if (result.status === 'failed' || !result.token) {
+        toast.error(result.error || 'Failed to generate Cashu token for top up.');
         return;
       }
 
+      cashuToken = result.token;
+
       // Use the key-specific baseUrl or fallback to global baseUrl
       // Make the topup request to the backend
-      const response = await fetch(`${urlToUse}v1/wallet/topup?cashu_token=${encodeURIComponent(cashuToken as string)}`, {
+      const response = await fetch(`${urlToUse}v1/wallet/topup?cashu_token=${encodeURIComponent(cashuToken)}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${keyToTopUp.key}`,

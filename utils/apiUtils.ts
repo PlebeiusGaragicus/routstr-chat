@@ -4,6 +4,7 @@ import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unif
 import { getLocalCashuToken, removeLocalCashuToken } from './storageUtils';
 import { getDecodedToken } from '@cashu/cashu-ts';
 import { isThinkingCapableModel } from './thinkingParser';
+import { SpendCashuResult } from '@/hooks/useCashuWithXYZ';
 
 /**
  * Helper function to properly read response body text from a ReadableStream
@@ -37,7 +38,7 @@ export interface FetchAIResponseParams {
   mintUrl: string;
   usingNip60: boolean;
   balance: number;
-  spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<string | null>;
+  spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<SpendCashuResult>;
   storeCashu: (token: string) => Promise<any[]>;
   activeMintUrl?: string | null;
   onStreamingUpdate: (content: string) => void;
@@ -50,6 +51,10 @@ export interface FetchAIResponseParams {
   onTokenCreated: (amount: number) => void;
 }
 
+interface APIErrorVerdict {
+  retry: boolean;
+  reason: string;
+}
 /**
  * Makes an API request with token authentication
  */
@@ -60,7 +65,7 @@ async function routstrRequest(params: {
   mintUrl: string;
   usingNip60: boolean;
   tokenAmount: number;
-  spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<string | null>;
+  spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<SpendCashuResult>;
   storeCashu: (token: string) => Promise<any[]>;
   activeMintUrl?: string | null;
   onMessageAppend: (message: Message) => void;
@@ -102,6 +107,7 @@ async function routstrRequest(params: {
       if (latency) headers['X-Mock-Latency'] = latency;
     } catch {}
   }
+  console.log("rdlogs: rdlogs: headers: ", baseUrl)
 
   const response = await fetch(`${baseUrl}v1/chat/completions`, {
     method: 'POST',
@@ -114,7 +120,7 @@ async function routstrRequest(params: {
   });
 
   if (!response.ok) {
-    await handleApiError(response, {
+    const retryVerdict = await handleApiError(response, {
       mintUrl,
       baseUrl,
       usingNip60,
@@ -126,6 +132,29 @@ async function routstrRequest(params: {
       retryOnInsufficientBalance,
       onMessageAppend
     });
+    if (retryVerdict.retry) {
+      const newTokenResult = await spendCashu(mintUrl, tokenAmount, baseUrl, true); // reuse token is true here but the two scenarios where we're retrying remove locally stored token anyway. 
+      if (newTokenResult.status === 'failed' || !newTokenResult.token) {
+        throw new Error(newTokenResult.error || `Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
+      }
+      const newToken = newTokenResult.token;
+      const newResponse = await routstrRequest({
+        apiMessages,
+        selectedModel,
+        baseUrl,
+        mintUrl,
+        usingNip60,
+        tokenAmount,
+        spendCashu,
+        storeCashu,
+        onMessageAppend,
+        token: newToken,
+        retryOnInsufficientBalance: false
+      });
+      
+      (newResponse as any).tokenBalance = tokenAmount;
+      return newResponse;
+    }
   }
 
   return response;
@@ -189,26 +218,43 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
   try {
     const storedToken = getLocalCashuToken(baseUrl);
 
-    const token = await spendCashu(
+    const result = await spendCashu(
       mintUrl,
       tokenAmount,
       baseUrl,
       true
     );
 
-    if (!token || typeof token !== 'string') {
-      throw new Error(`Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
+    if (result.status === 'failed' || !result.token) {
+      const errorMessage = result.error || `Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`;
+      
+      // Check for specific network/unreachable mint errors
+      if (
+        errorMessage.includes("can't access property \"filter\", keysets.keysets is undefined") ||
+        errorMessage.includes("NetworkError when attempting to fetch resource") ||
+        errorMessage.includes("Failed to fetch")
+      ) {
+        throw new Error(`Your mint ${mintUrl} is unreachable or is blocking your IP. Please try again later or switch mints`);
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    if (storedToken == token) {
-      const response = await fetch(`${baseUrl}v1/wallet/info`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+    const token = result.token;
 
-      const data = await response.json();
-      tokenBalance = data.balance;
+    if (storedToken == token) {
+      try {
+        const response = await fetch(`${baseUrl}v1/wallet/info`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        tokenBalance = data.balance;
+      } catch (error) {
+        tokenBalance = tokenAmount;
+      }
     }
     else {
       tokenBalance = tokenAmount;
@@ -240,7 +286,12 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       token: token as string,
       retryOnInsufficientBalance: true
     });
+    console.log("rdlogs: rdlogs: response: ", response)
     // const response = new Response();
+
+    if (response instanceof Response && (response as any).tokenBalance) {
+      tokenBalance = (response as any).tokenBalance; // if a new token was created and we had set a stored token balance beforehand. 
+    }
 
     if (!response.body) {
       throw new Error('Response body is not available');
@@ -266,22 +317,23 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
     onThinkingUpdate('');
 
     // Handle refund and balance update
-    await handlePostResponseRefund({
-      mintUrl,
-      baseUrl,
-      usingNip60,
-      storeCashu,
-      tokenBalance,
-      initialBalance,
-      selectedModel,
-      onBalanceUpdate,
-      onTransactionUpdate,
-      transactionHistory,
-      onMessageAppend,
-      estimatedCosts,
-      unit: decodedToken.unit ?? 'sat'
-    });
-    console.log("rdlogs:rdlogs: respon 42069", response)
+    if (response.status === 200) {
+      await handlePostResponseRefund({
+        mintUrl,
+        baseUrl,
+        usingNip60,
+        storeCashu,
+        tokenBalance,
+        initialBalance,
+        selectedModel,
+        onBalanceUpdate,
+        onTransactionUpdate,
+        transactionHistory,
+        onMessageAppend,
+        estimatedCosts,
+        unit: decodedToken.unit ?? 'sat'
+      });
+    }
 
   } catch (error) {
     console.log('API Error: ', error);
@@ -305,12 +357,12 @@ async function handleApiError(
     storeCashu: (token: string) => Promise<any[]>;
     tokenAmount: number;
     selectedModel: any;
-    spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<string | null>;
+    spendCashu: (mintUrl: string, amount: number, baseUrl: string, reuseToken?: boolean, p2pkPubkey?: string) => Promise<SpendCashuResult>;
     activeMintUrl?: string | null;
-    retryOnInsufficientBalance: boolean;
+    retryOnInsufficientBalance?: boolean;
     onMessageAppend: (message: Message) => void;
   }
-): Promise<void> {
+): Promise<APIErrorVerdict> {
   const {
     mintUrl,
     baseUrl,
@@ -320,7 +372,7 @@ async function handleApiError(
     selectedModel,
     spendCashu,
     activeMintUrl,
-    retryOnInsufficientBalance,
+    retryOnInsufficientBalance = true,
     onMessageAppend
   } = params;
 
@@ -351,16 +403,19 @@ async function handleApiError(
     }
     
     removeLocalCashuToken(baseUrl); // Pass baseUrl here
+    return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
   } 
   else if (response.status === 402) {
     removeLocalCashuToken(baseUrl); // Pass baseUrl here
+    return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
   } 
   else if (response.status === 413) {
     await logApiErrorForResponse(response, baseUrl, onMessageAppend);
-    // const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
-    // if (!refundStatus.success){
-    //   await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
-    // }
+    const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
+    if (!refundStatus.success){
+      await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
+    }
+    return { retry: false, reason: response.status.toString() };
   }
   else if (response.status === 500 || response.status === 502) {
     await logApiErrorForResponse(response, baseUrl, onMessageAppend);
@@ -368,13 +423,11 @@ async function handleApiError(
     if (!refundStatus.success){
       await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
     }
+    return { retry: false, reason: response.status.toString() };
   }
   else {
     console.error("rdlogs:rdlogs:smh else else ", response);
-  }
-
-  if (!retryOnInsufficientBalance) {
-    throw new Error(`API error: ${response.status}`);
+    return { retry: false, reason: response.status.toString() };
   }
 }
 
@@ -749,7 +802,10 @@ async function handlePostResponseRefund(params: {
   const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
   if (refundStatus.success) {
     console.log("rdlogs: refundStatus: ", refundStatus)
-    if (refundStatus.refundedAmount === undefined) {
+    if (refundStatus.message && refundStatus.message.includes("No API key to refund")) {
+      satsSpent = 0;
+    }
+    else if (refundStatus.refundedAmount === undefined) {
       satsSpent = tokenBalance;
     }
     else {

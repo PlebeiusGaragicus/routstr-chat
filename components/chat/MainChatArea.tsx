@@ -54,7 +54,6 @@ const MainChatArea: React.FC = () => {
     // API State
     selectedModel,
     baseUrl,
-    mintUrl,
     
     // Actions
     sendMessage,
@@ -70,7 +69,6 @@ const MainChatArea: React.FC = () => {
       createNewConversationHandler,
       selectedModel,
       baseUrl,
-      mintUrl,
       isAuthenticated,
       setIsLoginModalOpen,
       saveConversationById,
@@ -88,7 +86,6 @@ const MainChatArea: React.FC = () => {
       setEditingContent,
       selectedModel,
       baseUrl,
-      mintUrl,
       activeConversationId,
       saveConversationById,
       getActiveConversationId
@@ -102,7 +99,6 @@ const MainChatArea: React.FC = () => {
       setMessages,
       selectedModel,
       baseUrl,
-      mintUrl,
       activeConversationId,
       saveConversationById,
       getActiveConversationId
