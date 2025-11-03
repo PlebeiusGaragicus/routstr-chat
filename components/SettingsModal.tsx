@@ -14,13 +14,12 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrLogin } from '@nostrify/react/login';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Drawer } from 'vaul';
+import { DEFAULT_MINT_URL } from '@/lib/utils';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialActiveTab?: 'settings' | 'wallet' | 'history' | 'api-keys' | 'models';
-  mintUrl: string;
-  setMintUrl: (url: string) => void;
   baseUrl: string;
   setBaseUrl: (url: string) => void;
   selectedModel: Model | null;
@@ -45,8 +44,6 @@ const SettingsModal = ({
   isOpen,
   onClose,
   initialActiveTab,
-  mintUrl,
-  setMintUrl,
   baseUrl,
   setBaseUrl,
   selectedModel,
@@ -78,13 +75,6 @@ const SettingsModal = ({
     const list = baseUrl ? [baseUrl] : [];
     setBaseUrls(list);
   }, [baseUrl]);
-
-
-  // Handle auto-saving mint URL changes
-  const handleMintUrlChange = useCallback((url: string) => {
-    setMintUrl(url);
-    localStorage.setItem('mint_url', url);
-  }, [setMintUrl]);
 
 
   if (!isOpen) return null;
@@ -146,8 +136,6 @@ const SettingsModal = ({
               logout={logout}
               router={router}
               onClose={onClose}
-              mintUrl={mintUrl}
-              setMintUrl={handleMintUrlChange}
           />
         ) : activeTab === 'models' ? (
           <ModelsTab
@@ -167,7 +155,6 @@ const SettingsModal = ({
           />
         ) : activeTab === 'api-keys' ? (
           <ApiKeysTab
-              mintUrl={mintUrl}
               baseUrl={baseUrl}
               baseUrls={baseUrls}
               setActiveTab={setActiveTab}
@@ -177,8 +164,8 @@ const SettingsModal = ({
           <UnifiedWallet
             balance={balance}
             setBalance={setBalance}
-            mintUrl={mintUrl}
             baseUrl={baseUrl}
+            mintUrl={DEFAULT_MINT_URL}
             transactionHistory={transactionHistory}
             setTransactionHistory={setTransactionHistory}
           />

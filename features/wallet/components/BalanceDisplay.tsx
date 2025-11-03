@@ -43,7 +43,7 @@ interface BalanceDisplayProps {
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setInitialSettingsTab }) => {
   const { isAuthenticated } = useAuth();
-  const { balance, currentMintUnit, mintBalances, mintUnits, isBalanceLoading, setIsLoginModalOpen, mintUrl, baseUrl, transactionHistory, setTransactionHistory, setBalance } = useChat();
+  const { balance, currentMintUnit, mintBalances, mintUnits, isBalanceLoading, setIsLoginModalOpen, baseUrl, transactionHistory, setTransactionHistory, setBalance } = useChat();
   const { publicKey } = useNostr();
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -90,7 +90,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     checkMintQuote,
     importToken: hookImportToken,
   } = useWalletOperations({
-    mintUrl,
+    mintUrl: DEFAULT_MINT_URL,
     baseUrl,
     setBalance,
     setTransactionHistory,
@@ -644,7 +644,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     } finally {
       setIsGeneratingSendToken(false);
     }
-  }, [spendCashu, sendAmount, cashuStore.activeMintUrl, mintUrl, baseUrl, currentMintUnit]);
+  }, [spendCashu, sendAmount, cashuStore.activeMintUrl, baseUrl, currentMintUnit]);
 
   const handleCreateMintQuote = useCallback(async () => {
     if (usingNip60) {

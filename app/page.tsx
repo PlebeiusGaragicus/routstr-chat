@@ -33,8 +33,6 @@ function ChatPageContent() {
     handleTutorialClose,
     
     // API State
-    mintUrl,
-    setMintUrl,
     baseUrl,
     setBaseUrl,
     selectedModel,
@@ -172,8 +170,6 @@ function ChatPageContent() {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           initialActiveTab={initialSettingsTab}
-          mintUrl={mintUrl}
-          setMintUrl={setMintUrl}
           baseUrl={baseUrl}
           setBaseUrl={setBaseUrl}
           selectedModel={selectedModel}

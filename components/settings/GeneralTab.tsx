@@ -13,8 +13,6 @@ interface GeneralTabProps {
   logout?: () => void;
   router?: AppRouterInstance;
   onClose: () => void;
-  mintUrl: string;
-  setMintUrl: (url: string) => void;
   // Model configuration moved to Models tab
 }
 
@@ -25,8 +23,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
   logout,
   router,
   onClose,
-  mintUrl,
-  setMintUrl,
   // Model configuration moved to Models tab
 }) => {
   // Model configuration moved to Models tab
