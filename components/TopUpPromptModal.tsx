@@ -296,50 +296,6 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
         >
           Lightning
         </button>
-      {/* QR / placeholder - match DepositModal style */}
-        <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
-          <div
-            className={`w-48 h-48 flex items-center justify-center p-2 rounded-md ${invoice ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
-            onClick={invoice ? copyInvoiceToClipboard : undefined}
-            role={invoice ? 'button' as const : undefined}
-            title={invoice ? 'Click to copy invoice' : undefined}
-          >
-            {invoice ? (
-              <QRCode value={invoice} size={180} bgColor="transparent" fgColor="#ffffff" />
-            ) : (
-              <QrCode className="h-8 w-8 text-white/30" />
-            )}
-          </div>
-        </div>
-
-      <div className="flex gap-2">
-        {quickAmounts.map(a => (
-          <button
-            key={a}
-            onClick={() => { void handleCreateInvoice(a); }}
-            className="flex-1 bg-white/5 border border-white/20 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 hover:border-white/30 transition-colors cursor-pointer"
-            type="button"
-          >
-            {a}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          placeholder="Amount (sats)"
-          value={customAmount}
-          onChange={(e) => setCustomAmount(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void handleCreateInvoice();
-            }
-          }}
-          className="flex-1 bg-white/5 border border-white/20 rounded-md px-3 py-2 text-sm text-white focus:border-white/40 focus:outline-none"
-        />
         <button
           onClick={() => setActiveTab('token')}
           className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
