@@ -9,9 +9,15 @@ import { loadTransactionHistory, saveTransactionHistory } from '@/utils/storageU
 import { DEFAULT_MINT_URL } from '@/lib/utils';
 import { TransactionHistory } from '@/types/chat';
 import { Proof } from '@cashu/cashu-ts';
-import { getEncodedTokenV4 } from '@cashu/cashu-ts';
 import { useAuth } from '@/context/AuthProvider';
 import React from 'react';
+
+export interface SpendCashuResult {
+  token: string | null;
+  status: 'success' | 'failed';
+  balance: number;
+  error?: string;
+}
 
 /**
  * Hook that manages Cashu wallet operations, balance tracking, and token spending/storing
@@ -136,7 +142,6 @@ export function useCashuWithXYZ() {
         }
         
         if (wallet) {
-          console.log('rdlogs: Wallet found: ', wallet);
           // Call cleanSpentProofs for each mint in the wallet
           wallet.mints?.forEach(mint => {
             cleanSpentProofs(mint);
@@ -208,11 +213,53 @@ export function useCashuWithXYZ() {
       }
     };
 
-    if (isAuthenticated && false) {
+  if (isAuthenticated && process.env.NODE_ENV === 'production') {
       void initializeWallet();
     }
   }, [initWallet]);
 
+
+  /**
+   * Selects a mint with sufficient balance, excluding specified mints
+   * @param mintBalances Object mapping mint URLs to their balances
+   * @param mintUnits Object mapping mint URLs to their units
+   * @param adjustedAmount The required amount in sats
+   * @param excludeMints Array of mint URLs to exclude from selection
+   * @returns Object with selectedMintUrl and selectedMintBalance, or null/0 if none found
+   */
+  const selectMintWithBalance = (
+    mintBalances: Record<string, number>,
+    mintUnits: Record<string, string>,
+    adjustedAmount: number,
+    excludeMints: string[] = []
+  ): { selectedMintUrl: string | null; selectedMintBalance: number } => {
+    let selectedMintUrl: string | null = null;
+    let selectedMintBalance = 0;
+    
+    for (const mintUrl in mintBalances) {
+      // Skip excluded mints
+      if (excludeMints.includes(mintUrl)) {
+        continue;
+      }
+      
+      const balance = mintBalances[mintUrl];
+      const unit = mintUnits[mintUrl];
+      let balanceInSats = 0;
+      if (unit === 'msat') {
+        balanceInSats = balance / 1000;
+      } else {
+        balanceInSats = balance;
+      }
+      
+      if (balanceInSats >= adjustedAmount) {
+        selectedMintUrl = mintUrl;
+        selectedMintBalance = balanceInSats;
+        break;
+      }
+    }
+    
+    return { selectedMintUrl, selectedMintBalance };
+  };
 
   /**
    * Spend Cashu function with token management logic
@@ -220,15 +267,17 @@ export function useCashuWithXYZ() {
    * @param amount The amount to send
    * @param baseUrl The base URL for token storage
    * @param p2pkPubkey Optional public key for P2PK
-   * @returns Promise with token string, null if failed, or object with hasTokens: false if no tokens available
+   * @returns Promise with structured result containing token, status, balance, mint, and error message if failed
    */
   const spendCashu = async (
     mintUrl: string,
     amount: number,
     baseUrl: string,
     reuseToken: boolean = false,
-    p2pkPubkey?: string
-  ): Promise<string | null> => {
+    p2pkPubkey?: string,
+    excludeMints?: string[],
+    retryCount: number = 0
+ ): Promise<SpendCashuResult> => {
     // Check if amount is a decimal and round up if necessary
     let adjustedAmount = amount;
     if (amount % 1 !== 0) {
@@ -237,7 +286,12 @@ export function useCashuWithXYZ() {
 
     if (!adjustedAmount || isNaN(adjustedAmount)) {
       console.error("Please enter a valid amount");
-      return null;
+      return {
+        token: null,
+        status: 'failed',
+        balance: 0,
+        error: "Please enter a valid amount"
+      };
     }
 
     // Try to get existing token for the given baseUrl
@@ -248,7 +302,11 @@ export function useCashuWithXYZ() {
     if (storedToken && !reuseToken) {
       const balanceForBaseUrl = pendingBalances.find(b => b.baseUrl === baseUrl)?.amount || 0;
       if (balanceForBaseUrl > amount) {
-        return storedToken;
+        return {
+            token: storedToken,
+            status: 'success',
+            balance: balanceForBaseUrl
+          };
       }
       else {
         const refundResult = await unifiedRefund(mintUrl, baseUrl, usingNip60, receiveToken, storedToken);
@@ -280,21 +338,23 @@ export function useCashuWithXYZ() {
     console.log('rdlogs: totalBalance', totalBalance, adjustedAmount);
 
     if (totalBalance < adjustedAmount) {
-      console.error("Insufficient balance to spend. Please add more tokens to your wallet. You need at least ${adjustedAmount} sats to use the model.", adjustedAmount);
-      return null;
+      const errorMsg = `Insufficient balance to spend. Please add more tokens to your wallet. You need at least ${adjustedAmount} sats to use the model.`;
+      console.error(errorMsg, adjustedAmount);
+      return {
+        token: null,
+        status: 'failed',
+        balance: totalBalance,
+        error: errorMsg
+      };
     }
 
     let token: string | null = null;
 
     if (usingNip60) {      // Generate new token if none exists
-      if (!cashuStore.activeMintUrl) {
-        console.error("No active mint selected. Please select a mint in your wallet settings.");
-        return null;
-      }
 
       // Check if the active mint has sufficient balance
-      const activeMintBalance = mintBalances[cashuStore.activeMintUrl] || 0;
-      const activeMintUnit = mintUnits[cashuStore.activeMintUrl];
+      const activeMintBalance = mintBalances[mintUrl] || 0;
+      const activeMintUnit = mintUnits[mintUrl];
       let activeMintBalanceInSats = 0;
       if (activeMintUnit === 'msat') {
         activeMintBalanceInSats = activeMintBalance / 1000;
@@ -304,46 +364,65 @@ export function useCashuWithXYZ() {
       console.log('rdlogs: activeMintBalanceInSats', activeMintBalanceInSats);
 
       // Check if any mint has sufficient balance
-      let selectedMintUrl: string | null = null;
-      let selectedMintBalance = 0;
-      
-      for (const mintUrl in mintBalances) {
-        const balance = mintBalances[mintUrl];
-        const unit = mintUnits[mintUrl];
-        let balanceInSats = 0;
-        if (unit === 'msat') {
-          balanceInSats = balance / 1000;
-        } else {
-          balanceInSats = balance;
-        }
-        
-        if (balanceInSats > adjustedAmount) {
-          selectedMintUrl = mintUrl;
-          selectedMintBalance = balanceInSats;
-          break;
-        }
-      }
+      const { selectedMintUrl, selectedMintBalance } = selectMintWithBalance(
+        mintBalances,
+        mintUnits,
+        adjustedAmount,
+        excludeMints || []
+      );
       console.log('rdlogs: selectedMintUrl', selectedMintUrl);
 
-      if (activeMintBalanceInSats > adjustedAmount) {
+      if (activeMintBalanceInSats >= adjustedAmount) {
         try {
-          token = await sendToken(cashuStore.activeMintUrl, adjustedAmount, p2pkPubkey);
+          token = await sendToken(mintUrl, adjustedAmount, p2pkPubkey);
         } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
           console.error("Error generating token:", error);
-          console.error(error instanceof Error ? error.message : String(error));
+          console.error(errorMsg);
+          
+          // If NetworkError, try with an alternate mint excluding the current active mint
+          if (errorMsg.includes('NetworkError when attempting to fetch resource')) {
+            const { selectedMintUrl: alternateMintUrl } = selectMintWithBalance(
+              mintBalances,
+              mintUnits,
+              adjustedAmount,
+              [...(excludeMints || []), ...(mintUrl ? [mintUrl] : [])]
+            );
+            
+            if (alternateMintUrl && retryCount < Object.keys(mintBalances).length) {
+              console.log(`NetworkError on active mint. Retrying with alternate mint ${alternateMintUrl}`);
+              return spendCashu(alternateMintUrl as string, amount, baseUrl, false, p2pkPubkey, [...(excludeMints || []), ...(mintUrl ? [mintUrl] : [])], retryCount + 1);
+            }
+          }
+          return {
+            token: null,
+            status: 'failed',
+            balance: totalBalance,
+            error: `Error generating token: ${errorMsg}`
+          };
         }
       } else if (selectedMintUrl) {
         console.log(`Active mint insufficient. Using mint ${selectedMintUrl} with balance ${selectedMintBalance} sats instead`);
         try {
           token = await sendToken(selectedMintUrl, adjustedAmount, p2pkPubkey);
         } catch (error) {
+          if (error instanceof Error && error.message.includes('Not enough funds on mint') && error.message.includes('after cleaning spent proofs')) {
+            return spendCashu(selectedMintUrl, adjustedAmount, baseUrl);
+          }
+          const errorMsg = error instanceof Error ? error.message : String(error);
           console.error("Error generating token from alternate mint:", error);
-          console.error(error instanceof Error ? error.message : String(error));
+          console.error(errorMsg);
+          return {
+            token: null,
+            status: 'failed',
+            balance: totalBalance,
+            error: `Error generating token from alternate mint: ${errorMsg}`
+          };
         }
       } else {
         console.error('=== Insufficient Balance Error ===');
         console.error(`Required amount: ${adjustedAmount} sats`);
-        console.error(`Active mint (${cashuStore.activeMintUrl}): ${activeMintBalanceInSats} sats`);
+        console.error(`Active mint (${mintUrl}): ${activeMintBalanceInSats} sats`);
         console.error('\nAll mint balances:');
         for (const mintUrl in mintBalances) {
           const balance = mintBalances[mintUrl];
@@ -356,6 +435,13 @@ export function useCashuWithXYZ() {
           }
           console.error(`  ${mintUrl}: ${balanceInSats} sats`);
         }
+        const errorMsg = `Insufficient balance. Required: ${adjustedAmount} sats, Available: ${activeMintBalanceInSats} sats on active mint`;
+        return {
+          token: null,
+          status: 'failed',
+          balance: totalBalance,
+          error: errorMsg
+        };
       }
     } else {
       try {
@@ -363,8 +449,15 @@ export function useCashuWithXYZ() {
         token = await generateTokenCore(adjustedAmount, mintUrl);
         console.log('rdlogs: token', token);
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         console.error("Error generating legacy token:", error);
-        console.error(error instanceof Error ? error.message : String(error));
+        console.error(errorMsg);
+        return {
+          token: null,
+          status: 'failed',
+          balance: totalBalance,
+          error: `Error generating legacy token: ${errorMsg}`
+        };
       }
     }
 
@@ -373,10 +466,19 @@ export function useCashuWithXYZ() {
       if (baseUrl !== '') {
         setLocalCashuToken(baseUrl, token);
       }
-      return token;
+      return {
+        token,
+        status: 'success',
+        balance: totalBalance
+      };
     }
 
-    return null;
+    return {
+      token: null,
+      status: 'failed',
+      balance: totalBalance,
+      error: "Failed to generate token"
+    };
   };
 
   /**

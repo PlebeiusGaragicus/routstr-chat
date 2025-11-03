@@ -43,7 +43,7 @@ interface BalanceDisplayProps {
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setInitialSettingsTab }) => {
   const { isAuthenticated } = useAuth();
-  const { balance, currentMintUnit, mintBalances, mintUnits, isBalanceLoading, setIsLoginModalOpen, mintUrl, baseUrl, transactionHistory, setTransactionHistory, setBalance } = useChat();
+  const { balance, currentMintUnit, mintBalances, mintUnits, isBalanceLoading, setIsLoginModalOpen, baseUrl, transactionHistory, setTransactionHistory, setBalance } = useChat();
   const { publicKey } = useNostr();
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -90,7 +90,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     checkMintQuote,
     importToken: hookImportToken,
   } = useWalletOperations({
-    mintUrl,
+    mintUrl: DEFAULT_MINT_URL,
     baseUrl,
     setBalance,
     setTransactionHistory,
@@ -269,21 +269,6 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
       setIsTransitioning(false);
     }, 150);
   };
-
-  // Initialize wallet when component mounts or mintUrl changes
-  useEffect(() => {
-    const initializeWallet = async () => {
-      try {
-        await initWallet();
-      } catch (error) {
-        setError('Failed to initialize wallet. Please try again.');
-      }
-    };
-
-    if (isAuthenticated) {
-      void initializeWallet();
-    }
-  }, [mintUrl, initWallet]);
 
   // Clean up intervals on unmount
   useEffect(() => {
@@ -646,13 +631,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
       const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
       const result = await spendCashu(mintUrl, amountValue, '');
 
-      if (typeof result === 'string') {
-        setGeneratedToken(result);
+      if (result.status === 'success' && result.token) {
+        setGeneratedToken(result.token);
         setSuccessMessage(`Token generated for ${formatBalance(amountValue, currentMintUnit)}`);
-      } else if (result === null) {
-        setError("No tokens available in your wallet");
       } else {
-        setError("Failed to generate token");
+        setError(result.error || "Failed to generate token");
       }
 
     } catch (error) {
@@ -661,7 +644,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     } finally {
       setIsGeneratingSendToken(false);
     }
-  }, [spendCashu, sendAmount, cashuStore.activeMintUrl, mintUrl, baseUrl, currentMintUnit]);
+  }, [spendCashu, sendAmount, cashuStore.activeMintUrl, baseUrl, currentMintUnit]);
 
   const handleCreateMintQuote = useCallback(async () => {
     if (usingNip60) {

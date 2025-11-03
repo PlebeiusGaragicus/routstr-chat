@@ -29,8 +29,6 @@ function ChatPageContent() {
     initialSettingsTab,
     
     // API State
-    mintUrl,
-    setMintUrl,
     baseUrl,
     setBaseUrl,
     selectedModel,
@@ -168,8 +166,6 @@ function ChatPageContent() {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           initialActiveTab={initialSettingsTab}
-          mintUrl={mintUrl}
-          setMintUrl={setMintUrl}
           baseUrl={baseUrl}
           setBaseUrl={setBaseUrl}
           selectedModel={selectedModel}
@@ -203,6 +199,7 @@ function ChatPageContent() {
           onClose={() => { setIsTopUpPromptOpen(false); setTopUpPromptDismissed(true); }}
           onTopUp={handleTopUp}
           onDontShowAgain={() => { setTopUpPromptDismissed(true); markTopUpPromptSeen(); }}
+          setIsLoginModalOpen={setIsLoginModalOpen}
         />
       )}
 

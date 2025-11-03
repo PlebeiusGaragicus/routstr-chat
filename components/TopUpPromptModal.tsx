@@ -1,28 +1,25 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { QrCode } from 'lucide-react';
+import { QrCode, ClipboardPaste } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { Drawer } from 'vaul';
-import { useCashuWallet, useCashuStore, useTransactionHistoryStore, formatBalance } from '@/features/wallet';
+import { useCashuWallet, useCashuStore, useTransactionHistoryStore, formatBalance, useCashuToken } from '@/features/wallet';
 import { useInvoiceSync } from '@/hooks/useInvoiceSync';
 import { PendingTransaction } from '@/features/wallet/state/transactionHistoryStore';
 import { createLightningInvoice, mintTokensFromPaidInvoice } from '@/lib/cashuLightning';
-import { MintQuoteState } from '@cashu/cashu-ts';
+import { MintQuoteState, getDecodedToken } from '@cashu/cashu-ts';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import dynamic from 'next/dynamic';
-
-const BCButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.Button), { ssr: false });
-const BCPayButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.PayButton), { ssr: false });
 
 interface TopUpPromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTopUp: (amount?: number) => void;
   onDontShowAgain: () => void;
+  setIsLoginModalOpen: (open: boolean) => void;
 }
 
-const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain }) => {
+const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain, setIsLoginModalOpen }) => {
   const [customAmount, setCustomAmount] = useState('');
   const [invoice, setInvoice] = useState('');
   const [quoteId, setQuoteId] = useState('');
@@ -37,9 +34,13 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
   const cashuStore = useCashuStore();
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const transactionHistoryStore = useTransactionHistoryStore();
+  const { receiveToken } = useCashuToken();
   const isMobile = useMediaQuery('(max-width: 640px)');
   const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [bcBalance, setBcBalance] = useState<number | null>(null);
+  const [cashuToken, setCashuToken] = useState('');
+  const [isReceivingToken, setIsReceivingToken] = useState(false);
+  const [activeTab, setActiveTab] = useState<'lightning' | 'token' | 'wallet'>('lightning');
 
   useEffect(() => {
     let unsubConnect: undefined | (() => void);
@@ -119,6 +120,58 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
     } catch (e) {
       setError('Failed to copy invoice');
       setTimeout(() => setError(null), 2000);
+    }
+  };
+
+  const handlePasteToken = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setCashuToken(text);
+    } catch (e) {
+      setError('Failed to read from clipboard');
+      setTimeout(() => setError(null), 2000);
+    }
+  };
+
+  const handleReceiveToken = async () => {
+    if (!cashuToken.trim()) {
+      setError('Please paste a cashu token');
+      setTimeout(() => setError(null), 2000);
+      return;
+    }
+
+    try {
+      setIsReceivingToken(true);
+      setError(null);
+      
+      // Decode token to get original amount and unit for display
+      const decodedToken = getDecodedToken(cashuToken.trim());
+      if (!decodedToken) {
+        throw new Error('Invalid token format');
+      }
+      
+      const tokenUnit = decodedToken.unit || 'sat';
+      // Calculate total from original token proofs
+      const originalTotalAmount = decodedToken.proofs.reduce((sum: number, p: { amount: number }) => sum + p.amount, 0);
+      
+      // Receive the token
+      await receiveToken(cashuToken.trim());
+      
+      // Convert msat to sat for display consistency
+      const displayAmount = tokenUnit === 'msat' ? Math.floor(originalTotalAmount / 1000) : originalTotalAmount;
+      
+      setSuccessMessage(`Received ${formatBalance(displayAmount, 'sats')}!`);
+      setCashuToken('');
+      setTimeout(() => {
+        setSuccessMessage(null);
+        onClose();
+      }, 2000);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to receive token';
+      setError(message);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsReceivingToken(false);
     }
   };
 
@@ -228,149 +281,280 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
 
   const modalContent = (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-white">Top Up with Lightning⚡</h2>
+      <h2 className="text-xl font-semibold text-white">Top Up</h2>
 
-      {/* Bitcoin Connect: Connect Wallet */}
-      <div className="bg-white/5 border border-white/20 rounded-md p-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-white/70">Wallet (NWC)</span>
-          {bcStatus === 'connected' ? (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-green-400">Connected</span>
-              {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
-            </div>
-          ) : (
-            <button
-              onClick={async () => {
-                try {
-                  const mod = await import('@getalby/bitcoin-connect-react');
-                  mod.launchModal();
-                } catch {}
-              }}
-              className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
-              type="button"
-            >
-              {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* QR / placeholder - match DepositModal style */}
-      <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
-        <div
-          className={`w-48 h-48 flex items-center justify-center p-2 rounded-md ${invoice ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
-          onClick={invoice ? copyInvoiceToClipboard : undefined}
-          role={invoice ? 'button' as const : undefined}
-          title={invoice ? 'Click to copy invoice' : undefined}
-        >
-          {invoice ? (
-            <QRCode value={invoice} size={180} bgColor="transparent" fgColor="#ffffff" />
-          ) : (
-            <QrCode className="h-8 w-8 text-white/30" />
-          )}
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        {quickAmounts.map(a => (
-          <button
-            key={a}
-            onClick={() => { void handleCreateInvoice(a); }}
-            className="flex-1 bg-white/5 border border-white/20 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 hover:border-white/30 transition-colors cursor-pointer"
-            type="button"
-          >
-            {a}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          placeholder="Amount (sats)"
-          value={customAmount}
-          onChange={(e) => setCustomAmount(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void handleCreateInvoice();
-            }
-          }}
-          className="flex-1 bg-white/5 border border-white/20 rounded-md px-3 py-2 text-sm text-white focus:border-white/40 focus:outline-none"
-        />
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-white/10">
         <button
-          onClick={() => { void handleCreateInvoice(); }}
-          className="bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors cursor-pointer"
+          onClick={() => setActiveTab('lightning')}
+          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'lightning'
+              ? 'text-white border-b-2 border-white'
+              : 'text-white/50 hover:text-white/70'
+          }`}
           type="button"
         >
-          {isProcessing ? 'Creating...' : 'Get invoice'}
+          Lightning
+        </button>
+        <button
+          onClick={() => setActiveTab('token')}
+          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'token'
+              ? 'text-white border-b-2 border-white'
+              : 'text-white/50 hover:text-white/70'
+          }`}
+          type="button"
+        >
+          Token
+        </button>
+        <button
+          onClick={() => setActiveTab('wallet')}
+          className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'wallet'
+              ? 'text-white border-b-2 border-white'
+              : 'text-white/50 hover:text-white/70'
+          }`}
+          type="button"
+        >
+          Wallet
         </button>
       </div>
 
-      {invoice && (
-        <div className="space-y-3">
-          <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
-          {/* Bitcoin Connect: Pay Button */}
-          <div className="bg-white/5 border border-white/20 rounded-md p-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-white/70">Pay with connected wallet</span>
+      {/* Tab Content Container */}
+      <div className="min-h-[400px]">
+      {/* Lightning Tab */}
+      {activeTab === 'lightning' && (
+        <div className="space-y-4">
+          {/* QR / placeholder */}
+          <div className="bg-white/10 border border-white/20 p-6 rounded-lg flex items-center justify-center">
+            <div
+              className={`w-48 h-48 flex items-center justify-center p-2 rounded-lg ${invoice ? 'cursor-pointer hover:bg-white/5 transition-all' : ''}`}
+              onClick={invoice ? copyInvoiceToClipboard : undefined}
+              role={invoice ? 'button' as const : undefined}
+              title={invoice ? 'Click to copy invoice' : undefined}
+            >
+              {invoice ? (
+                <QRCode value={invoice} size={180} bgColor="transparent" fgColor="#ffffff" />
+              ) : (
+                <QrCode className="h-10 w-10 text-white/30" />
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            {quickAmounts.map(a => (
               <button
-                onClick={async () => {
-                  setIsProcessing(true);
-                  try {
-                    const mod = await import('@getalby/bitcoin-connect-react');
-                    const provider = await mod.requestProvider();
-                    try {
-                      const res = await provider.sendPayment(invoice);
-                      if (res && (res as any).preimage) {
-                        await handlePaid(res);
-                      } else {
-                        await handlePaid(null);
-                      }
-                    } catch {
-                      await handlePaid(null);
-                    }
-                  } catch {}
-                  setIsProcessing(false);
-                }}
-                disabled={isProcessing}
-                className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+                key={a}
+                onClick={() => { void handleCreateInvoice(a); }}
+                className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/30 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer"
                 type="button"
               >
-                {isProcessing ? (
-                  <>
-                    <svg className="inline mr-2 h-3 w-3 animate-spin" viewBox="0 0 24 24">
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
-                    </svg>
-                    Paying...
-                  </>
-                ) : (
-                  'Pay'
-                )}
+                {a} sats
               </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="Custom amount (sats)"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleCreateInvoice();
+                }
+              }}
+              className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all"
+            />
+            <button
+              onClick={() => { void handleCreateInvoice(); }}
+              className="bg-white/10 hover:bg-white/15 border border-white/20 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer"
+              type="button"
+            >
+              {isProcessing ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                  </svg>
+                  Creating...
+                </span>
+              ) : (
+                'Get Invoice'
+              )}
+            </button>
+          </div>
+
+          {invoice && (
+            <div className="space-y-3">
+              <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
+              {/* Bitcoin Connect: Pay Button */}
+              <div className="bg-white/5 border border-white/20 rounded-lg p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-white/70">Pay with connected wallet</span>
+                  <button
+                    onClick={async () => {
+                      setIsProcessing(true);
+                      try {
+                        const mod = await import('@getalby/bitcoin-connect-react');
+                        const provider = await mod.requestProvider();
+                        try {
+                          const res = await provider.sendPayment(invoice);
+                          if (res && (res as any).preimage) {
+                            await handlePaid(res);
+                          } else {
+                            await handlePaid(null);
+                          }
+                        } catch {
+                          await handlePaid(null);
+                        }
+                      } catch {}
+                      setIsProcessing(false);
+                    }}
+                    disabled={isProcessing}
+                    className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+                    type="button"
+                  >
+                    {isProcessing ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                        </svg>
+                        Paying...
+                      </span>
+                    ) : (
+                      'Pay'
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Token Tab */}
+      {activeTab === 'token' && (
+        <div className="flex flex-col justify-center h-full">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Paste Cashu Token
+              </label>
+              <div className="relative">
+                <textarea
+                  value={cashuToken}
+                  onChange={(e) => setCashuToken(e.target.value)}
+                  placeholder="Paste your cashu token here..."
+                  className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none transition-all"
+                  rows={10}
+                />
+                <button
+                  onClick={handlePasteToken}
+                  className="absolute top-3 right-3 bg-white/10 hover:bg-white/15 border border-white/20 text-white p-2 rounded-md transition-all cursor-pointer flex items-center justify-center"
+                  type="button"
+                  title="Paste from clipboard"
+                >
+                  <ClipboardPaste className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => { void handleReceiveToken(); }}
+              disabled={isReceivingToken || !cashuToken.trim()}
+              className="w-full bg-white/10 hover:bg-white/15 border border-white/20 text-white px-4 py-3 rounded-lg text-sm font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+              type="button"
+            >
+              {isReceivingToken ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                  </svg>
+                  Receiving...
+                </span>
+              ) : (
+                'Receive Token'
+              )}
+            </button>
           </div>
         </div>
       )}
 
+      {/* Wallet Tab */}
+      {activeTab === 'wallet' && (
+        <div className="flex flex-col justify-center h-full">
+          <div className="bg-white/5 border border-white/20 rounded-lg p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-sm font-medium text-white/70 block">Wallet (NWC)</span>
+                {bcStatus === 'connected' && bcBalance !== null && (
+                  <span className="text-xs text-white/50 mt-1 block">{bcBalance.toLocaleString()} sats</span>
+                )}
+              </div>
+              {bcStatus === 'connected' ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 bg-green-400 rounded-full"></div>
+                  <span className="text-sm text-green-400 font-medium">Connected</span>
+                </div>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      const mod = await import('@getalby/bitcoin-connect-react');
+                      mod.launchModal();
+                    } catch {}
+                  }}
+                  className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white transition-all"
+                  type="button"
+                >
+                  {bcStatus === 'connecting' ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                      </svg>
+                      Connecting…
+                    </span>
+                  ) : (
+                    'Connect Wallet'
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-2 rounded-md text-xs">{error}</div>
+        <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-3 rounded-lg text-sm">{error}</div>
       )}
 
       {successMessage && (
-        <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-2 rounded-md text-xs">{successMessage}</div>
+        <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-3 rounded-lg text-sm">{successMessage}</div>
       )}
 
+      {/* Login button */}
+      <div className="pt-2">
+        <div className="text-center text-xs text-white/50 mb-2">Or</div>
+        <button
+          onClick={() => { onClose(); setIsLoginModalOpen(true); }}
+          className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors cursor-pointer"
+          type="button"
+        >
+          Login
+        </button>
+      </div>
+
       {/* Don't show again action */}
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2 border-t border-white/10">
         <button
           onClick={() => { onDontShowAgain(); onClose(); }}
           className="text-xs text-white/50 hover:text-white/80"
           type="button"
         >
-          Don’t show again
+          Don't show again
         </button>
       </div>
     </div>
@@ -407,7 +591,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
       <div className="bg-[#181818] border border-white/20 rounded-md p-5 max-w-sm w-full relative">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-white/50 hover:text-white"
+          className="absolute top-3 right-3 text-white/50 hover:text-white transition-colors cursor-pointer"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

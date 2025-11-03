@@ -30,13 +30,13 @@ export const QueryTimeoutModal: React.FC<QueryTimeoutModalProps> = ({ isOpen, on
         <div className="flex gap-3 justify-center">
           <button
             onClick={handleDismiss}
-            className="flex-1 py-2 bg-gray-800 text-white rounded-md text-sm font-medium hover:bg-gray-700 transition-colors border border-white/10"
+            className="flex-1 py-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-lg text-sm font-medium transition-all cursor-pointer"
           >
             Dismiss
           </button>
           <button
             onClick={handleRefresh}
-            className="flex-1 py-2 bg-white text-black rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+            className="flex-1 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors cursor-pointer"
           >
             Refresh Page
           </button>

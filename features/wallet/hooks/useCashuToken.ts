@@ -106,7 +106,6 @@ export function useCashuToken() {
   const sendToken = async (mintUrl: string, amount: number, p2pkPubkey?: string, unit?: string): Promise<string> => {
     setIsLoading(true);
     setError(null);
-
     try {
       const mint = new CashuMint(mintUrl);
       const keysets = await mint.getKeySets();

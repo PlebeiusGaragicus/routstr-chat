@@ -2,19 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
+import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels } from '@/utils/modelUtils';
 
 export interface UseApiStateReturn {
   models: Model[];
   selectedModel: Model | null;
   isLoadingModels: boolean;
-  mintUrl: string;
   baseUrl: string;
   setModels: (models: Model[]) => void;
   setSelectedModel: (model: Model | null) => void;
   setIsLoadingModels: (loading: boolean) => void;
-  setMintUrl: (url: string) => void;
   setBaseUrl: (url: string) => void;
   fetchModels: (balance: number) => Promise<void>; // Modified to accept balance
   handleModelChange: (modelId: string, configuredKeyOverride?: string) => void;
@@ -30,7 +28,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const [mintUrl, setMintUrlState] = useState('');
   const [baseUrl, setBaseUrlState] = useState('');
   const [baseUrlsList, setBaseUrlsList] = useState<string[]>([]);
   // Removed unused currentBaseUrlIndex state
@@ -38,9 +35,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   // Initialize URLs from storage
   useEffect(() => {
     if (isAuthenticated) {
-      const currentMintUrl = loadMintUrl(DEFAULT_MINT_URL);
-      setMintUrlState(currentMintUrl);
-
       const loadedBaseUrls = loadBaseUrlsList();
       setBaseUrlsList(loadedBaseUrls);
 
@@ -74,7 +68,12 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
           if (n && !n.startsWith('http://')) bases.add(n);
         }
       }
-      const list = Array.from(bases);
+      // Filter out disabled providers
+      const disabledProviders = loadDisabledProviders();
+      const list = Array.from(bases).filter(base => {
+        const normalized = base.endsWith('/') ? base : `${base}/`;
+        return !disabledProviders.includes(normalized);
+      });
       if (list.length > 0) {
         saveBaseUrlsList(list);
         setBaseUrlsList(list);
@@ -108,6 +107,13 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
           return;
         }
       }
+
+      // Filter out disabled providers
+      const disabledProviders = loadDisabledProviders();
+      bases = bases.filter(base => {
+        const normalized = base.endsWith('/') ? base : `${base}/`;
+        return !disabledProviders.includes(normalized);
+      });
 
       const results = await Promise.allSettled(
         bases.map(async (url) => {
@@ -217,7 +223,19 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
       }
 
       if (!modelToSelect) {
-        const compatible = combinedModels.filter((m: Model) => m.sats_pricing && currentBalance >= (m.sats_pricing as any).max_cost);
+        const compatible = combinedModels.filter((m: Model) => {
+          try {
+            const sp: any = m.sats_pricing as any;
+            if (!sp) return false;
+            const required = Math.max(
+              Number(sp.max_cost) || 0,
+              Number(sp.max_completion_cost) || 0
+            );
+            return required > 0 && currentBalance >= required;
+          } catch {
+            return false;
+          }
+        });
         if (compatible.length > 0) modelToSelect = compatible[0];
       }
       setSelectedModel(modelToSelect);
@@ -238,6 +256,49 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     // Always attempt to fetch; will bootstrap providers if missing
     fetchModels(balance);
   }, [isAuthenticated, baseUrlsList.length]);
+
+  // Auto-select model based on balance when balance changes
+  // Only auto-selects if no model is selected or current model is not available
+  useEffect(() => {
+    if (!isAuthenticated || models.length === 0) return;
+    
+    // Check if current model is available with current balance
+    const isCurrentModelAvailable = selectedModel && (() => {
+      try {
+        const sp: any = selectedModel?.sats_pricing as any;
+        if (!sp) return true; // If no pricing info, assume available
+        const required = Math.max(
+          Number(sp.max_cost) || 0,
+          Number(sp.max_completion_cost) || 0
+        );
+        return required <= 0 || balance >= required;
+      } catch {
+        return true;
+      }
+    })();
+
+    // Only auto-select if no model is selected or current model is not available
+    if (!selectedModel || !isCurrentModelAvailable) {
+      const compatible = models.filter((m: Model) => {
+        try {
+          const sp: any = m.sats_pricing as any;
+          if (!sp) return false;
+          const required = Math.max(
+            Number(sp.max_cost) || 0,
+            Number(sp.max_completion_cost) || 0
+          );
+          return required > 0 && balance >= required;
+        } catch {
+          return false;
+        }
+      });
+      
+      if (compatible.length > 0) {
+        // Select the first compatible model (models are already sorted by price)
+        handleModelChange(compatible[0].id);
+      }
+    }
+  }, [balance, models, isAuthenticated, selectedModel]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
     console.log('rdlogs: handleModelChange', modelId, configuredKeyOverride);
@@ -311,11 +372,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
 
   }, [models]);
 
-  const setMintUrl = useCallback((url: string) => {
-    setMintUrlState(url);
-    saveMintUrl(url);
-  }, []);
-
   const setBaseUrl = useCallback((url: string) => {
     const normalizedUrl = url.endsWith('/') ? url : `${url}/`;
     setBaseUrlState(normalizedUrl);
@@ -328,12 +384,10 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     models,
     selectedModel,
     isLoadingModels,
-    mintUrl,
     baseUrl,
     setModels,
     setSelectedModel,
     setIsLoadingModels,
-    setMintUrl,
     setBaseUrl,
     fetchModels,
     handleModelChange

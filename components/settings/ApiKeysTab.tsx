@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'; // For checking user lo
 import { useCashuStore, useCashuToken, calculateBalanceByMint } from '@/features/wallet';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import SettingsDialog from '@/components/ui/SettingsDialog';
+import { DEFAULT_MINT_URL } from '@/lib/utils';
 
 export interface StoredApiKey {
   key: string;
@@ -19,14 +20,13 @@ export interface StoredApiKey {
 }
 
 interface ApiKeysTabProps {
-  mintUrl: string;
   baseUrl: string;
   baseUrls: string[]; // kept for backwards compatibility but will be ignored
   setActiveTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void;
   isMobile?: boolean;
 }
 
-const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isMobile }: ApiKeysTabProps) => {
+const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isMobile }: ApiKeysTabProps) => {
   // Available provider base URLs (aggregated from providers API + current baseUrl)
   const [availableBaseUrls, setAvailableBaseUrls] = useState<string[]>([]);
   const [isLoadingBaseUrls, setIsLoadingBaseUrls] = useState<boolean>(false);
@@ -280,16 +280,18 @@ const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiv
         toast.error('No active mint selected');
         return;
       }
-      token = await spendCashu(
+      const result = await spendCashu(
         cashuStore.activeMintUrl,
         parseInt(apiKeyAmount),
         selectedNewApiKeyBaseUrl
       );
 
-      if (!token) {
-        toast.error('Failed to generate Cashu token for API key creation.');
+      if (result.status === 'failed' || !result.token) {
+        toast.error(result.error || 'Failed to generate Cashu token for API key creation.');
         return;
       }
+
+      token = result.token;
 
       const response = await fetch(`${selectedNewApiKeyBaseUrl}v1/wallet/info`, {
         headers: {
@@ -499,6 +501,7 @@ const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiv
       if (keyDataToDelete) {
         // Attempt to refund the balance
         const urlToUse = keyDataToDelete.baseUrl || baseUrl; // Use key-specific baseUrl or fallback to global
+        const mintUrl = usingNip60 ? cashuStore.activeMintUrl || DEFAULT_MINT_URL : DEFAULT_MINT_URL;
         const refundResult = await unifiedRefund(mintUrl, urlToUse, usingNip60, receiveToken, keyDataToDelete.key);
 
         if (refundResult.success) {
@@ -566,20 +569,22 @@ const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiv
         return;
       }
 
-      cashuToken = await spendCashu(
+      const result = await spendCashu(
         cashuStore.activeMintUrl,
         parseInt(topUpAmount),
         urlToUse
       );
       
-      if (!cashuToken || typeof cashuToken !== 'string') {
-        toast.error('Failed to generate Cashu token for top up.');
+      if (result.status === 'failed' || !result.token) {
+        toast.error(result.error || 'Failed to generate Cashu token for top up.');
         return;
       }
 
+      cashuToken = result.token;
+
       // Use the key-specific baseUrl or fallback to global baseUrl
       // Make the topup request to the backend
-      const response = await fetch(`${urlToUse}v1/wallet/topup?cashu_token=${encodeURIComponent(cashuToken as string)}`, {
+      const response = await fetch(`${urlToUse}v1/wallet/topup?cashu_token=${encodeURIComponent(cashuToken)}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${keyToTopUp.key}`,
@@ -923,6 +928,7 @@ const ApiKeysTab = ({ mintUrl, baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiv
                           setIsRefundingKey(keyData.key); // Set loading for this specific key
                           try {
                             const urlToUse = keyData.baseUrl || baseUrl; // Use key-specific baseUrl or fallback to global
+                            const mintUrl = usingNip60 ? cashuStore.activeMintUrl || DEFAULT_MINT_URL : DEFAULT_MINT_URL;
                             const refundResult = await unifiedRefund(mintUrl, urlToUse, usingNip60, receiveToken, keyData.key);
                             if (refundResult.success) {
                               toast.success(refundResult.message || 'Refund completed successfully!');

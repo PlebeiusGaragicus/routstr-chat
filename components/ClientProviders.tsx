@@ -1,13 +1,13 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useEffect as useReactEffect } from 'react';
 import { useNostrLogin } from '@nostrify/react/login';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { generateSecretKey, nip19 } from 'nostr-tools';
 import NostrProvider from '@/components/NostrProvider'
 import dynamic from 'next/dynamic';
-import { migrateStorageItems } from '@/utils/storageUtils';
+import { migrateStorageItems, saveRelays } from '@/utils/storageUtils';
 import { InvoiceRecoveryProvider } from '@/components/InvoiceRecoveryProvider';
 
 const DynamicNostrLoginProvider = dynamic(
@@ -21,11 +21,12 @@ import { AppProvider } from './AppProvider';
 import { AppConfig } from '@/context/AppContext';
 
 const presetRelays = [
-  { url: 'wss://relay.chorus.community', name: 'Chorus' },
+  { url: 'wss://relay.routstr.com', name: 'Routstr Relay' },
   { url: 'wss://relay.damus.io', name: 'Damus' },
   { url: 'wss://nos.lol', name: 'nos.lol' },
   { url: 'wss://relay.nostr.band', name: 'Nostr.Band' },
   { url: 'wss://relay.primal.net', name: 'Primal' },
+  { url: 'wss://relay.chorus.community', name: 'Chorus Relay' },
 ];
 
 const queryClient = new QueryClient({
@@ -38,13 +39,36 @@ const queryClient = new QueryClient({
   },
 });
 
-const defaultConfig: AppConfig = {
-  relayUrls: [
-...presetRelays.slice(0, 3).map(relay => relay.url),
-  ]
-};
-
 export default function ClientProviders({ children }: { children: ReactNode }) {
+  const [relayUrls, setRelayUrls] = useState<string[]>(
+    presetRelays.slice(0, 3).map(relay => relay.url)
+  );
+
+  // Fetch relay URLs from URL parameters
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const relaysParam = params.get('relays');
+    
+    if (relaysParam) {
+      // Parse comma-separated relay URLs from URL parameter
+      const urlRelays = relaysParam
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url.startsWith('wss://') || url.startsWith('ws://'));
+      
+      if (urlRelays.length > 0) {
+        setRelayUrls(urlRelays);
+      }
+    }
+  }, []);
+  saveRelays(relayUrls);
+
+  const defaultConfig: AppConfig = {
+    relayUrls: relayUrls
+  };
+
   function AutoLogin() {
     const { logins } = useNostrLogin();
     const loginActions = useLoginActions();

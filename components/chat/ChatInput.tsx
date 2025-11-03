@@ -37,6 +37,7 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isCentered, setIsCentered] = useState(!hasMessages);
+  const [showRedButton, setShowRedButton] = useState(false);
   const { isSidebarOpen } = useChat();
   const unifiedBgClass = isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#181818]';
   const maxTextareaHeight = isMobile ? 176 : 240;
@@ -79,6 +80,10 @@ export default function ChatInput({
   }, [inputMessage, maxTextareaHeight, setTextareaHeight, uploadedAttachments.length]);
 
   const handleSendMessage = () => {
+    if (isLoading) {
+      return;
+    }
+    
     if (isCentered) {
       // Don't trigger multiple animations - let the useEffect handle it
       sendMessage();
@@ -280,6 +285,12 @@ export default function ChatInput({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
+                    if (isLoading) {
+                      // Show red button for 1 second
+                      setShowRedButton(true);
+                      setTimeout(() => setShowRedButton(false), 1000);
+                      return;
+                    }
                     handleSendMessage();
                   }
                 }}
@@ -319,7 +330,11 @@ export default function ChatInput({
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || (!isAuthenticated && !inputMessage.trim() && uploadedAttachments.length === 0)}
-                className="absolute right-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
+                className={`absolute right-3 bottom-2 p-2 rounded-full transition-colors cursor-pointer ${
+                  showRedButton 
+                    ? 'bg-red-500/30 hover:bg-red-500/40' 
+                    : 'bg-transparent hover:bg-white/10 md:hover:bg-white/20'
+                } ${!isLoading && (!isAuthenticated && !inputMessage.trim() && uploadedAttachments.length === 0) ? 'opacity-50' : ''}`}
                 aria-label="Send message"
               >
                 {isLoading ? (
