@@ -53,6 +53,18 @@ export function useCashuWithXYZ() {
     return calculateBalanceByMint(cashuStore.proofs, cashuStore.mints);
   }, [cashuStore.proofs, cashuStore.mints]);
 
+  // Ensure default mint is set on initialization
+  useEffect(() => {
+    if (!cashuStore.activeMintUrl) {
+      // Add default mint if not already in the store
+      if (!cashuStore.mints.find(m => m.url === DEFAULT_MINT_URL)) {
+        cashuStore.addMint(DEFAULT_MINT_URL);
+      } else {
+        cashuStore.setActiveMintUrl(DEFAULT_MINT_URL);
+      }
+    }
+  }, [cashuStore]);
+
   useEffect(() => {
     setCurrentMintUnit(mintUnits[cashuStore.activeMintUrl??'']);
   }, [mintUnits, cashuStore.activeMintUrl]);

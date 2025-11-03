@@ -7,7 +7,6 @@ import { ChatProvider } from '@/context/ChatProvider';
 import ChatContainer from '@/components/chat/ChatContainer';
 import SettingsModal from '@/components/SettingsModal';
 import LoginModal from '@/components/LoginModal';
-import TutorialOverlay from '@/components/TutorialOverlay';
 import TopUpPromptModal from '@/components/TopUpPromptModal';
 import { QueryTimeoutModal } from '@/components/QueryTimeoutModal';
 import { useAuth } from '@/context/AuthProvider';
@@ -27,10 +26,7 @@ function ChatPageContent() {
     setIsSettingsOpen,
     isLoginModalOpen,
     setIsLoginModalOpen,
-    isTutorialOpen,
     initialSettingsTab,
-    handleTutorialComplete,
-    handleTutorialClose,
     
     // API State
     baseUrl,
@@ -195,12 +191,6 @@ function ChatPageContent() {
         onClose={() => setIsLoginModalOpen(false)}
         onLogin={() => setIsLoginModalOpen(false)}
       />
-
-      {false && (<TutorialOverlay
-        isOpen={isTutorialOpen}
-        onComplete={handleTutorialComplete}
-        onClose={handleTutorialClose}
-      />)}
 
       {/* Top-up Prompt */}
       {isTopUpPromptOpen && (

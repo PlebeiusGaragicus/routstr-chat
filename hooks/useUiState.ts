@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { hasSeenTutorial, markTutorialAsSeen, loadSidebarOpen, saveSidebarOpen, loadSidebarCollapsed, saveSidebarCollapsed } from '@/utils/storageUtils';
+import { loadSidebarOpen, saveSidebarOpen, loadSidebarCollapsed, saveSidebarCollapsed } from '@/utils/storageUtils';
 
 export interface UseUiStateReturn {
   isSettingsOpen: boolean;
   isLoginModalOpen: boolean;
-  isTutorialOpen: boolean;
   isModelDrawerOpen: boolean;
   isSidebarCollapsed: boolean;
   isSidebarOpen: boolean;
@@ -15,25 +14,21 @@ export interface UseUiStateReturn {
   modelDrawerRef: React.RefObject<HTMLDivElement | null>;
   setIsSettingsOpen: (open: boolean) => void;
   setIsLoginModalOpen: (open: boolean) => void;
-  setIsTutorialOpen: (open: boolean) => void;
   setIsModelDrawerOpen: (open: boolean) => void;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   setIsSidebarOpen: (open: boolean) => void;
   setTextareaHeight: (height: number) => void;
   setInitialSettingsTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys' | 'models') => void;
-  handleTutorialComplete: () => void;
-  handleTutorialClose: () => void;
 }
 
 /**
  * Custom hook for managing UI state and interactions
  * Handles modal and drawer states, sidebar state management,
- * mobile responsiveness, and tutorial state
+ * and mobile responsiveness
  */
 export const useUiState = (isAuthenticated: boolean): UseUiStateReturn => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isModelDrawerOpen, setIsModelDrawerOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => loadSidebarCollapsed());
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => loadSidebarOpen());
@@ -47,17 +42,6 @@ export const useUiState = (isAuthenticated: boolean): UseUiStateReturn => {
   useEffect(() => {
     setIsLoginModalOpen(false);
   }, [isAuthenticated]);
-
-  // Check for first visit and show tutorial
-  useEffect(() => {
-    if (isAuthenticated && !isMobile) {
-      if (!hasSeenTutorial()) {
-        setTimeout(() => {
-          setIsTutorialOpen(true);
-        }, 1000);
-      }
-    }
-  }, [isAuthenticated, isMobile]);
 
   // Close model drawer when clicking outside
   useEffect(() => {
@@ -98,18 +82,9 @@ export const useUiState = (isAuthenticated: boolean): UseUiStateReturn => {
     }
   }, [isMobile]);
 
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialAsSeen();
-  }, []);
-
-  const handleTutorialClose = useCallback(() => {
-    setIsTutorialOpen(false);
-  }, []);
-
   return {
     isSettingsOpen,
     isLoginModalOpen,
-    isTutorialOpen,
     isModelDrawerOpen,
     isSidebarCollapsed,
     isSidebarOpen,
@@ -119,13 +94,10 @@ export const useUiState = (isAuthenticated: boolean): UseUiStateReturn => {
     modelDrawerRef,
     setIsSettingsOpen,
     setIsLoginModalOpen,
-    setIsTutorialOpen,
     setIsModelDrawerOpen,
     setIsSidebarCollapsed,
     setIsSidebarOpen,
     setTextareaHeight,
-    setInitialSettingsTab,
-    handleTutorialComplete,
-    handleTutorialClose
+    setInitialSettingsTab
   };
 };

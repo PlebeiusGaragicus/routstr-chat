@@ -1,4 +1,4 @@
-import { ChevronDown, MessageSquare, PlusCircle, Settings, Trash2, X, Key, SquarePen } from 'lucide-react';
+import { ChevronDown, PlusCircle, Settings, Trash2, X, Key, SquarePen } from 'lucide-react';
 import { Conversation } from '@/types/chat';
 
 interface SidebarProps {
@@ -84,7 +84,7 @@ export default function Sidebar({
 
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
-          <div className="text-xs uppercase text-white/50 font-medium px-2 pb-2">RECENT CHATS</div>
+          <div className="text-xs text-white/50 font-medium px-2 pb-2">Chats</div>
           {conversations.length === 0 ? (
             <p className="text-xs text-white/50 text-center py-2">No saved conversations</p>
           ) : (
@@ -101,7 +101,6 @@ export default function Sidebar({
                   }`}
               >
                 <div className="flex items-center gap-2 flex-1 truncate">
-                  <MessageSquare className="h-4 w-4 flex-shrink-0 opacity-70" />
                   <span className="truncate">{conversation.title}</span>
                 </div>
                 <button
