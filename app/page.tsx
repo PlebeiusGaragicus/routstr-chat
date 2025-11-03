@@ -209,6 +209,7 @@ function ChatPageContent() {
           onClose={() => { setIsTopUpPromptOpen(false); setTopUpPromptDismissed(true); }}
           onTopUp={handleTopUp}
           onDontShowAgain={() => { setTopUpPromptDismissed(true); markTopUpPromptSeen(); }}
+          setIsLoginModalOpen={setIsLoginModalOpen}
         />
       )}
 

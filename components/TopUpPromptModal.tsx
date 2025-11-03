@@ -20,9 +20,10 @@ interface TopUpPromptModalProps {
   onClose: () => void;
   onTopUp: (amount?: number) => void;
   onDontShowAgain: () => void;
+  setIsLoginModalOpen: (open: boolean) => void;
 }
 
-const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain }) => {
+const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain, setIsLoginModalOpen }) => {
   const [customAmount, setCustomAmount] = useState('');
   const [invoice, setInvoice] = useState('');
   const [quoteId, setQuoteId] = useState('');
@@ -257,20 +258,20 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
       </div>
 
       {/* QR / placeholder - match DepositModal style */}
-      <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
-        <div
-          className={`w-48 h-48 flex items-center justify-center p-2 rounded-md ${invoice ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
-          onClick={invoice ? copyInvoiceToClipboard : undefined}
-          role={invoice ? 'button' as const : undefined}
-          title={invoice ? 'Click to copy invoice' : undefined}
-        >
-          {invoice ? (
-            <QRCode value={invoice} size={180} bgColor="transparent" fgColor="#ffffff" />
-          ) : (
-            <QrCode className="h-8 w-8 text-white/30" />
-          )}
+        <div className="bg-white/10 border border-white/20 p-4 rounded-md flex items-center justify-center">
+          <div
+            className={`w-48 h-48 flex items-center justify-center p-2 rounded-md ${invoice ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
+            onClick={invoice ? copyInvoiceToClipboard : undefined}
+            role={invoice ? 'button' as const : undefined}
+            title={invoice ? 'Click to copy invoice' : undefined}
+          >
+            {invoice ? (
+              <QRCode value={invoice} size={180} bgColor="transparent" fgColor="#ffffff" />
+            ) : (
+              <QrCode className="h-8 w-8 text-white/30" />
+            )}
+          </div>
         </div>
-      </div>
 
       <div className="flex gap-2">
         {quickAmounts.map(a => (
@@ -363,14 +364,26 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
         <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-2 rounded-md text-xs">{successMessage}</div>
       )}
 
+      {/* Login button */}
+      <div className="pt-2">
+        <div className="text-center text-xs text-white/50 mb-2">Or</div>
+        <button
+          onClick={() => { onClose(); setIsLoginModalOpen(true); }}
+          className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors cursor-pointer"
+          type="button"
+        >
+          Login
+        </button>
+      </div>
+
       {/* Don't show again action */}
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2 border-t border-white/10">
         <button
           onClick={() => { onDontShowAgain(); onClose(); }}
           className="text-xs text-white/50 hover:text-white/80"
           type="button"
         >
-          Don’t show again
+          Don't show again
         </button>
       </div>
     </div>

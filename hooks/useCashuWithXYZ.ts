@@ -239,7 +239,7 @@ export function useCashuWithXYZ() {
         balanceInSats = balance;
       }
       
-      if (balanceInSats > adjustedAmount) {
+      if (balanceInSats >= adjustedAmount) {
         selectedMintUrl = mintUrl;
         selectedMintBalance = balanceInSats;
         break;
@@ -360,7 +360,7 @@ export function useCashuWithXYZ() {
       );
       console.log('rdlogs: selectedMintUrl', selectedMintUrl);
 
-      if (activeMintBalanceInSats > adjustedAmount) {
+      if (activeMintBalanceInSats >= adjustedAmount) {
         try {
           token = await sendToken(mintUrl, adjustedAmount, p2pkPubkey);
         } catch (error) {

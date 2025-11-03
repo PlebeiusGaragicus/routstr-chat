@@ -283,7 +283,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
       
       if (compatible.length > 0) {
         // Select the first compatible model (models are already sorted by price)
-        setSelectedModel(compatible[0]);
+        handleModelChange(compatible[0].id);
       }
     }
   }, [balance, models, isAuthenticated, selectedModel]);
