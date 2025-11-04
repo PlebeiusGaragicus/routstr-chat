@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Model } from '@/data/models';
 import { getModelNameWithoutProvider, getProviderFromModelName } from '@/data/models';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { loadModelProviderMap } from '@/utils/storageUtils';
+import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';
 import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels } from '@/utils/modelUtils';
 
 interface ModelSelectorProps {
@@ -283,6 +283,30 @@ export default function ModelSelector({
   const configuredModelsList = filteredModels.filter(model => isConfiguredModel(model.id));
   const remainingModelsList = filteredModels.filter(model => !isConfiguredModel(model.id));
 
+  // Calculate unique models and providers for display (excluding disabled providers)
+  const { uniqueModelCount, uniqueProviderCount } = useMemo(() => {
+    const disabledProviders = loadDisabledProviders();
+    const uniqueProviders = new Set<string>();
+    const enabledModels = new Set<string>();
+    
+    for (const model of dedupedModels) {
+      const baseUrl = modelProviderMap[model.id];
+      if (baseUrl) {
+        const normalized = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        // Only count if not disabled
+        if (!disabledProviders.includes(normalized)) {
+          uniqueProviders.add(normalized);
+          enabledModels.add(model.id);
+        }
+      }
+    }
+    
+    return {
+      uniqueModelCount: enabledModels.size,
+      uniqueProviderCount: uniqueProviders.size
+    };
+  }, [dedupedModels, modelProviderMap]);
+
   // Build favorites entries with provider labels from configured keys
   const favoriteEntries = useMemo(() => {
     return configuredModels
@@ -322,16 +346,20 @@ export default function ModelSelector({
   // Determine required minimum sats to run a request for a model
   const getRequiredMinSats = (model: Model): number => {
     try {
+      const approximateTokens = 10000; // Assumed tokens for minimum balance calculation
       const sp: any = model?.sats_pricing as any;
+      
       if (!sp) return 0;
-      const candidates: number[] = [
-        Number(sp.max_cost) || 0,
-        Number(sp.max_completion_cost) || 0,
-        Number(sp.completion) || 0
-      ];
-      // Take the maximum available constraint as the required threshold
-      const required = Math.max(...candidates.filter(n => Number.isFinite(n) && n > 0));
-      return Number.isFinite(required) ? required : 0;
+      
+      // If we don't have max_completion_cost, fall back to max_cost
+      if (!sp.max_completion_cost) {
+        return sp.max_cost ?? 50;
+      }
+      
+      // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
+      const promptCosts = (sp.prompt || 0) * approximateTokens;
+      const totalEstimatedCosts = promptCosts + sp.max_completion_cost;
+      return totalEstimatedCosts * 1.05; // Added a 5% margin
     } catch (e) {
       console.error(e);
       return 0;
@@ -842,7 +870,7 @@ export default function ModelSelector({
                     <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
                   </div>
                 ) : (
-                  <div className="overflow-y-auto max-h-[60vh]">
+                  <div className="overflow-y-auto max-h-[60vh] pb-3">
                     {/* Current Model Section */}
                     {selectedModel && (
                       <div className="p-1">
@@ -870,7 +898,11 @@ export default function ModelSelector({
 
                     {/* All Models Section */}
                     <div className="p-1">
-                      <div className="px-2 py-1 text-xs font-medium text-white/60">All Models</div>
+                      <div className="px-2 py-1 text-xs font-medium text-white/60">
+                        All Models {uniqueModelCount > 0 && uniqueProviderCount > 0 && (
+                          <span className="text-white/40">({uniqueModelCount} models from {uniqueProviderCount} providers)</span>
+                        )}
+                      </div>
                       {remainingModelsList.length > 0 ? (
                         <div className="space-y-1">
                           {remainingModelsList.filter(m => m.id !== selectedModel?.id).map((model) => renderModelItem(model, false))}
@@ -952,7 +984,7 @@ export default function ModelSelector({
                   <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
                 </div>
               ) : (
-                <div className="overflow-y-auto max-h-[60vh]">
+                <div className="overflow-y-auto max-h-[60vh] pb-3">
                   {/* Current Model Section */}
                   {selectedModel && (
                     <div className="p-1">
@@ -980,7 +1012,11 @@ export default function ModelSelector({
 
                   {/* All Models Section */}
                   <div className="p-1">
-                    <div className="px-2 py-1 text-xs font-medium text-white/60">All Models</div>
+                    <div className="px-2 py-1 text-xs font-medium text-white/60">
+                      All Models {uniqueModelCount > 0 && uniqueProviderCount > 0 && (
+                        <span className="text-white/40">({uniqueModelCount} models from {uniqueProviderCount} providers)</span>
+                      )}
+                    </div>
                     {remainingModelsList.length > 0 ? (
                       <div className="space-y-1">
                         {remainingModelsList.filter(m => m.id !== selectedModel?.id).map((model) => renderModelItem(model, false))}

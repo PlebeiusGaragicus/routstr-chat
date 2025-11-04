@@ -115,66 +115,86 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
         return !disabledProviders.includes(normalized);
       });
 
-      const results = await Promise.allSettled(
-        bases.map(async (url) => {
-          const base = url.endsWith('/') ? url : `${url}/`;
-          const res = await fetch(`${base}v1/models`);
-          if (!res.ok) throw new Error(`Failed ${res.status}`);
-          const json = await res.json();
-          const list: Model[] = Array.isArray(json?.data) ? json.data : [];
-          return { base, list };
-        })
-      );
-
-      // Save all provider results to localStorage for later use
-      try {
-        const modelsFromAllProviders: Record<string, Model[]> = {};
-        for (const r of results) {
-          if (r.status === 'fulfilled') {
-            const { base, list } = r.value;
-            modelsFromAllProviders[base] = list;
-          }
-        }
-        setStorageItem('modelsFromAllProviders', modelsFromAllProviders);
-      } catch {}
-
-      // Build best-priced model per id across providers and remember provider
+      // Process results progressively as each provider responds
+      const modelsFromAllProviders: Record<string, Model[]> = {};
       const bestById = new Map<string, { model: Model; base: string }>();
+      let processedCount = 0;
+      const totalProviders = bases.length;
 
       function estimateMinCost(m: Model): number {
         return m?.sats_pricing?.completion ?? 0;
       }
 
-      for (const r of results) {
-        if (r.status !== 'fulfilled') continue;
-        const { base, list } = r.value;
-        for (const m of list) {
-          const existing = bestById.get(m.id);
-          if (!existing) {
-            bestById.set(m.id, { model: m, base });
-            continue;
-          }
-          const currentCost = estimateMinCost(m);
-          const existingCost = estimateMinCost(existing.model);
-          if (currentCost < existingCost) {
-            bestById.set(m.id, { model: m, base });
+      // Helper to update best models and UI state
+      const updateBestModels = () => {
+        const combinedModels = Array.from(bestById.values()).map(v => v.model);
+        setModels(combinedModels);
+
+        // Persist provider mapping for best-priced winners
+        const newMap = loadModelProviderMap();
+        let changed = false;
+        for (const [id, entry] of bestById.entries()) {
+          if (newMap[id] !== entry.base) {
+            newMap[id] = entry.base;
+            changed = true;
           }
         }
-      }
+        if (changed) saveModelProviderMap(newMap);
 
-      const combinedModels = Array.from(bestById.values()).map(v => v.model);
-      setModels(combinedModels);
+        return combinedModels;
+      };
 
-      // Persist provider mapping for best-priced winners
-      const newMap = loadModelProviderMap();
-      let changed = false;
-      for (const [id, entry] of bestById.entries()) {
-        if (newMap[id] !== entry.base) {
-          newMap[id] = entry.base;
-          changed = true;
+      // Process each provider as it responds
+      const fetchPromises = bases.map(async (url) => {
+        const base = url.endsWith('/') ? url : `${url}/`;
+        try {
+          const res = await fetch(`${base}v1/models`);
+          if (!res.ok) throw new Error(`Failed ${res.status}`);
+          const json = await res.json();
+          const list: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+            ...m,
+            id: m.id.split('/').pop() || m.id
+          })) : [];
+          
+          // Save provider results
+          modelsFromAllProviders[base] = list;
+          
+          // Update best-priced models
+          for (const m of list) {
+            const existing = bestById.get(m.id);
+            if (!existing) {
+              bestById.set(m.id, { model: m, base });
+              continue;
+            }
+            const currentCost = estimateMinCost(m);
+            const existingCost = estimateMinCost(existing.model);
+            if (currentCost < existingCost) {
+              bestById.set(m.id, { model: m, base });
+            }
+          }
+          
+          // Update UI with current best models
+          processedCount++;
+          updateBestModels();
+          
+          return { success: true, base, list };
+        } catch (error) {
+          processedCount++;
+          console.warn(`Failed to fetch models from ${base}:`, error);
+          return { success: false, base };
         }
-      }
-      if (changed) saveModelProviderMap(newMap);
+      });
+
+      // Wait for all to complete (but UI updates happen progressively)
+      await Promise.allSettled(fetchPromises);
+
+      // Save all provider results to localStorage
+      try {
+        setStorageItem('modelsFromAllProviders', modelsFromAllProviders);
+      } catch {}
+
+      // Final update to ensure we have the latest state
+      const combinedModels = updateBestModels();
 
       // Select model based on URL param or last used
       let modelToSelect: Model | null = null;
@@ -209,8 +229,12 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
               const res = await fetch(`${normalized}v1/models`);
               if (res.ok) {
                 const json = await res.json();
-                const providerList: Model[] = Array.isArray(json?.data) ? json.data : [];
-                const found = providerList.find((m: Model) => m.id === id) ?? null;
+                const providerList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+                  ...m,
+                  id: m.id.split('/').pop() || m.id
+                })) : [];
+                const transformedId = id.split('/').pop() || id;
+                const found = providerList.find((m: Model) => m.id === transformedId) ?? null;
                 if (found) {
                   // cache to storage for future
                   upsertCachedProviderModels(normalized, providerList);
@@ -320,7 +344,10 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
             const res = await fetch(`${normalized}v1/models`);
             if (!res.ok) throw new Error(`Failed ${res.status}`);
             const json = await res.json();
-            const freshList: Model[] = Array.isArray(json?.data) ? json.data : [];
+            const freshList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+              ...m,
+              id: m.id.split('/').pop() || m.id
+            })) : [];
             // cache back to storage
             upsertCachedProviderModels(normalized, freshList);
             return freshList.find((m: Model) => m.id === parsed.id);

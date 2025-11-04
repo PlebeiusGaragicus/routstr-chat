@@ -1,10 +1,11 @@
 import { Message, MessageContent, TransactionHistory } from '@/types/chat';
 import { convertMessageForAPI, createTextMessage, extractThinkingFromStream } from './messageUtils';
 import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund, UnifiedRefundResult } from '@/utils/cashuUtils';
-import { getLocalCashuToken, removeLocalCashuToken } from './storageUtils';
+import { getLocalCashuToken, removeLocalCashuToken, getStorageItem } from './storageUtils';
 import { getDecodedToken } from '@cashu/cashu-ts';
 import { isThinkingCapableModel } from './thinkingParser';
 import { SpendCashuResult } from '@/hooks/useCashuWithXYZ';
+import { Model } from '@/data/models';
 
 /**
  * Helper function to properly read response body text from a ReadableStream
@@ -54,7 +55,55 @@ export interface FetchAIResponseParams {
 interface APIErrorVerdict {
   retry: boolean;
   reason: string;
+  newBaseUrl?: string; // New provider to retry with (for 50X errors)
 }
+
+/**
+ * Finds the next best provider for a model based on price
+ * @param modelId The model ID to find a provider for
+ * @param currentBaseUrl The current provider URL to exclude
+ * @param failedProviders Set of provider URLs that have already failed
+ * @returns The next best provider URL or null if none available
+ */
+function findNextBestProvider(
+  modelId: string,
+  currentBaseUrl: string,
+  failedProviders: Set<string>
+): string | null {
+  try {
+    // Load all cached provider models from storage
+    const modelsFromAllProviders = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {});
+    
+    // Find all providers that offer this model
+    const candidateProviders: Array<{ baseUrl: string; model: Model; cost: number }> = [];
+    
+    for (const [baseUrl, models] of Object.entries(modelsFromAllProviders)) {
+      // Skip current provider and failed providers
+      if (baseUrl === currentBaseUrl || failedProviders.has(baseUrl)) {
+        continue;
+      }
+      
+      // Find the model in this provider's list
+      const model = models.find((m: Model) => m.id === modelId);
+      if (!model) continue;
+      
+      // Calculate cost (same logic as useApiState.ts)
+      const cost = model?.sats_pricing?.completion ?? 0;
+      
+      candidateProviders.push({ baseUrl, model, cost });
+    }
+    
+    // Sort by price (lowest first)
+    candidateProviders.sort((a, b) => a.cost - b.cost);
+    
+    // Return the cheapest provider
+    return candidateProviders.length > 0 ? candidateProviders[0].baseUrl : null;
+  } catch (error) {
+    console.error('Error finding next best provider:', error);
+    return null;
+  }
+}
+
 /**
  * Makes an API request with token authentication
  */
@@ -71,6 +120,7 @@ async function routstrRequest(params: {
   onMessageAppend: (message: Message) => void;
   token: string;
   retryOnInsufficientBalance?: boolean;
+  failedProviders?: Set<string>; // Track providers that have returned 50X errors
 }): Promise<Response> {
   const {
     apiMessages,
@@ -84,7 +134,8 @@ async function routstrRequest(params: {
     activeMintUrl,
     onMessageAppend,
     token,
-    retryOnInsufficientBalance = true
+    retryOnInsufficientBalance = true,
+    failedProviders = new Set<string>()
   } = params;
 
   if (!token) {
@@ -130,18 +181,26 @@ async function routstrRequest(params: {
       spendCashu,
       activeMintUrl,
       retryOnInsufficientBalance,
-      onMessageAppend
+      onMessageAppend,
+      failedProviders
     });
     if (retryVerdict.retry) {
-      const newTokenResult = await spendCashu(mintUrl, tokenAmount, baseUrl, true); // reuse token is true here but the two scenarios where we're retrying remove locally stored token anyway. 
+      // Use new baseUrl if switching providers (for 50X errors)
+      const retryBaseUrl = retryVerdict.newBaseUrl || baseUrl;
+      let newSelectedModel = selectedModel;
+      if (retryVerdict.reason === "not a valid model ID") {
+        newSelectedModel = await backwardCompatibleModel(selectedModel?.id, baseUrl);
+      }
+      
+      const newTokenResult = await spendCashu(mintUrl, tokenAmount, retryBaseUrl, true); // reuse token is true here but the two scenarios where we're retrying remove locally stored token anyway. 
       if (newTokenResult.status === 'failed' || !newTokenResult.token) {
         throw new Error(newTokenResult.error || `Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
       }
       const newToken = newTokenResult.token;
       const newResponse = await routstrRequest({
         apiMessages,
-        selectedModel,
-        baseUrl,
+        selectedModel: newSelectedModel,
+        baseUrl: retryBaseUrl,
         mintUrl,
         usingNip60,
         tokenAmount,
@@ -149,7 +208,8 @@ async function routstrRequest(params: {
         storeCashu,
         onMessageAppend,
         token: newToken,
-        retryOnInsufficientBalance: false
+        retryOnInsufficientBalance: false,
+        failedProviders
       });
       
       (newResponse as any).tokenBalance = tokenAmount;
@@ -272,6 +332,9 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       onTokenCreated(roundedTokenAmount);
     }
 
+    // Track providers that have returned 50X errors for automatic failover
+    const failedProviders = new Set<string>();
+    
     const response = await routstrRequest({
       apiMessages,
       selectedModel,
@@ -284,7 +347,8 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       activeMintUrl,
       onMessageAppend,
       token: token as string,
-      retryOnInsufficientBalance: true
+      retryOnInsufficientBalance: true,
+      failedProviders
     });
     console.log("rdlogs: rdlogs: response: ", response)
     // const response = new Response();
@@ -361,6 +425,7 @@ async function handleApiError(
     activeMintUrl?: string | null;
     retryOnInsufficientBalance?: boolean;
     onMessageAppend: (message: Message) => void;
+    failedProviders?: Set<string>;
   }
 ): Promise<APIErrorVerdict> {
   const {
@@ -373,7 +438,8 @@ async function handleApiError(
     spendCashu,
     activeMintUrl,
     retryOnInsufficientBalance = true,
-    onMessageAppend
+    onMessageAppend,
+    failedProviders = new Set<string>()
   } = params;
 
   if (response.status === 401 || response.status === 403) {
@@ -417,16 +483,40 @@ async function handleApiError(
     }
     return { retry: false, reason: response.status.toString() };
   }
+  else if (response.status === 400) {
+    const errorMessage = await response.text();
+    console.error("rdlogs:rdlogs:smh 400 error: ", errorMessage);
+    if (errorMessage.includes("is not a valid model ID")) {
+      return { retry: true, reason: "not a valid model ID" };
+    }
+    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
+    return { retry: false, reason: response.status.toString() };
+  }
   else if (response.status === 500 || response.status === 502) {
     await logApiErrorForResponse(response, baseUrl, onMessageAppend);
     const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
     if (!refundStatus.success){
       await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
     }
+    
+    // Mark current provider as failed
+    failedProviders.add(baseUrl);
+    
+    // Try to find next best provider for 50X errors
+    const nextProvider = findNextBestProvider(selectedModel?.id, baseUrl, failedProviders);
+    
+    if (nextProvider) {
+      console.log(`Provider ${baseUrl} returned ${response.status}, switching to ${nextProvider}`);
+      onMessageAppend(createTextMessage('system', `Provider ${baseUrl} is experiencing issues. Retrying with ${nextProvider}...`));
+      return { retry: true, reason: response.status.toString(), newBaseUrl: nextProvider };
+    }
+    
     return { retry: false, reason: response.status.toString() };
   }
   else {
     console.error("rdlogs:rdlogs:smh else else ", response);
+    const errorMessage = await response.text();
+    logApiError(errorMessage, onMessageAppend);
     return { retry: false, reason: response.status.toString() };
   }
 }
@@ -903,4 +993,20 @@ function logApiError(
   }
 
   onMessageAppend(createTextMessage('system', errorMessage));
+}
+
+async function backwardCompatibleModel(selectedModel: string, baseUrl: string): Promise<Model | null> {
+  try {
+    const response = await fetch(`${baseUrl}v1/models`);
+    if (!response.ok) {
+      console.error(`Failed to fetch models: ${response.status}`);
+      return null;
+    }
+    const json = await response.json();
+    const models = Array.isArray(json?.data) ? json.data : [];
+    return models.find((m: Model) => m.id.includes(selectedModel)) || null;
+  } catch (error) {
+    console.error("Error fetching models:", error);
+    return null;
+  }
 }
