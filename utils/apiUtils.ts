@@ -429,8 +429,10 @@ async function handleApiError(
     failedProviders = new Set<string>()
   } = params;
 
-  if (response.status === 401 || response.status === 403) {
-    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
+  if (response.status === 401 || response.status === 403 || response.status === 402 || response.status === 413) {
+    if (response.status !== 402) {
+      await logApiErrorForResponse(response, baseUrl, onMessageAppend);
+    }
     const storedToken = getLocalCashuToken(baseUrl);
     let shouldAttemptUnifiedRefund = true;
 
@@ -456,19 +458,10 @@ async function handleApiError(
     }
     
     removeLocalCashuToken(baseUrl); // Pass baseUrl here
-    return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
-  } 
-  else if (response.status === 402) {
-    removeLocalCashuToken(baseUrl); // Pass baseUrl here
-    return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
-  } 
-  else if (response.status === 413) {
-    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
-    const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
-    if (!refundStatus.success){
-      await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
+    if (response.status === 413) {
+      return { retry: false, reason: response.status.toString() };
     }
-    return { retry: false, reason: response.status.toString() };
+    return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
   }
   else if (response.status === 400) {
     const errorMessage = await response.text();
