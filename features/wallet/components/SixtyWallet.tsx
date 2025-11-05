@@ -413,7 +413,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       setSuccessMessage(null);
       setGeneratedToken("");
 
-      const amountValue = parseInt(sendAmount);
+      const amountValue = currentMintUnit === 'msat' ? parseInt(sendAmount) / 1000 : parseInt(sendAmount);
       const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
       const result = await spendCashu(mintUrl, amountValue, '');
 

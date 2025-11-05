@@ -122,6 +122,7 @@ const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isM
   }, [mintBalances, mintUnits, cashuStore.activeMintUrl, usingNip60]);
 
   const [showTooltip, setShowTooltip] = useState(false); // New state for tooltip visibility
+  const [showMaxBalanceTooltip, setShowMaxBalanceTooltip] = useState(false); // Tooltip for max balance info
   const [apiKeyAmount, setApiKeyAmount] = useState('');
   const [storedApiKeys, setStoredApiKeys] = useState<StoredApiKey[]>([]); // This will now primarily represent the active keys
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -722,21 +723,53 @@ const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isM
       <div className="bg-white/5 border border-white/10 rounded-md p-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-white/70">Available Balance</div>
+            <div className="text-sm text-white/70 flex items-center gap-2">
+              Available Balance
+              <div
+                className="relative inline-block"
+                onMouseEnter={() => setShowMaxBalanceTooltip(true)}
+                onMouseLeave={() => setShowMaxBalanceTooltip(false)}
+              >
+                <Info className="h-4 w-4 text-white/60 hover:text-white transition-colors cursor-pointer" />
+                <div
+                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-black text-white text-xs rounded-md shadow-lg transition-opacity duration-300 w-64 border border-white/30 whitespace-normal z-50 ${
+                    showMaxBalanceTooltip ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                  }`}
+                >
+                  Currently we don't have multiple mint spends yet, so the mint with highest balance is shown here.
+                </div>
+              </div>
+            </div>
             <div className="text-lg font-semibold text-white">
-              {localMintBalance} sats
-              {usingNip60 && cashuStore.activeMintUrl && (
-                <span className="text-xs text-white/50 ml-2">
-                  ({cashuStore.activeMintUrl.replace(/^https?:\/\//, '')})
-                  <button
-                    onClick={() => setActiveTab('wallet')}
-                    className="ml-2 text-white/70 hover:text-white text-xs font-medium"
-                    type="button"
-                  >
-                    Switch
-                  </button>
-                </span>
-              )}
+              {usingNip60 && cashuStore.proofs && Object.keys(mintBalances).length > 1 && (() => {
+                let maxBalance = 0;
+                let maxBalanceMintUrl = '';
+                for (const mintUrl in mintBalances) {
+                  const balance = mintBalances[mintUrl];
+                  const unit = mintUnits[mintUrl];
+                  if (unit === 'msat') {
+                    if (balance / 1000 > maxBalance) {
+                      maxBalance = balance / 1000;
+                      maxBalanceMintUrl = mintUrl;
+                    }
+                  } else {
+                    if (balance > maxBalance) {
+                      maxBalance = balance;
+                      maxBalanceMintUrl = mintUrl;
+                    }
+                  }
+                }
+                return maxBalance !== localMintBalance && (
+                  <>
+                    {maxBalance} sats
+                    {usingNip60 && maxBalanceMintUrl && (
+                      <span className="text-xs text-white/50 ml-2">
+                        ({maxBalanceMintUrl.replace(/^https?:\/\//, '')})
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

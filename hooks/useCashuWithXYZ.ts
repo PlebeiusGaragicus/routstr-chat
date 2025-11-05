@@ -264,14 +264,14 @@ export function useCashuWithXYZ() {
   /**
    * Spend Cashu function with token management logic
    * @param mintUrl The mint URL to send tokens from
-   * @param amount The amount to send
+   * @param amount The amount to send ALWAYS in sats
    * @param baseUrl The base URL for token storage
    * @param p2pkPubkey Optional public key for P2PK
    * @returns Promise with structured result containing token, status, balance, mint, and error message if failed
    */
   const spendCashu = async (
     mintUrl: string,
-    amount: number,
+    amount: number, // Always in sats
     baseUrl: string,
     reuseToken: boolean = false,
     p2pkPubkey?: string,
@@ -324,6 +324,7 @@ export function useCashuWithXYZ() {
     for (const mintUrl in mintBalances) {
       const balance = mintBalances[mintUrl];
       const unit = mintUnits[mintUrl];
+      console.log('rdlogs: mintUrl', mintUrl, balance, unit);
       let balanceInSats = 0;
       if (unit === 'msat') {
         balanceInSats = (balance / 1000);

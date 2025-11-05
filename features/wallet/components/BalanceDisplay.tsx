@@ -627,7 +627,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
       setGeneratedToken("");
       setIsGeneratingSendToken(true);
 
-      const amountValue = parseInt(sendAmount);
+      const amountValue = currentMintUnit === 'msat' ? parseInt(sendAmount) / 1000 : parseInt(sendAmount);
+      
       const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
       const result = await spendCashu(mintUrl, amountValue, '');
 
