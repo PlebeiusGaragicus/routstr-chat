@@ -12,7 +12,12 @@ import { BalanceDisplay } from '@/features/wallet';
  * Handles model selector integration, balance display,
  * mobile menu button, and header layout and styling
  */
-const ChatHeader: React.FC = () => {
+interface ChatHeaderProps {
+  onShowQRCode: (data: { invoice: string; amount: string; unit: string }) => void;
+  isQrModalOpen: boolean;
+}
+
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) => {
   const { isAuthenticated } = useAuth();
   const {
     // Model State
@@ -127,6 +132,8 @@ const ChatHeader: React.FC = () => {
           <BalanceDisplay
             setIsSettingsOpen={setIsSettingsOpen}
             setInitialSettingsTab={setInitialSettingsTab}
+            onShowQRCode={onShowQRCode}
+            isQrModalOpen={isQrModalOpen}
           />
         </div>
       </div>

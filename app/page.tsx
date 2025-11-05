@@ -9,6 +9,7 @@ import SettingsModal from '@/components/SettingsModal';
 import LoginModal from '@/components/LoginModal';
 import TopUpPromptModal from '@/components/TopUpPromptModal';
 import { QueryTimeoutModal } from '@/components/QueryTimeoutModal';
+import QRCodeModal from '@/components/QRCodeModal';
 import { useAuth } from '@/context/AuthProvider';
 import { useChat } from '@/context/ChatProvider';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -63,6 +64,9 @@ function ChatPageContent() {
   const pendingUrlSyncRef = useRef(false);
   const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
   const chatIdFromUrl = useMemo(() => searchParams.get('chatId'), [searchParams]);
+
+  // QR Code Modal State
+  const [qrModalData, setQrModalData] = useState<{ invoice: string; amount: string; unit: string } | null>(null);
 
   useEffect(() => {
     let topUpTimer: NodeJS.Timeout | null = null;
@@ -158,7 +162,7 @@ function ChatPageContent() {
 
   return (
     <div className="flex h-dvh w-full bg-[#181818] text-white overflow-hidden">
-      <ChatContainer />
+      <ChatContainer onShowQRCode={setQrModalData} isQrModalOpen={!!qrModalData} />
 
       {/* Modals */}
       {isSettingsOpen && isAuthenticated && (
@@ -206,6 +210,15 @@ function ChatPageContent() {
       <QueryTimeoutModal
         isOpen={showQueryTimeoutModal || (didRelaysTimeout && !isWalletLoading)}
         onClose={() => { console.log('rdlogs: closing query timeout modal', showQueryTimeoutModal, didRelaysTimeout, isWalletLoading); setShowQueryTimeoutModal(false); setDidRelaysTimeout(false); }}
+      />
+
+      {/* QR Code Modal */}
+      <QRCodeModal
+        isOpen={!!qrModalData}
+        onClose={() => setQrModalData(null)}
+        invoice={qrModalData?.invoice || ''}
+        amount={qrModalData?.amount || ''}
+        unit={qrModalData?.unit || ''}
       />
     </div>
   );

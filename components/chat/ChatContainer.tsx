@@ -13,7 +13,12 @@ import Sidebar from './Sidebar';
  * Handles overall layout structure, responsive design logic,
  * component composition, and event handling coordination
  */
-const ChatContainer: React.FC = () => {
+interface ChatContainerProps {
+  onShowQRCode: (data: { invoice: string; amount: string; unit: string }) => void;
+  isQrModalOpen: boolean;
+}
+
+const ChatContainer: React.FC<ChatContainerProps> = ({ onShowQRCode, isQrModalOpen }) => {
   const { isAuthenticated } = useAuth();
   const {
     // UI State
@@ -71,7 +76,7 @@ const ChatContainer: React.FC = () => {
       {/* Main Chat Area */}
       <div className={`${!isMobile && isAuthenticated && !isSidebarCollapsed ? 'ml-72' : 'ml-0'} flex-1 flex flex-col h-full overflow-hidden relative transition-[margin] duration-300 ease-in-out`}>
         {/* Fixed Header */}
-        <ChatHeader />
+        <ChatHeader onShowQRCode={onShowQRCode} isQrModalOpen={isQrModalOpen} />
 
         {/* Main Chat Content */}
         <MainChatArea />

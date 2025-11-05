@@ -39,9 +39,11 @@ import { DEFAULT_MINT_URL } from '@/lib/utils';
 interface BalanceDisplayProps {
   setIsSettingsOpen: (isOpen: boolean) => void;
   setInitialSettingsTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void;
+  onShowQRCode: (data: { invoice: string; amount: string; unit: string }) => void;
+  isQrModalOpen: boolean;
 }
 
-const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setInitialSettingsTab }) => {
+const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setInitialSettingsTab, onShowQRCode, isQrModalOpen }) => {
   const { isAuthenticated } = useAuth();
   const { balance, currentMintUnit, mintBalances, mintUnits, isBalanceLoading, setIsLoginModalOpen, baseUrl, transactionHistory, setTransactionHistory, setBalance } = useChat();
   const { publicKey } = useNostr();
@@ -847,7 +849,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
   }
 
   return (
-    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+    <Popover 
+      open={isPopoverOpen} 
+      onOpenChange={(open) => {
+        // Prevent closing the popover when QR modal is open
+        if (!open && isQrModalOpen) {
+          return;
+        }
+        setIsPopoverOpen(open);
+      }}
+    >
       <PopoverTrigger asChild>
         <button className={"flex items-center gap-2 text-white bg-white/5 hover:bg-white/10 rounded-md py-2 px-3 sm:px-4 h-[36px] text-xs sm:text-sm transition-colors cursor-pointer border border-white/10 justify-center"}>
           <svg
@@ -1575,14 +1586,32 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                   </div>
 
                   {/* QR Code Display */}
-                  <div className="bg-white/5 border border-white/20 rounded-lg p-3 flex items-center justify-center">
-                    <div className="bg-white rounded-lg p-2">
-                      <QRCode
-                        value={usingNip60 ? nip60Invoice : mintInvoice}
-                        size={120}
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                      />
+                  <div className="relative">
+                    <div 
+                      className="bg-white/5 border border-white/20 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors"
+                      onClick={() => onShowQRCode({
+                        invoice: usingNip60 ? nip60Invoice : mintInvoice,
+                        amount: mintAmount,
+                        unit: currentMintUnit
+                      })}
+                      role="button"
+                      title="Click to zoom QR code"
+                    >
+                      <div className="bg-white rounded-lg p-2">
+                        <QRCode
+                          value={usingNip60 ? nip60Invoice : mintInvoice}
+                          size={120}
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      </div>
+                    </div>
+                    {/* Zoom hint */}
+                    <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm border border-white/20 rounded-md px-2 py-1 flex items-center gap-1 pointer-events-none">
+                      <svg className="h-3 w-3 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                      <span className="text-white/70 text-xs">Zoom</span>
                     </div>
                   </div>
 
