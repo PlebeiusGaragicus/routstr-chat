@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders } from '@/utils/storageUtils';
+import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable } from '@/utils/modelUtils';
+import { getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
 
 export interface UseApiStateReturn {
   models: Model[];
@@ -16,6 +17,7 @@ export interface UseApiStateReturn {
   setBaseUrl: (url: string) => void;
   fetchModels: (balance: number) => Promise<void>; // Modified to accept balance
   handleModelChange: (modelId: string, configuredKeyOverride?: string) => void;
+  lowBalanceWarningForModel: boolean;
 }
 
 /**
@@ -30,6 +32,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [baseUrl, setBaseUrlState] = useState('');
   const [baseUrlsList, setBaseUrlsList] = useState<string[]>([]);
+  const [lowBalanceWarningForModel, setLowBalanceWarningForModel] = useState(false);
   // Removed unused currentBaseUrlIndex state
 
   // Initialize URLs from storage
@@ -273,12 +276,60 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     }
   }, [searchParams, baseUrlsList, bootstrapProviders]);
 
-  // Fetch models when providers are available and user is authenticated
+  // Fetch available mints from each provider's /v1/info endpoint
+  const fetchMints = useCallback(async () => {
+    try {
+      let bases = baseUrlsList;
+      if (!bases || bases.length === 0) {
+        // If no providers yet, skip (will be called again after bootstrap)
+        return;
+      }
+
+      // Store mints from all providers
+      const mintsFromAllProviders: Record<string, string[]> = {};
+
+      // Fetch info from each provider
+      const fetchPromises = bases.map(async (url) => {
+        const base = url.endsWith('/') ? url : `${url}/`;
+        try {
+          const res = await fetch(`${base}v1/info`);
+          if (!res.ok) throw new Error(`Failed ${res.status}`);
+          const json = await res.json();
+          
+          // Extract mints array from response
+          const mints: string[] = Array.isArray(json?.mints) ? json.mints : [];
+          
+          // Save provider mints
+          mintsFromAllProviders[base] = mints;
+          
+          return { success: true, base, mints };
+        } catch (error) {
+          console.warn(`Failed to fetch mints from ${base}:`, error);
+          return { success: false, base };
+        }
+      });
+
+      // Wait for all to complete
+      await Promise.allSettled(fetchPromises);
+
+      // Save all provider mints to localStorage
+      try {
+        saveMintsFromAllProviders(mintsFromAllProviders);
+      } catch (error) {
+        console.error('Error saving mints to localStorage:', error);
+      }
+    } catch (error) {
+      console.error('Error while fetching mints', error);
+    }
+  }, [baseUrlsList]);
+
+  // Fetch models and mints when providers are available and user is authenticated
   // Intentionally NOT dependent on balance to avoid reloading the selector on wallet updates
   useEffect(() => {
     if (!isAuthenticated) return;
     // Always attempt to fetch; will bootstrap providers if missing
     fetchModels(balance);
+    fetchMints();
   }, [isAuthenticated, baseUrlsList.length]);
 
   // Auto-select model based on balance when balance changes
@@ -287,13 +338,17 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     if (!isAuthenticated || models.length === 0) return;
 
     // Only auto-select if no model is selected or current model is not available
-    if (!selectedModel || !isModelAvailable(selectedModel, balance)) {
+    if (!selectedModel) {
       const compatible = models.filter((m: Model) => isModelAvailable(m, balance));
       
       if (compatible.length > 0) {
         // Select the first compatible model (models are already sorted by price)
         handleModelChange(compatible[0].id);
       }
+    }
+    if (selectedModel) {
+      const totalPendingBalance = getPendingCashuTokenDistribution().reduce((total, item) => total + item.amount, 0);
+      setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + totalPendingBalance));
     }
   }, [balance, models, isAuthenticated, selectedModel]);
 
@@ -390,6 +445,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     setIsLoadingModels,
     setBaseUrl,
     fetchModels,
-    handleModelChange
+    handleModelChange,
+    lowBalanceWarningForModel
   };
 };

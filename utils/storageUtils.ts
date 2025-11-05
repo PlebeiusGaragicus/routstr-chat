@@ -467,7 +467,8 @@ export const STORAGE_KEYS = {
   WRAPPED_CASHU_TOKENS: 'wrapped_cashu_tokens',
   RELAYS: 'nostr_relays',
   TOPUP_PROMPT_SEEN: 'topup_prompt_seen',
-  DISABLED_PROVIDERS: 'disabled_providers'
+  DISABLED_PROVIDERS: 'disabled_providers',
+  MINTS_FROM_ALL_PROVIDERS: 'mints_from_all_providers'
 } as const;
 
 /**
@@ -552,4 +553,43 @@ export const loadDisabledProviders = (): string[] => {
  */
 export const saveDisabledProviders = (disabledProviders: string[]): void => {
   setStorageItem(STORAGE_KEYS.DISABLED_PROVIDERS, disabledProviders);
+};
+
+/**
+ * Load mints from all providers
+ * @returns Record mapping provider base URL to array of mint URLs
+ */
+export const loadMintsFromAllProviders = (): Record<string, string[]> => {
+  return getStorageItem<Record<string, string[]>>(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, {});
+};
+
+/**
+ * Save mints from all providers to localStorage
+ * @param mintsMap Record mapping provider base URL to array of mint URLs
+ */
+export const saveMintsFromAllProviders = (mintsMap: Record<string, string[]>): void => {
+  setStorageItem(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, mintsMap);
+};
+
+/**
+ * Get mints for a specific provider
+ * @param providerBaseUrl Provider base URL
+ * @returns Array of mint URLs for the provider
+ */
+export const getProviderMints = (providerBaseUrl: string): string[] => {
+  const allMints = loadMintsFromAllProviders();
+  const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+  return allMints[normalized] || [];
+};
+
+/**
+ * Set mints for a specific provider
+ * @param providerBaseUrl Provider base URL
+ * @param mints Array of mint URLs
+ */
+export const setProviderMints = (providerBaseUrl: string, mints: string[]): void => {
+  const allMints = loadMintsFromAllProviders();
+  const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+  allMints[normalized] = mints;
+  saveMintsFromAllProviders(allMints);
 };

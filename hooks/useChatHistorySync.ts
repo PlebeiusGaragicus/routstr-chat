@@ -395,7 +395,6 @@ export const useChatHistorySync = ({
 
             try {
               const decryptedChunk = await nip44.decrypt(user.pubkey, chunkEvent.content);
-              console.log(decryptedChunk)
               reconstructedParts.push(decryptedChunk);
             } catch (error) {
               console.error('Failed to decrypt chat history chunk:', error);

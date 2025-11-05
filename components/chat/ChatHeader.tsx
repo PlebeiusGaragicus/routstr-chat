@@ -38,6 +38,9 @@ const ChatHeader: React.FC = () => {
     // Balance
     balance,
 
+    // API State
+    lowBalanceWarningForModel,
+
     // Settings
     setIsSettingsOpen,
     setInitialSettingsTab
@@ -113,6 +116,7 @@ const ChatHeader: React.FC = () => {
               setIsSettingsOpen(true);
               setInitialSettingsTab('models');
             }}
+            lowBalanceWarningForModel={lowBalanceWarningForModel}
           />
         </div>
 
