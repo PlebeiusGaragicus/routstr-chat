@@ -277,6 +277,9 @@ export function useCashuWithXYZ() {
     excludeMints: string[] = [],
     retryCount: number = 0
  ): Promise<SpendCashuResult> => {
+    // Read latest balances/units from store to avoid stale closure
+    let latestMintBalances = mintBalances;
+    let latestMintUnits = mintUnits;
     // Check if amount is a decimal and round up if necessary
     let adjustedAmount = amount;
     if (amount % 1 !== 0) {
@@ -319,10 +322,15 @@ export function useCashuWithXYZ() {
     }
     let nip60Balance = 0; 
     const localBalance = getBalanceFromStoredProofs();
+    if (retryCount > 0) { // If retrying, get the latest proofs from the store
+      const proofs = await cashuStore.getAllProofs();
+      latestMintBalances = calculateBalanceByMint(proofs, cashuStore.mints).balances;
+      latestMintUnits = calculateBalanceByMint(proofs, cashuStore.mints).units;
+    }
 
-    for (const mintUrl in mintBalances) {
-      const balance = mintBalances[mintUrl];
-      const unit = mintUnits[mintUrl];
+    for (const mintUrl in latestMintBalances) {
+      const balance = latestMintBalances[mintUrl];
+      const unit = latestMintUnits[mintUrl];
       let balanceInSats = 0;
       if (unit === 'msat') {
         balanceInSats = (balance / 1000);
@@ -352,8 +360,8 @@ export function useCashuWithXYZ() {
     if (usingNip60) {      // Generate new token if none exists
 
       // Check if the active mint has sufficient balance
-      const activeMintBalance = mintBalances[mintUrl] || 0;
-      const activeMintUnit = mintUnits[mintUrl];
+      const activeMintBalance = latestMintBalances[mintUrl] || 0;
+      const activeMintUnit = latestMintUnits[mintUrl];
       let activeMintBalanceInSats = 0;
       if (activeMintUnit === 'msat') {
         activeMintBalanceInSats = activeMintBalance / 1000;
@@ -364,8 +372,8 @@ export function useCashuWithXYZ() {
 
       // Check if any mint has sufficient balance
       let { selectedMintUrl, selectedMintBalance } = selectMintWithBalance(
-        mintBalances,
-        mintUnits,
+        latestMintBalances,
+        latestMintUnits,
         adjustedAmount,
         excludeMints
       );
@@ -375,7 +383,7 @@ export function useCashuWithXYZ() {
         let alternateMintBalance: number = selectedMintBalance;
         while (alternateMintUrl && !providerMints?.includes(alternateMintUrl) && !excludeMints.includes(alternateMintUrl)) {
           excludeMints.push(alternateMintUrl);
-          const { selectedMintUrl: newMintUrl, selectedMintBalance: newMintBalance } = selectMintWithBalance(mintBalances, mintUnits, adjustedAmount, excludeMints);
+          const { selectedMintUrl: newMintUrl, selectedMintBalance: newMintBalance } = selectMintWithBalance(latestMintBalances, latestMintUnits, adjustedAmount, excludeMints);
           if (newMintUrl) {
             alternateMintUrl = newMintUrl;
             alternateMintBalance = newMintBalance;
@@ -402,13 +410,13 @@ export function useCashuWithXYZ() {
           // If NetworkError, try with an alternate mint excluding the current active mint
           if (errorMsg.includes('NetworkError when attempting to fetch resource')) {
             const { selectedMintUrl: alternateMintUrl } = selectMintWithBalance(
-              mintBalances,
-              mintUnits,
+              latestMintBalances,
+              latestMintUnits,
               adjustedAmount,
               [...(excludeMints || []), ...(mintUrl ? [mintUrl] : [])]
             );
             
-            if (alternateMintUrl && retryCount < Object.keys(mintBalances).length) {
+            if (alternateMintUrl && retryCount < Object.keys(latestMintBalances).length) {
               console.log(`NetworkError on active mint. Retrying with alternate mint ${alternateMintUrl}`);
               return spendCashu(alternateMintUrl as string, amount, baseUrl, false, p2pkPubkey, [...(excludeMints || []), ...(mintUrl ? [mintUrl] : [])], retryCount + 1);
             }
@@ -463,9 +471,12 @@ export function useCashuWithXYZ() {
       
       if (refundSuccessful) {
         console.log('All pending balances refunded. Retrying spend...');
+        // Update pending amount state so UI reflects cleared pendings immediately
+        setPendingCashuAmountState(getPendingCashuTokenAmount());
         return spendCashu(mintUrl, amount, baseUrl, false, p2pkPubkey, excludeMints, retryCount + 1);
       } else {
         console.error('Some refunds failed, still gonna retry');
+        setPendingCashuAmountState(getPendingCashuTokenAmount());
         return spendCashu(mintUrl, amount, baseUrl, false, p2pkPubkey, excludeMints, retryCount + 1);
       }
     } else {
@@ -475,9 +486,9 @@ export function useCashuWithXYZ() {
       console.error('\nAll mint balances:');
       let maxMintBalance = 0;
       let maxMintUrl = '';
-      for (const mintUrl in mintBalances) {
-        const balance = mintBalances[mintUrl];
-        const unit = mintUnits[mintUrl];
+      for (const mintUrl in latestMintBalances) {
+        const balance = latestMintBalances[mintUrl];
+        const unit = latestMintUnits[mintUrl];
         let balanceInSats = 0;
         if (unit === 'msat') {
           balanceInSats = balance / 1000;

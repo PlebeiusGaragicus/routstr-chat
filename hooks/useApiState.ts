@@ -337,9 +337,27 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   useEffect(() => {
     if (!isAuthenticated || models.length === 0) return;
 
+    const lastUsedModelId = loadLastUsedModel();
+    if (lastUsedModelId) {
+      const model = models.find((m: Model) => m.id === lastUsedModelId);
+      if (model) {
+        setSelectedModel(model);
+      }
+    }
     // Only auto-select if no model is selected or current model is not available
     if (!selectedModel) {
-      const compatible = models.filter((m: Model) => isModelAvailable(m, balance));
+      const compatible = models.filter((m: Model) => isModelAvailable(m, balance))
+        .sort((a, b) => {
+          const aMaxCost = Math.max(
+            Number(a.sats_pricing?.max_cost) || 0,
+            Number(a.sats_pricing?.max_completion_cost) || 0
+          );
+          const bMaxCost = Math.max(
+            Number(b.sats_pricing?.max_cost) || 0,
+            Number(b.sats_pricing?.max_completion_cost) || 0
+          );
+          return bMaxCost - aMaxCost; // Descending order
+        });
       
       if (compatible.length > 0) {
         // Select the first compatible model (models are already sorted by price)

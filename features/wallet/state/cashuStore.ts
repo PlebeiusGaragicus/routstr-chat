@@ -34,6 +34,7 @@ interface CashuStore {
   removeProofs: (proofs: Proof[]) => void;
   setPrivkey: (privkey: string) => void;
   getMintProofs: (mintUrl: string) => Promise<Proof[]>;
+  getAllProofs: () => Promise<Proof[]>;
   setProofEventId: (proof: Proof, eventId: string) => void;
   getProofEventId: (proof: Proof) => string | undefined;
   getProofsByEventId: (eventId: string) => Proof[];
@@ -137,6 +138,14 @@ export const useCashuStore = create<CashuStore>()(
         // const activeKeysets = keysets.filter((keyset) => keyset.active);
         // get all proofs for the keysets from store
         const proofs = get().proofs.filter((proof) => keysets.some((keyset) => keyset.id === proof.id));
+        return proofs;
+      },
+
+      async getAllProofs(): Promise<Proof[]> {
+        const proofs = get().proofs;
+        if (!proofs) {
+          throw new Error('No proofs found');
+        }
         return proofs;
       },
 

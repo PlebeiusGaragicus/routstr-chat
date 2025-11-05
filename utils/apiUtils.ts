@@ -348,27 +348,27 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       throw new Error('Response body is not available');
     }
 
-    const streamingResult = await processStreamingResponse(response, onStreamingUpdate, onThinkingUpdate, selectedModel?.id);
-
-    if (streamingResult.content || streamingResult.images) {
-      const assistantMessage = createAssistantMessage(streamingResult);
-      onMessagesUpdate([...messageHistory, assistantMessage]);
-    }
-
-    let estimatedCosts = 0; // Initialize to 0
-    // Log usage statistics if available
-    if (streamingResult.usage) {
-      if ( streamingResult.usage.completion_tokens !== undefined && streamingResult.usage.prompt_tokens !== undefined) {
-        estimatedCosts = selectedModel?.sats_pricing.completion * streamingResult.usage.completion_tokens + selectedModel?.sats_pricing.prompt * streamingResult.usage.prompt_tokens
-        console.log("Estimated costs: ", estimatedCosts);
-      }
-    }
-
-    onStreamingUpdate('');
-    onThinkingUpdate('');
-
     // Handle refund and balance update
     if (response.status === 200) {
+
+      const streamingResult = await processStreamingResponse(response, onStreamingUpdate, onThinkingUpdate, selectedModel?.id); 
+      if (streamingResult.content || streamingResult.images) {
+        const assistantMessage = createAssistantMessage(streamingResult);
+        onMessagesUpdate([...messageHistory, assistantMessage]);
+      }
+
+      let estimatedCosts = 0; // Initialize to 0
+      // Log usage statistics if available
+      if (streamingResult.usage) {
+        if ( streamingResult.usage.completion_tokens !== undefined && streamingResult.usage.prompt_tokens !== undefined) {
+          estimatedCosts = selectedModel?.sats_pricing.completion * streamingResult.usage.completion_tokens + selectedModel?.sats_pricing.prompt * streamingResult.usage.prompt_tokens
+          console.log("Estimated costs: ", estimatedCosts);
+        }
+      }
+
+      onStreamingUpdate('');
+      onThinkingUpdate('');
+
       await handlePostResponseRefund({
         mintUrl,
         baseUrl,
@@ -384,6 +384,9 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
         estimatedCosts,
         unit: decodedToken.unit ?? 'sat'
       });
+    }
+    else {
+      throw new Error(`${response.status} ${response.statusText}`);
     }
 
   } catch (error) {
@@ -467,7 +470,7 @@ async function handleApiError(
     const errorMessage = await response.text();
     console.error("rdlogs:rdlogs:smh 400 error: ", errorMessage);
     if (errorMessage.includes("is not a valid model ID")) {
-      return { retry: true, reason: "not a valid model ID" };
+      return { retry: retryOnInsufficientBalance, reason: "not a valid model ID" };
     }
     await logApiErrorForResponse(response, baseUrl, onMessageAppend);
     return { retry: false, reason: response.status.toString() };
