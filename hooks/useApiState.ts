@@ -3,7 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
 import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders } from '@/utils/storageUtils';
-import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels } from '@/utils/modelUtils';
+import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable } from '@/utils/modelUtils';
 
 export interface UseApiStateReturn {
   models: Model[];
@@ -285,37 +285,10 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   // Only auto-selects if no model is selected or current model is not available
   useEffect(() => {
     if (!isAuthenticated || models.length === 0) return;
-    
-    // Check if current model is available with current balance
-    const isCurrentModelAvailable = selectedModel && (() => {
-      try {
-        const sp: any = selectedModel?.sats_pricing as any;
-        if (!sp) return true; // If no pricing info, assume available
-        const required = Math.max(
-          Number(sp.max_cost) || 0,
-          Number(sp.max_completion_cost) || 0
-        );
-        return required <= 0 || balance >= required;
-      } catch {
-        return true;
-      }
-    })();
 
     // Only auto-select if no model is selected or current model is not available
-    if (!selectedModel || !isCurrentModelAvailable) {
-      const compatible = models.filter((m: Model) => {
-        try {
-          const sp: any = m.sats_pricing as any;
-          if (!sp) return false;
-          const required = Math.max(
-            Number(sp.max_cost) || 0,
-            Number(sp.max_completion_cost) || 0
-          );
-          return required > 0 && balance >= required;
-        } catch {
-          return false;
-        }
-      });
+    if (!selectedModel || !isModelAvailable(selectedModel, balance)) {
+      const compatible = models.filter((m: Model) => isModelAvailable(m, balance));
       
       if (compatible.length > 0) {
         // Select the first compatible model (models are already sorted by price)

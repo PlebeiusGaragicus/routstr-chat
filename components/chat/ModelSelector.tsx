@@ -5,7 +5,7 @@ import { Model } from '@/data/models';
 import { getModelNameWithoutProvider, getProviderFromModelName } from '@/data/models';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';
-import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels } from '@/utils/modelUtils';
+import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels, getRequiredSatsForModel, isModelAvailable } from '@/utils/modelUtils';
 
 interface ModelSelectorProps {
   selectedModel: Model | null;
@@ -342,44 +342,6 @@ export default function ModelSelector({
     const mappedBase = base || modelProviderMap[currentConfiguredKey || ''] || modelProviderMap[selectedModel.id];
     return formatProviderLabel(mappedBase, selectedModel);
   }, [selectedModel, currentConfiguredKey, modelProviderMap]);
-
-  // Determine required minimum sats to run a request for a model
-  const getRequiredMinSats = (model: Model): number => {
-    try {
-      const approximateTokens = 10000; // Assumed tokens for minimum balance calculation
-      const sp: any = model?.sats_pricing as any;
-      
-      if (!sp) return 0;
-      
-      // If we don't have max_completion_cost, fall back to max_cost
-      if (!sp.max_completion_cost) {
-        return sp.max_cost ?? 50;
-      }
-      
-      // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
-      const promptCosts = (sp.prompt || 0) * approximateTokens;
-      const totalEstimatedCosts = promptCosts + sp.max_completion_cost;
-      return totalEstimatedCosts * 1.05; // Added a 5% margin
-    } catch (e) {
-      console.error(e);
-      return 0;
-    }
-  };
-
-  // Check if a model is available based on balance
-  const isModelAvailable = (model: Model) => {
-    try {
-      const required = getRequiredMinSats(model);
-      if (!required || required <= 0) return true;
-      return balance >= required;
-    }
-    catch(error){ 
-      console.log(model);
-      console.error(error);
-      return true;
-    }
-  };
-
   
 
   // Focus search input when drawer opens
@@ -544,8 +506,8 @@ export default function ModelSelector({
     const providerModels = baseForPricing ? providerModelCache[baseForPricing] : undefined;
     const providerSpecificModel = providerModels ? providerModels[model.id] : undefined;
     const effectiveModelForPricing = providerSpecificModel || model;
-    const isAvailable = isModelAvailable(effectiveModelForPricing);
-    const requiredMin = getRequiredMinSats(effectiveModelForPricing);
+    const isAvailable = isModelAvailable(effectiveModelForPricing, balance);
+    const requiredMin = getRequiredSatsForModel(effectiveModelForPricing);
     const isFav = isFavorite || isConfiguredModel(model.id);
     const effectiveProviderLabel = providerLabel || formatProviderLabel(baseForPricing, model);
     const isDynamicProvider = !isFixedProvider;
@@ -769,7 +731,7 @@ export default function ModelSelector({
           </div>
           {(effectiveModel?.sats_pricing) && (
             <div className="text-[11px] text-white/50">
-              Est. min: {getRequiredMinSats(effectiveModel).toFixed(0)} sats
+              Est. min: {getRequiredSatsForModel(effectiveModel).toFixed(0)} sats
             </div>
           )}
         </div>

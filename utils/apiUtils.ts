@@ -6,6 +6,7 @@ import { getDecodedToken } from '@cashu/cashu-ts';
 import { isThinkingCapableModel } from './thinkingParser';
 import { SpendCashuResult } from '@/hooks/useCashuWithXYZ';
 import { Model } from '@/data/models';
+import { getRequiredSatsForModel } from './modelUtils';
 
 /**
  * Helper function to properly read response body text from a ReadableStream
@@ -226,20 +227,6 @@ async function routstrRequest(params: {
  * @returns Promise that resolves when the response is complete
  */
 
-/**
- * Gets the token amount to use for a model, with fallback to default
- * @param selectedModel The currently selected model
- * @returns The token amount in sats
- */
-const getTokenAmountForModel = (selectedModel: any, apiMessages: any[]): number => {
-  const approximateTokens = Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84);
-  if (!selectedModel?.sats_pricing?.max_completion_cost) {
-    return selectedModel?.sats_pricing?.max_cost ?? 50;
-  }
-  const promptCosts = selectedModel?.sats_pricing?.prompt * approximateTokens;
-  const totalEstimatedCosts = promptCosts + selectedModel?.sats_pricing?.max_completion_cost;
-  return (totalEstimatedCosts * 1.05); // Added a 5% margin
-};
 
 export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<void> => {
   const {
@@ -272,7 +259,7 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
   
   console.log(apiMessages);
 
-  const tokenAmount = getTokenAmountForModel(selectedModel, apiMessages);
+  const tokenAmount = getRequiredSatsForModel(selectedModel, apiMessages);
   let tokenBalance = 0;
 
   try {
