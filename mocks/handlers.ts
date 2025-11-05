@@ -90,6 +90,27 @@ export const handlers = [
       );
     }
 
+    if (scenario && (scenario === '400' || scenario === 'bad-request' || scenario === 'invalid-model')) {
+      const latency = request.headers.get('X-Mock-Latency');
+      if (latency) {
+        const ms = Number.isNaN(Number(latency))
+          ? latency === 'slow' ? 1500 : latency === 'timeout' ? 10000 : 0
+          : Number(latency);
+        if (ms > 0) await delay(ms);
+      }
+
+      return HttpResponse.text(
+        'model-xyz is not a valid model ID',
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'text/plain',
+            'x-routstr-request-id': 'a00b11c-4i96-0hjj-h7ff-05i5000jl52i',
+          },
+        }
+      );
+    }
+
     if (scenario && (scenario === '413' || scenario === 'payload-too-large')) {
       const latency = request.headers.get('X-Mock-Latency');
       if (latency) {
