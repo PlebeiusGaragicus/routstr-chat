@@ -41,6 +41,8 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
   const [cashuToken, setCashuToken] = useState('');
   const [isReceivingToken, setIsReceivingToken] = useState(false);
   const [activeTab, setActiveTab] = useState<'lightning' | 'token' | 'wallet'>('lightning');
+  const [nwcCustomAmount, setNwcCustomAmount] = useState('');
+  const [isPayingWithNWC, setIsPayingWithNWC] = useState(false);
 
   useEffect(() => {
     let unsubConnect: undefined | (() => void);
@@ -279,6 +281,95 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
     }
   };
 
+  const handlePayWithNWC = async (amount?: number) => {
+    if (bcStatus !== 'connected') {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!cashuStore.activeMintUrl) {
+      setError('No active mint selected.');
+      return;
+    }
+
+    const amt = amount !== undefined ? amount : parseInt(nwcCustomAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setError('Enter a valid amount');
+      return;
+    }
+
+    try {
+      setIsPayingWithNWC(true);
+      setError(null);
+
+      // Create invoice
+      const invoiceData = await createLightningInvoice(cashuStore.activeMintUrl, amt);
+      const paymentRequest = invoiceData.paymentRequest;
+      const qid = invoiceData.quoteId;
+
+      await addInvoice({
+        type: 'mint',
+        mintUrl: cashuStore.activeMintUrl,
+        quoteId: qid,
+        paymentRequest,
+        amount: amt,
+        state: MintQuoteState.UNPAID,
+        expiresAt: invoiceData.expiresAt
+      });
+
+      const pendingId = crypto.randomUUID();
+      const pendingTx: PendingTransaction = {
+        id: pendingId,
+        direction: 'in',
+        amount: amt.toString(),
+        timestamp: Math.floor(Date.now() / 1000),
+        status: 'pending',
+        mintUrl: cashuStore.activeMintUrl,
+        quoteId: qid,
+        paymentRequest,
+      };
+      transactionHistoryStore.addPendingTransaction(pendingTx);
+
+      // Pay with connected wallet
+      try {
+        const mod = await import('@getalby/bitcoin-connect-react');
+        const provider = await mod.requestProvider();
+        const res = await provider.sendPayment(paymentRequest);
+        
+        // Check payment status and update proofs
+        if (res && (res as any).preimage) {
+          const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, qid, amt);
+          if (proofs.length > 0) {
+            await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
+            await updateInvoice(qid, { state: MintQuoteState.PAID, paidAt: Date.now() });
+            transactionHistoryStore.removePendingTransaction(pendingId);
+            setSuccessMessage(`Received ${formatBalance(amt, 'sats')}!`);
+            setNwcCustomAmount('');
+            setTimeout(() => {
+              setSuccessMessage(null);
+              onClose();
+            }, 2000);
+          } else {
+            // Start polling if proofs not immediately available
+            void checkPaymentStatus(cashuStore.activeMintUrl, qid, amt, pendingId);
+          }
+        } else {
+          // Start polling
+          void checkPaymentStatus(cashuStore.activeMintUrl, qid, amt, pendingId);
+        }
+      } catch (paymentError) {
+        console.error('Error paying with NWC:', paymentError);
+        setError('Payment failed. Please try again.');
+        void checkPaymentStatus(cashuStore.activeMintUrl, qid, amt, pendingId);
+      }
+    } catch (e) {
+      console.error('Error creating invoice:', e);
+      setError('Failed to create invoice');
+    } finally {
+      setIsPayingWithNWC(false);
+    }
+  };
+
   const modalContent = (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-white">Top Up</h2>
@@ -316,7 +407,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
           }`}
           type="button"
         >
-          Wallet
+          NWC
         </button>
       </div>
 
@@ -340,6 +431,16 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
               )}
             </div>
           </div>
+
+          {invoice && (
+            <button
+              onClick={copyInvoiceToClipboard}
+              className="w-full px-4 py-2 text-sm bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white transition-all"
+              type="button"
+            >
+              Copy Invoice
+            </button>
+          )}
 
           <div className="flex gap-2">
             {quickAmounts.map(a => (
@@ -387,51 +488,6 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
             </button>
           </div>
 
-          {invoice && (
-            <div className="space-y-3">
-              <div className="text-white/50 text-xs text-center">Waiting for payment...</div>
-              {/* Bitcoin Connect: Pay Button */}
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-white/70">Pay with connected wallet</span>
-                  <button
-                    onClick={async () => {
-                      setIsProcessing(true);
-                      try {
-                        const mod = await import('@getalby/bitcoin-connect-react');
-                        const provider = await mod.requestProvider();
-                        try {
-                          const res = await provider.sendPayment(invoice);
-                          if (res && (res as any).preimage) {
-                            await handlePaid(res);
-                          } else {
-                            await handlePaid(null);
-                          }
-                        } catch {
-                          await handlePaid(null);
-                        }
-                      } catch {}
-                      setIsProcessing(false);
-                    }}
-                    disabled={isProcessing}
-                    className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
-                    type="button"
-                  >
-                    {isProcessing ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
-                        </svg>
-                        Paying...
-                      </span>
-                    ) : (
-                      'Pay'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -484,7 +540,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
 
       {/* Wallet Tab */}
       {activeTab === 'wallet' && (
-        <div className="flex flex-col justify-center h-full">
+        <div className="space-y-4">
           <div className="bg-white/5 border border-white/20 rounded-lg p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -523,6 +579,59 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
               )}
             </div>
           </div>
+
+          {bcStatus === 'connected' && (
+            <>
+              <div className="flex gap-2">
+                {quickAmounts.map(a => (
+                  <button
+                    key={a}
+                    onClick={() => { void handlePayWithNWC(a); }}
+                    disabled={isPayingWithNWC}
+                    className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/30 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/5"
+                    type="button"
+                  >
+                    {a} sats
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Custom amount (sats)"
+                  value={nwcCustomAmount}
+                  onChange={(e) => setNwcCustomAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handlePayWithNWC();
+                    }
+                  }}
+                  disabled={isPayingWithNWC}
+                  className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <button
+                  onClick={() => { void handlePayWithNWC(); }}
+                  disabled={isPayingWithNWC || !nwcCustomAmount.trim()}
+                  className="bg-white/10 hover:bg-white/15 border border-white/20 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+                  type="button"
+                >
+                  {isPayingWithNWC ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                      </svg>
+                      Paying...
+                    </span>
+                  ) : (
+                    'Pay'
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
       </div>
@@ -537,7 +646,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
 
       {/* Login button */}
       <div className="pt-2">
-        <div className="text-center text-xs text-white/50 mb-2">Or</div>
+        <div className="text-center text-base font-bold text-white/70 mb-2">OR</div>
         <button
           onClick={() => { onClose(); setIsLoginModalOpen(true); }}
           className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors cursor-pointer"
