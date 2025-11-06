@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, XCircle, Copy } from 'lucide-react';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import NostrRelayManager from './NostrRelayManager'; // Import the new component
+import NWCWalletManager from './NWCWalletManager'; // Import the NWC wallet manager
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useNostrLogin } from '@nostrify/react/login';
@@ -83,6 +84,9 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
       {/* Nostr Relays */}
       <NostrRelayManager />
 
+      {/* NWC Wallet */}
+      <NWCWalletManager />
+
       {/* Model configuration moved to Models tab */}
 
       {/* Account Section */}
@@ -149,7 +153,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
         <div className="flex gap-2 mt-2">
           {loginType === 'nsec' && nsecData && (
             <button
-              className="flex-grow flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
+              className="grow flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
               onClick={() => {
                 const nsec = nsecData && 'nsec' in nsecData && typeof nsecData.nsec === 'string' && nsecData.nsec.startsWith('nsec1') ? nsecData.nsec : '';
                 setNsecValue(nsec);
@@ -162,7 +166,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
           )}
           {logout && router && (
             <button
-              className="flex-grow flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 text-white px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
+              className="grow flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 text-white px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
               onClick={() => {
                 if (window.confirm('Are you sure you want to sign out?')) {
                   logout();
@@ -179,7 +183,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
         </div>
         {showNsec && (
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-md text-sm text-white break-all mt-2">
-            <span className="flex-grow">
+            <span className="grow">
               {nsecValue ? `${nsecValue.slice(0, 4)}${'•'.repeat(Math.max(0, nsecValue.length - 4))}` : ''}
             </span>
             <button
