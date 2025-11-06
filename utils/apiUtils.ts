@@ -279,7 +279,8 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       if (
         errorMessage.includes("can't access property \"filter\", keysets.keysets is undefined") ||
         errorMessage.includes("NetworkError when attempting to fetch resource") ||
-        errorMessage.includes("Failed to fetch")
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("Load failed")
       ) {
         throw new Error(`Your mint ${mintUrl} is unreachable or is blocking your IP. Please try again later or switch mints`);
       }

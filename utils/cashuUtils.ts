@@ -291,7 +291,7 @@ export const unifiedRefund = async (
       };
     } catch (error) {
       if (usingNip60) {
-        if (error instanceof Error && error.message.includes("NetworkError when attempting to fetch resource.")) {
+        if (error instanceof Error && (error.message.includes("NetworkError when attempting to fetch resource.") || error.message.includes("Failed to fetch") || error.message.includes("Load failed"))) {
           return {
             success: false,
             message: "Failed to connect to the mint: " + ((error as any).mintUrl || mintUrl)

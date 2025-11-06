@@ -408,7 +408,7 @@ export function useCashuWithXYZ() {
           console.error(errorMsg);
           
           // If NetworkError, try with an alternate mint excluding the current active mint
-          if (errorMsg.includes('NetworkError when attempting to fetch resource')) {
+          if (error instanceof Error && (error.message.includes('NetworkError when attempting to fetch resource') || error.message.includes('Failed to fetch') || error.message.includes('Load failed'))) {
             const { selectedMintUrl: alternateMintUrl } = selectMintWithBalance(
               latestMintBalances,
               latestMintUnits,
@@ -435,6 +435,19 @@ export function useCashuWithXYZ() {
         } catch (error) {
           if (error instanceof Error && error.message.includes('Not enough funds on mint') && error.message.includes('after cleaning spent proofs')) {
             return spendCashu(selectedMintUrl, adjustedAmount, baseUrl);
+          }
+          else if (error instanceof Error && (error.message.includes('NetworkError when attempting to fetch resource') || error.message.includes('Failed to fetch') || error.message.includes('Load failed'))) {
+            const { selectedMintUrl: alternateMintUrl } = selectMintWithBalance(
+              latestMintBalances,
+              latestMintUnits,
+              adjustedAmount,
+              [...(excludeMints || []), ...(mintUrl ? [mintUrl] : [])]
+            );
+            
+            if (alternateMintUrl && retryCount < Object.keys(latestMintBalances).length) {
+              console.log(`NetworkError on active mint. Retrying with alternate mint ${alternateMintUrl}`);
+              return spendCashu(alternateMintUrl as string, amount, baseUrl, false, p2pkPubkey, [...(excludeMints || []), ...(mintUrl ? [mintUrl] : [])], retryCount + 1);
+            }
           }
           const errorMsg = error instanceof Error ? error.message : String(error);
           console.error("Error generating token from alternate mint:", error);
