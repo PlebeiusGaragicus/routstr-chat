@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Link2, Unlink, Wifi, WifiOff, Loader, AlertCircle } from 'lucide-react';
+import { Zap, Link2, Wifi, WifiOff, Loader, AlertCircle } from 'lucide-react';
 
 const NWCWalletManager: React.FC = () => {
   const [nwcStatus, setNwcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
@@ -192,11 +192,10 @@ const NWCWalletManager: React.FC = () => {
                   <button
                     onClick={confirmDisconnect}
                     disabled={isDisconnecting}
-                    className="text-red-400 hover:text-red-500 transition-colors ml-2 shrink-0 disabled:opacity-50"
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors ml-2 shrink-0 disabled:opacity-50 cursor-pointer"
                     type="button"
-                    title="Disconnect wallet"
                   >
-                    <Unlink className="h-4 w-4" />
+                    Disconnect
                   </button>
                 </div>
               </div>
@@ -234,10 +233,7 @@ const NWCWalletManager: React.FC = () => {
                         Disconnecting...
                       </>
                     ) : (
-                      <>
-                        <Unlink className="h-4 w-4" />
-                        Yes, Disconnect
-                      </>
+                      'Yes, Disconnect'
                     )}
                   </button>
                 </div>
