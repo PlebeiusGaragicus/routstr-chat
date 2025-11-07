@@ -35,24 +35,19 @@ export default function ChatInput({
 }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [isCentered, setIsCentered] = useState(!hasMessages);
   const [showRedButton, setShowRedButton] = useState(false);
   const { isSidebarOpen } = useChat();
   const unifiedBgClass = isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#181818]';
   const maxTextareaHeight = isMobile ? 176 : 240;
 
-  // Handle animation when messages change from external updates
+  // Handle centering when messages change from external updates
   useEffect(() => {
     // Center when no messages, bottom when messages exist (both mobile and desktop)
     if (hasMessages && isCentered) {
-      setIsAnimating(true);
       setIsCentered(false);
-      // Clean up animation after completion
-      setTimeout(() => setIsAnimating(false), 600);
     } else if (!hasMessages && !isCentered) {
       setIsCentered(true);
-      setIsAnimating(false);
     }
   }, [hasMessages, isCentered]);
 
@@ -183,15 +178,14 @@ export default function ChatInput({
   return (
     <>
       {/* Greeting message when centered */}
-      {(isCentered || isAnimating) && (
+      {isCentered && (
         <div 
-          className={`fixed z-20 flex flex-col items-center transition-all duration-500 ease-out pointer-events-none ${
+          className={`fixed z-20 flex flex-col items-center pointer-events-none ${
             isMobile || !isAuthenticated ? 'inset-x-0' : isSidebarCollapsed ? 'inset-x-0' : 'left-72 right-0'
           }`}
           style={{
             top: '50%',
-            transform: isMobile ? 'translateY(calc(-50% - 100px))' : 'translateY(calc(-50% - 120px))',
-            opacity: isCentered && !isAnimating ? 1 : 0
+            transform: isMobile ? 'translateY(calc(-50% - 100px))' : 'translateY(calc(-50% - 120px))'
           }}
         >
           <div className="text-center mb-4">
