@@ -4,8 +4,9 @@ import type { ReactNode } from 'react';
 import { Model } from '@/data/models';
 import { getModelNameWithoutProvider, getProviderFromModelName } from '@/data/models';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { loadModelProviderMap } from '@/utils/storageUtils';
-import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels } from '@/utils/modelUtils';
+import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
+import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';
+import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels, getRequiredSatsForModel, isModelAvailable } from '@/utils/modelUtils';
 
 interface ModelSelectorProps {
   selectedModel: Model | null;
@@ -22,6 +23,7 @@ interface ModelSelectorProps {
   toggleConfiguredModel: (modelId: string) => void;
   setModelProviderFor?: (modelId: string, baseUrl: string) => void;
   baseUrl?: string;
+  lowBalanceWarningForModel: boolean;
 }
 
 export default function ModelSelector({
@@ -39,6 +41,7 @@ export default function ModelSelector({
   toggleConfiguredModel,
   setModelProviderFor,
   baseUrl,
+  lowBalanceWarningForModel,
 }: ModelSelectorProps) {
   const modelDrawerRef = useRef<HTMLDivElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
@@ -58,6 +61,10 @@ export default function ModelSelector({
   // Drawer open/close animation state
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [isDrawerAnimating, setIsDrawerAnimating] = useState(false);
+  
+  const {
+    isWalletLoading,
+  } = useCashuWithXYZ();
 
   useEffect(() => {
     try {
@@ -283,6 +290,30 @@ export default function ModelSelector({
   const configuredModelsList = filteredModels.filter(model => isConfiguredModel(model.id));
   const remainingModelsList = filteredModels.filter(model => !isConfiguredModel(model.id));
 
+  // Calculate unique models and providers for display (excluding disabled providers)
+  const { uniqueModelCount, uniqueProviderCount } = useMemo(() => {
+    const disabledProviders = loadDisabledProviders();
+    const uniqueProviders = new Set<string>();
+    const enabledModels = new Set<string>();
+    
+    for (const model of dedupedModels) {
+      const baseUrl = modelProviderMap[model.id];
+      if (baseUrl) {
+        const normalized = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        // Only count if not disabled
+        if (!disabledProviders.includes(normalized)) {
+          uniqueProviders.add(normalized);
+          enabledModels.add(model.id);
+        }
+      }
+    }
+    
+    return {
+      uniqueModelCount: enabledModels.size,
+      uniqueProviderCount: uniqueProviders.size
+    };
+  }, [dedupedModels, modelProviderMap]);
+
   // Build favorites entries with provider labels from configured keys
   const favoriteEntries = useMemo(() => {
     return configuredModels
@@ -318,40 +349,6 @@ export default function ModelSelector({
     const mappedBase = base || modelProviderMap[currentConfiguredKey || ''] || modelProviderMap[selectedModel.id];
     return formatProviderLabel(mappedBase, selectedModel);
   }, [selectedModel, currentConfiguredKey, modelProviderMap]);
-
-  // Determine required minimum sats to run a request for a model
-  const getRequiredMinSats = (model: Model): number => {
-    try {
-      const sp: any = model?.sats_pricing as any;
-      if (!sp) return 0;
-      const candidates: number[] = [
-        Number(sp.max_cost) || 0,
-        Number(sp.max_completion_cost) || 0,
-        Number(sp.completion) || 0
-      ];
-      // Take the maximum available constraint as the required threshold
-      const required = Math.max(...candidates.filter(n => Number.isFinite(n) && n > 0));
-      return Number.isFinite(required) ? required : 0;
-    } catch (e) {
-      console.error(e);
-      return 0;
-    }
-  };
-
-  // Check if a model is available based on balance
-  const isModelAvailable = (model: Model) => {
-    try {
-      const required = getRequiredMinSats(model);
-      if (!required || required <= 0) return true;
-      return balance >= required;
-    }
-    catch(error){ 
-      console.log(model);
-      console.error(error);
-      return true;
-    }
-  };
-
   
 
   // Focus search input when drawer opens
@@ -516,8 +513,8 @@ export default function ModelSelector({
     const providerModels = baseForPricing ? providerModelCache[baseForPricing] : undefined;
     const providerSpecificModel = providerModels ? providerModels[model.id] : undefined;
     const effectiveModelForPricing = providerSpecificModel || model;
-    const isAvailable = isModelAvailable(effectiveModelForPricing);
-    const requiredMin = getRequiredMinSats(effectiveModelForPricing);
+    const isAvailable = isModelAvailable(effectiveModelForPricing, balance);
+    const requiredMin = getRequiredSatsForModel(effectiveModelForPricing);
     const isFav = isFavorite || isConfiguredModel(model.id);
     const effectiveProviderLabel = providerLabel || formatProviderLabel(baseForPricing, model);
     const isDynamicProvider = !isFixedProvider;
@@ -741,7 +738,7 @@ export default function ModelSelector({
           </div>
           {(effectiveModel?.sats_pricing) && (
             <div className="text-[11px] text-white/50">
-              Est. min: {getRequiredMinSats(effectiveModel).toFixed(0)} sats
+              Est. min: {getRequiredSatsForModel(effectiveModel).toFixed(0)} sats
             </div>
           )}
         </div>
@@ -775,12 +772,17 @@ export default function ModelSelector({
         }}
         aria-expanded={isModelDrawerOpen}
         aria-controls="model-selector-drawer"
-        className="flex items-center gap-2 text-white bg-white/5 hover:bg-white/10 rounded-md py-2 px-3 sm:px-4 h-[36px] text-xs sm:text-sm transition-colors cursor-pointer border border-white/10 overflow-hidden max-w-[calc(100vw-260px)] sm:max-w-none"
+        className={`flex items-center gap-2 text-white bg-white/5 hover:bg-white/10 rounded-md py-2 px-3 sm:px-4 h-[36px] text-xs sm:text-sm transition-colors cursor-pointer border overflow-hidden max-w-[calc(100vw-260px)] sm:max-w-none ${
+          lowBalanceWarningForModel ? 'border-red-500' : 'border-white/10'
+        }`}
         data-tutorial="model-selector"
         type="button"
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="font-medium truncate whitespace-nowrap">{selectedModel ? getModelNameWithoutProvider(selectedModel.name) : 'Select Model'}</span>
+          {lowBalanceWarningForModel && !isWalletLoading && (
+            <span className="text-red-400 text-[10px] font-medium whitespace-nowrap">low balance</span>
+          )}
         </div>
         <ChevronDown className={`h-4 w-4 text-white/70 flex-shrink-0 transition-transform ${isModelDrawerOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -842,7 +844,7 @@ export default function ModelSelector({
                     <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
                   </div>
                 ) : (
-                  <div className="overflow-y-auto max-h-[60vh]">
+                  <div className="overflow-y-auto max-h-[60vh] pb-3">
                     {/* Current Model Section */}
                     {selectedModel && (
                       <div className="p-1">
@@ -870,7 +872,11 @@ export default function ModelSelector({
 
                     {/* All Models Section */}
                     <div className="p-1">
-                      <div className="px-2 py-1 text-xs font-medium text-white/60">All Models</div>
+                      <div className="px-2 py-1 text-xs font-medium text-white/60">
+                        All Models {uniqueModelCount > 0 && uniqueProviderCount > 0 && (
+                          <span className="text-white/40">({uniqueModelCount} models from {uniqueProviderCount} providers)</span>
+                        )}
+                      </div>
                       {remainingModelsList.length > 0 ? (
                         <div className="space-y-1">
                           {remainingModelsList.filter(m => m.id !== selectedModel?.id).map((model) => renderModelItem(model, false))}
@@ -952,7 +958,7 @@ export default function ModelSelector({
                   <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
                 </div>
               ) : (
-                <div className="overflow-y-auto max-h-[60vh]">
+                <div className="overflow-y-auto max-h-[60vh] pb-3">
                   {/* Current Model Section */}
                   {selectedModel && (
                     <div className="p-1">
@@ -980,7 +986,11 @@ export default function ModelSelector({
 
                   {/* All Models Section */}
                   <div className="p-1">
-                    <div className="px-2 py-1 text-xs font-medium text-white/60">All Models</div>
+                    <div className="px-2 py-1 text-xs font-medium text-white/60">
+                      All Models {uniqueModelCount > 0 && uniqueProviderCount > 0 && (
+                        <span className="text-white/40">({uniqueModelCount} models from {uniqueProviderCount} providers)</span>
+                      )}
+                    </div>
                     {remainingModelsList.length > 0 ? (
                       <div className="space-y-1">
                         {remainingModelsList.filter(m => m.id !== selectedModel?.id).map((model) => renderModelItem(model, false))}

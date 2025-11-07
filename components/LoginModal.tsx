@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { useLoginActions } from '@/hooks/useLoginActions';
+import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { Shield, Eye, EyeOff, Copy, Check } from 'lucide-react';
 
 interface LoginModalProps {
@@ -30,6 +31,7 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
   const [activeTab, setActiveTab] = useState<'create' | 'signin'>('signin');
 
   const loginActions = useLoginActions();
+  const { setLogin } = useLoggedInAccounts();
 
   // Reset state when modal opens
   useEffect(() => {
@@ -53,7 +55,8 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
       if (!('nostr' in window)) {
         throw new Error('Nostr extension not found. Please install a NIP-07 extension.');
       }
-      await loginActions.extension();
+      const login = await loginActions.extension();
+      setLogin(login.id);
       onLogin();
       onClose();
     } catch (error) {
@@ -70,7 +73,8 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
     setError(null);
 
     try {
-      loginActions.nsec(nsec);
+      const login = loginActions.nsec(nsec);
+      setLogin(login.id);
       onLogin();
       onClose();
     } catch (error) {
@@ -115,7 +119,8 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
   const completeSignup = async () => {
     if (generatedNsec) {
       try {
-        loginActions.nsec(generatedNsec);
+        const login = loginActions.nsec(generatedNsec);
+        setLogin(login.id);
         onLogin();
         onClose();
       } catch (error) {
@@ -333,6 +338,12 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                   type="password"
                   value={nsec}
                   onChange={(e) => setNsec(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleKeyLogin();
+                    }
+                  }}
                   placeholder="nsec1..."
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors"
                 />

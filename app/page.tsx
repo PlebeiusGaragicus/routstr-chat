@@ -7,13 +7,14 @@ import { ChatProvider } from '@/context/ChatProvider';
 import ChatContainer from '@/components/chat/ChatContainer';
 import SettingsModal from '@/components/SettingsModal';
 import LoginModal from '@/components/LoginModal';
-import TutorialOverlay from '@/components/TutorialOverlay';
-import DepositModal from '@/components/DepositModal';
+import TopUpPromptModal from '@/components/TopUpPromptModal';
 import { QueryTimeoutModal } from '@/components/QueryTimeoutModal';
+import QRCodeModal from '@/components/QRCodeModal';
 import { useAuth } from '@/context/AuthProvider';
 import { useChat } from '@/context/ChatProvider';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCashuWallet } from '@/hooks/useCashuWallet';
+import { useCashuWallet } from '@/features/wallet';
+import { hasSeenTopUpPrompt, markTopUpPromptSeen } from '@/utils/storageUtils';
 
 function ChatPageContent() {
   const router = useRouter();
@@ -26,14 +27,9 @@ function ChatPageContent() {
     setIsSettingsOpen,
     isLoginModalOpen,
     setIsLoginModalOpen,
-    isTutorialOpen,
     initialSettingsTab,
-    handleTutorialComplete,
-    handleTutorialClose,
     
     // API State
-    mintUrl,
-    setMintUrl,
     baseUrl,
     setBaseUrl,
     selectedModel,
@@ -55,8 +51,6 @@ function ChatPageContent() {
     
     // Chat State
     clearConversations,
-    usingNip60,
-    setUsingNip60,
     isBalanceLoading,
     conversations,
     loadConversation,
@@ -64,19 +58,38 @@ function ChatPageContent() {
     conversationsLoaded,
   } = useChat();
 
-  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-  const { showQueryTimeoutModal, setShowQueryTimeoutModal, didRelaysTimeout, isLoading: isWalletLoading } = useCashuWallet();
+  const [isTopUpPromptOpen, setIsTopUpPromptOpen] = useState(false);
+  const [topUpPromptDismissed, setTopUpPromptDismissed] = useState(false);
+  const { showQueryTimeoutModal, setShowQueryTimeoutModal, didRelaysTimeout, setDidRelaysTimeout, isLoading: isWalletLoading } = useCashuWallet();
   const pendingUrlSyncRef = useRef(false);
   const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
   const chatIdFromUrl = useMemo(() => searchParams.get('chatId'), [searchParams]);
 
+  // QR Code Modal State
+  const [qrModalData, setQrModalData] = useState<{ invoice: string; amount: string; unit: string } | null>(null);
+
   useEffect(() => {
-    if (!isBalanceLoading && balance === 0 && isAuthenticated && !isSettingsOpen && !usingNip60) {
-      setIsDepositModalOpen(true);
+    let topUpTimer: NodeJS.Timeout | null = null;
+
+    if (!isBalanceLoading && balance === 0 && isAuthenticated && !isSettingsOpen) {
+      if (!hasSeenTopUpPrompt() && !topUpPromptDismissed) {
+        setIsTopUpPromptOpen(false);
+        topUpTimer = setTimeout(() => {
+          setIsTopUpPromptOpen(true);
+        }, 500);
+      } else {
+        setIsTopUpPromptOpen(false);
+      }
     } else {
-      setIsDepositModalOpen(false);
+      setIsTopUpPromptOpen(false);
     }
-  }, [balance, isBalanceLoading, isAuthenticated, usingNip60]);
+
+    return () => {
+      if (topUpTimer) clearTimeout(topUpTimer);
+    };
+  }, [balance, isBalanceLoading, isAuthenticated, isSettingsOpen, topUpPromptDismissed]);
+
+  const handleTopUp = (_amount?: number) => {};
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -149,7 +162,7 @@ function ChatPageContent() {
 
   return (
     <div className="flex h-dvh w-full bg-[#181818] text-white overflow-hidden">
-      <ChatContainer />
+      <ChatContainer onShowQRCode={setQrModalData} isQrModalOpen={!!qrModalData} />
 
       {/* Modals */}
       {isSettingsOpen && isAuthenticated && (
@@ -157,8 +170,6 @@ function ChatPageContent() {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           initialActiveTab={initialSettingsTab}
-          mintUrl={mintUrl}
-          setMintUrl={setMintUrl}
           baseUrl={baseUrl}
           setBaseUrl={setBaseUrl}
           selectedModel={selectedModel}
@@ -176,10 +187,6 @@ function ChatPageContent() {
           setConfiguredModels={setConfiguredModels}
           modelProviderMap={modelProviderMap}
           setModelProviderFor={setModelProviderFor}
-          usingNip60={usingNip60}
-          setUsingNip60={(value) => {
-            setUsingNip60(value);
-          }}
         />
       )}
 
@@ -189,27 +196,29 @@ function ChatPageContent() {
         onLogin={() => setIsLoginModalOpen(false)}
       />
 
-      {false && (<TutorialOverlay
-        isOpen={isTutorialOpen}
-        onComplete={handleTutorialComplete}
-        onClose={handleTutorialClose}
-      />)}
-
-      {/* Deposit Modal */}
-      {isDepositModalOpen && (
-        <DepositModal
-          isOpen={isDepositModalOpen}
-          onClose={() => setIsDepositModalOpen(false)}
-          mintUrl={mintUrl}
-          balance={balance}
-          setBalance={setBalance}
-          usingNip60={usingNip60}
+      {/* Top-up Prompt */}
+      {isTopUpPromptOpen && (
+        <TopUpPromptModal
+          isOpen={isTopUpPromptOpen}
+          onClose={() => { setIsTopUpPromptOpen(false); setTopUpPromptDismissed(true); }}
+          onTopUp={handleTopUp}
+          onDontShowAgain={() => { setTopUpPromptDismissed(true); markTopUpPromptSeen(); }}
+          setIsLoginModalOpen={setIsLoginModalOpen}
         />
       )}
 
       <QueryTimeoutModal
         isOpen={showQueryTimeoutModal || (didRelaysTimeout && !isWalletLoading)}
-        onClose={() => setShowQueryTimeoutModal(false)}
+        onClose={() => { console.log('rdlogs: closing query timeout modal', showQueryTimeoutModal, didRelaysTimeout, isWalletLoading); setShowQueryTimeoutModal(false); setDidRelaysTimeout(false); }}
+      />
+
+      {/* QR Code Modal */}
+      <QRCodeModal
+        isOpen={!!qrModalData}
+        onClose={() => setQrModalData(null)}
+        invoice={qrModalData?.invoice || ''}
+        amount={qrModalData?.amount || ''}
+        unit={qrModalData?.unit || ''}
       />
     </div>
   );

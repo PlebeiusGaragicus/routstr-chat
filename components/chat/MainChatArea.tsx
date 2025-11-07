@@ -34,8 +34,8 @@ const MainChatArea: React.FC = () => {
     // Chat Actions
     inputMessage,
     setInputMessage,
-    uploadedImages,
-    setUploadedImages,
+    uploadedAttachments,
+    setUploadedAttachments,
     isLoading,
     textareaHeight,
     setTextareaHeight,
@@ -54,7 +54,6 @@ const MainChatArea: React.FC = () => {
     // API State
     selectedModel,
     baseUrl,
-    mintUrl,
     
     // Actions
     sendMessage,
@@ -70,7 +69,6 @@ const MainChatArea: React.FC = () => {
       createNewConversationHandler,
       selectedModel,
       baseUrl,
-      mintUrl,
       isAuthenticated,
       setIsLoginModalOpen,
       saveConversationById,
@@ -88,7 +86,6 @@ const MainChatArea: React.FC = () => {
       setEditingContent,
       selectedModel,
       baseUrl,
-      mintUrl,
       activeConversationId,
       saveConversationById,
       getActiveConversationId
@@ -102,7 +99,6 @@ const MainChatArea: React.FC = () => {
       setMessages,
       selectedModel,
       baseUrl,
-      mintUrl,
       activeConversationId,
       saveConversationById,
       getActiveConversationId
@@ -127,14 +123,15 @@ const MainChatArea: React.FC = () => {
         messagesEndRef={messagesEndRef}
         isMobile={isMobile}
         textareaHeight={textareaHeight}
+        isLoading={isLoading}
       />
 
       {/* Chat Input */}
       <ChatInput
         inputMessage={inputMessage}
         setInputMessage={setInputMessage}
-        uploadedImages={uploadedImages}
-        setUploadedImages={setUploadedImages}
+        uploadedAttachments={uploadedAttachments}
+        setUploadedAttachments={setUploadedAttachments}
         sendMessage={handleSendMessage}
         isLoading={isLoading}
         isAuthenticated={isAuthenticated}

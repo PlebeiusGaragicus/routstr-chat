@@ -1,5 +1,4 @@
 import { Event } from "nostr-tools";
-import { GiftWrap, wrapCashuToken, unwrapCashuToken } from "./nip60Utils";
 import { CashuMint, CashuWallet, getEncodedTokenV4, getDecodedToken } from "@cashu/cashu-ts";
 import { getLocalCashuToken, setLocalCashuToken, removeLocalCashuToken, getLocalCashuTokens, CashuTokenEntry } from '@/utils/storageUtils';
 
@@ -30,7 +29,7 @@ export const fetchBalances = async (mintUrl: string, baseUrl: string): Promise<{
       if (!response.ok) {
         if (response.status === 402) {
           // Invalidate current token since it's out of balance
-          invalidateApiToken(baseUrl); // Pass baseUrl
+          removeLocalCashuToken(baseUrl);
           console.warn('rdlogs: API token invalidated due to insufficient balance.');
         } else {
           console.error(`Failed to fetch wallet balance: ${response.status} ${response.statusText}`);
@@ -106,107 +105,6 @@ export const removeWrappedToken = (tokenId: string): void => {
   }
 };
 
-/**
- * Generates a new Cashu token for API usage
- * @param mintUrl The Cashu mint URL
- * @param amount Amount in sats to generate token for
- * @returns Generated token string or null if failed
- */
-export const generateApiToken = async (
-  mintUrl: string,
-  amount: number
-): Promise<string | null> => {
-  try {
-    // Check if amount is a decimal and round up if necessary
-    if (amount % 1 !== 0) {
-      amount = Math.ceil(amount);
-    }
-
-    // Get stored proofs
-    const storedProofs = localStorage.getItem("cashu_proofs");
-    if (!storedProofs) {
-      console.warn("No Cashu tokens found for generating API token");
-      return null;
-    }
-
-    const proofs = JSON.parse(storedProofs);
-
-    // Initialize wallet for this mint
-    const mint = new CashuMint(mintUrl);
-    const keysets = await mint.getKeySets();
-    
-    // Get preferred unit: msat over sat if both are active
-    const activeKeysets = keysets.keysets.filter(k => k.active);
-    const units = [...new Set(activeKeysets.map(k => k.unit))];
-    const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
-    
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
-    await wallet.loadMint();
-
-    // Generate the token using the wallet directly
-    const { send, keep } = await wallet.send(amount, proofs);
-
-    if (!send || send.length === 0) {
-      return null;
-    }
-
-    // Update stored proofs with remaining proofs
-    localStorage.setItem("cashu_proofs", JSON.stringify(keep));
-
-    // Create a token string in the proper Cashu format
-    const tokenObj = {
-      token: [{ mint: mintUrl, proofs: send }],
-    };
-
-    return `cashuA${btoa(JSON.stringify(tokenObj))}`;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('funds')) {
-      return null;
-    }
-    // Only log unexpected errors
-    console.error("Failed to generate API token:", error);
-    return null;
-  }
-};
-
-/**
- * Manages token lifecycle - reuses existing token or generates new one
- * @param mintUrl The Cashu mint URL
- * @param amount Amount in sats for new token if needed
- * @returns Token string, null if failed, or object with hasTokens: false if no tokens available
- */
-export const getOrCreateApiToken = async (
-  mintUrl: string,
-  amount: number,
-  baseUrl: string // Add baseUrl parameter
-): Promise<string | null | { hasTokens: false }> => {
-  try {
-    // Try to get existing token for the given baseUrl
-    const storedToken = getLocalCashuToken(baseUrl);
-    if (storedToken) {
-      return storedToken;
-    }
-
-    // Check if any tokens are available
-    const storedProofs = localStorage.getItem("cashu_proofs");
-    if (!storedProofs) {
-      return { hasTokens: false };
-    }
-
-    // Generate new token if none exists
-    const newToken = await generateApiToken(mintUrl, amount);
-    if (newToken) {
-      setLocalCashuToken(baseUrl, newToken); // Use setLocalCashuToken
-      return newToken;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error in token management:", error);
-    return null;
-  }
-};
-
 export const fetchRefundToken = async (baseUrl: string, storedToken: string): Promise<{
   success: boolean;
   token?: string;
@@ -244,7 +142,7 @@ export const fetchRefundToken = async (baseUrl: string, storedToken: string): Pr
     if (!response.ok) {
       const errorData = await response.json();
       if (response.status === 400 && errorData?.detail === "No balance to refund") {
-        invalidateApiToken(baseUrl);
+        removeLocalCashuToken(baseUrl);
         return {
           success: false,
           requestId,
@@ -320,7 +218,7 @@ export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, a
       const refundResult = await fetchRefundToken(baseUrl, storedToken);
       if (refundResult.success && refundResult.token) {
         await storeCashuToken(mintUrl, refundResult.token);
-        invalidateApiToken(baseUrl); // Pass baseUrl
+        removeLocalCashuToken(baseUrl);
         return { success: true, message: 'Refund completed successfully' };
       } else if (refundResult.error === 'No balance to refund') {
         return { success: true, message: 'No balance to refund' };
@@ -336,62 +234,6 @@ export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, a
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error occurred during refund'
     };
-  }
-};
-
-/**
- * Invalidates the current API token
- */
-export const invalidateApiToken = (baseUrl: string) => { // Add baseUrl parameter
-  removeLocalCashuToken(baseUrl); // Use removeLocalCashuToken
-};
-
-
-export const create60CashuToken = async (
-  activeMintUrl: string,
-  sendToken: (mintUrl: string, amount: number) => Promise<{ proofs: any[], unit: string }>,
-  amount: number
-): Promise<string | undefined> => {
-  // Check if amount is a decimal and round up if necessary
-  if (amount % 1 !== 0) {
-    amount = Math.ceil(amount);
-  }
-
-  if (!activeMintUrl) {
-    console.error(
-      "No active mint selected. Please select a mint in your wallet settings."
-    );
-    return;
-  }
-
-  if (!amount || isNaN((amount))) {
-    console.error("Please enter a valid amount");
-    return;
-  }
-
-  try {
-    const result = await sendToken(activeMintUrl, amount);
-    const proofs = result.proofs;
-    const token = getEncodedTokenV4({
-      mint: activeMintUrl,
-      proofs: proofs.map((p) => ({
-        id: p.id || "",
-        amount: p.amount,
-        secret: p.secret || "",
-        C: p.C || "",
-      })),
-      unit: result.unit
-    });
-    
-    // Clean up pending proofs after successful token creation
-    if ((proofs as any).pendingProofsKey) {
-      localStorage.removeItem((proofs as any).pendingProofsKey);
-    }
-    
-    return token;
-  } catch (error) {
-    console.error("Error generating token:", error);
-    console.error(error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -438,8 +280,9 @@ export const unifiedRefund = async (
       const proofs = await receiveTokenFn(refundResult.token);
       const totalAmount = proofs.reduce((sum: number, p: any) => sum + p.amount, 0);
       if (!apiKey) {
-        invalidateApiToken(baseUrl); // Pass baseUrl
+        removeLocalCashuToken(baseUrl);
       }
+      console.log("rdlogs: rdlogs: refunding: totalAmount: ", totalAmount)
       
       return {
         success: true,
@@ -448,7 +291,7 @@ export const unifiedRefund = async (
       };
     } catch (error) {
       if (usingNip60) {
-        if (error instanceof Error && error.message.includes("NetworkError when attempting to fetch resource.")) {
+        if (error instanceof Error && (error.message.includes("NetworkError when attempting to fetch resource.") || error.message.includes("Failed to fetch") || error.message.includes("Load failed"))) {
           return {
             success: false,
             message: "Failed to connect to the mint: " + ((error as any).mintUrl || mintUrl)
@@ -472,22 +315,31 @@ export const unifiedRefund = async (
 };
 
 export const getPendingCashuTokenAmount = (): number => {
-  const allTokens = getLocalCashuTokens(); // Get all stored tokens
-  let totalPendingAmount = 0;
+  const distribution = getPendingCashuTokenDistribution();
+  return distribution.reduce((total, item) => total + item.amount, 0);
+};
 
-  allTokens.forEach((tokenEntry: CashuTokenEntry) => {
+export const getPendingCashuTokenDistribution = (): { baseUrl: string; amount: number }[] => {
+  const tokens = getLocalCashuTokens();
+  const distributionMap: Record<string, number> = {};
+  
+  tokens.forEach((entry) => {
     try {
-      const decodedToken = getDecodedToken(tokenEntry.token);
-      const msatOrSat = decodedToken.unit === 'msat' ? 1000 : 1;
-      decodedToken.proofs.forEach((proof: { amount: number; }) => {
-        totalPendingAmount += (proof.amount/msatOrSat);
+      const decoded = getDecodedToken(entry.token);
+      const unitDivisor = decoded.unit === 'msat' ? 1000 : 1;
+      let sum = 0;
+      decoded.proofs.forEach((p: { amount: number }) => {
+        sum += p.amount / unitDivisor;
       });
-      if (decodedToken) {
-        
+      if (sum > 0) {
+        distributionMap[entry.baseUrl] = (distributionMap[entry.baseUrl] || 0) + sum;
       }
-    } catch (error) {
-      console.error(`Error decoding cashu token for baseUrl ${tokenEntry.baseUrl}:`, error);
+    } catch (e) {
+      // ignore malformed tokens
     }
   });
-  return totalPendingAmount;
+  
+  return Object.entries(distributionMap)
+    .map(([baseUrl, amt]) => ({ baseUrl, amount: Math.round(amt) }))
+    .sort((a, b) => b.amount - a.amount);
 };

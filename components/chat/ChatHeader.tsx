@@ -5,14 +5,19 @@ import { Menu, SquarePen } from 'lucide-react';
 import { useChat } from '@/context/ChatProvider';
 import { useAuth } from '@/context/AuthProvider';
 import ModelSelector from './ModelSelector';
-import BalanceDisplay from '../ui/BalanceDisplay';
+import { BalanceDisplay } from '@/features/wallet';
 
 /**
  * Top header with model selector and controls
  * Handles model selector integration, balance display,
  * mobile menu button, and header layout and styling
  */
-const ChatHeader: React.FC = () => {
+interface ChatHeaderProps {
+  onShowQRCode: (data: { invoice: string; amount: string; unit: string }) => void;
+  isQrModalOpen: boolean;
+}
+
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) => {
   const { isAuthenticated } = useAuth();
   const {
     // Model State
@@ -37,7 +42,9 @@ const ChatHeader: React.FC = () => {
     
     // Balance
     balance,
-    usingNip60,
+
+    // API State
+    lowBalanceWarningForModel,
 
     // Settings
     setIsSettingsOpen,
@@ -114,6 +121,7 @@ const ChatHeader: React.FC = () => {
               setIsSettingsOpen(true);
               setInitialSettingsTab('models');
             }}
+            lowBalanceWarningForModel={lowBalanceWarningForModel}
           />
         </div>
 
@@ -124,7 +132,8 @@ const ChatHeader: React.FC = () => {
           <BalanceDisplay
             setIsSettingsOpen={setIsSettingsOpen}
             setInitialSettingsTab={setInitialSettingsTab}
-            usingNip60={usingNip60}
+            onShowQRCode={onShowQRCode}
+            isQrModalOpen={isQrModalOpen}
           />
         </div>
       </div>

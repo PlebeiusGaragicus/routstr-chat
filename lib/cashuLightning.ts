@@ -1,6 +1,7 @@
-import { useCashuStore } from '@/stores/cashuStore';
+import { useCashuStore } from '@/features/wallet';
 import { CashuMint, CashuWallet, MeltQuoteResponse, MeltQuoteState, MintQuoteResponse, MintQuoteState, Proof } from '@cashu/cashu-ts';
-import { calculateFees, canMakeExactChange, CashuToken } from '@/lib/cashu';
+import { calculateFees, canMakeExactChange } from '@/features/wallet';
+import { CashuToken } from '@/features/wallet/core/domain/Token';
 
 export interface MintQuote {
   mintUrl: string;
@@ -55,6 +56,9 @@ export async function createLightningInvoice(mintUrl: string, amount: number): P
       expiresAt: mintQuote.expiry ? mintQuote.expiry * 1000 : undefined,
     };
   } catch (error) {
+    if (error instanceof Error && error.message.includes('NetworkError when attempting to fetch resource')) {
+      throw new Error(`Mint connection error ${mintUrl}. The mint is blocking your IP or is down.`);
+    }
     console.error('Error creating Lightning invoice:', error);
     throw error;
   }

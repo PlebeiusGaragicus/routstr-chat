@@ -2,22 +2,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem } from '@/utils/storageUtils';
-import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels } from '@/utils/modelUtils';
+import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders } from '@/utils/storageUtils';
+import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable } from '@/utils/modelUtils';
+import { getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
 
 export interface UseApiStateReturn {
   models: Model[];
   selectedModel: Model | null;
   isLoadingModels: boolean;
-  mintUrl: string;
   baseUrl: string;
   setModels: (models: Model[]) => void;
   setSelectedModel: (model: Model | null) => void;
   setIsLoadingModels: (loading: boolean) => void;
-  setMintUrl: (url: string) => void;
   setBaseUrl: (url: string) => void;
   fetchModels: (balance: number) => Promise<void>; // Modified to accept balance
   handleModelChange: (modelId: string, configuredKeyOverride?: string) => void;
+  lowBalanceWarningForModel: boolean;
 }
 
 /**
@@ -30,17 +30,14 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const [mintUrl, setMintUrlState] = useState('');
   const [baseUrl, setBaseUrlState] = useState('');
   const [baseUrlsList, setBaseUrlsList] = useState<string[]>([]);
+  const [lowBalanceWarningForModel, setLowBalanceWarningForModel] = useState(false);
   // Removed unused currentBaseUrlIndex state
 
   // Initialize URLs from storage
   useEffect(() => {
     if (isAuthenticated) {
-      const currentMintUrl = loadMintUrl(DEFAULT_MINT_URL);
-      setMintUrlState(currentMintUrl);
-
       const loadedBaseUrls = loadBaseUrlsList();
       setBaseUrlsList(loadedBaseUrls);
 
@@ -74,7 +71,12 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
           if (n && !n.startsWith('http://')) bases.add(n);
         }
       }
-      const list = Array.from(bases);
+      // Filter out disabled providers
+      const disabledProviders = loadDisabledProviders();
+      const list = Array.from(bases).filter(base => {
+        const normalized = base.endsWith('/') ? base : `${base}/`;
+        return !disabledProviders.includes(normalized);
+      });
       if (list.length > 0) {
         saveBaseUrlsList(list);
         setBaseUrlsList(list);
@@ -109,66 +111,93 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
         }
       }
 
-      const results = await Promise.allSettled(
-        bases.map(async (url) => {
-          const base = url.endsWith('/') ? url : `${url}/`;
-          const res = await fetch(`${base}v1/models`);
-          if (!res.ok) throw new Error(`Failed ${res.status}`);
-          const json = await res.json();
-          const list: Model[] = Array.isArray(json?.data) ? json.data : [];
-          return { base, list };
-        })
-      );
+      // Filter out disabled providers
+      const disabledProviders = loadDisabledProviders();
+      bases = bases.filter(base => {
+        const normalized = base.endsWith('/') ? base : `${base}/`;
+        return !disabledProviders.includes(normalized);
+      });
 
-      // Save all provider results to localStorage for later use
-      try {
-        const modelsFromAllProviders: Record<string, Model[]> = {};
-        for (const r of results) {
-          if (r.status === 'fulfilled') {
-            const { base, list } = r.value;
-            modelsFromAllProviders[base] = list;
-          }
-        }
-        setStorageItem('modelsFromAllProviders', modelsFromAllProviders);
-      } catch {}
-
-      // Build best-priced model per id across providers and remember provider
+      // Process results progressively as each provider responds
+      const modelsFromAllProviders: Record<string, Model[]> = {};
       const bestById = new Map<string, { model: Model; base: string }>();
+      let processedCount = 0;
+      const totalProviders = bases.length;
 
       function estimateMinCost(m: Model): number {
         return m?.sats_pricing?.completion ?? 0;
       }
 
-      for (const r of results) {
-        if (r.status !== 'fulfilled') continue;
-        const { base, list } = r.value;
-        for (const m of list) {
-          const existing = bestById.get(m.id);
-          if (!existing) {
-            bestById.set(m.id, { model: m, base });
-            continue;
-          }
-          const currentCost = estimateMinCost(m);
-          const existingCost = estimateMinCost(existing.model);
-          if (currentCost < existingCost) {
-            bestById.set(m.id, { model: m, base });
+      // Helper to update best models and UI state
+      const updateBestModels = () => {
+        const combinedModels = Array.from(bestById.values()).map(v => v.model);
+        setModels(combinedModels);
+
+        // Persist provider mapping for best-priced winners
+        const newMap = loadModelProviderMap();
+        let changed = false;
+        for (const [id, entry] of bestById.entries()) {
+          if (newMap[id] !== entry.base) {
+            newMap[id] = entry.base;
+            changed = true;
           }
         }
-      }
+        if (changed) saveModelProviderMap(newMap);
 
-      const combinedModels = Array.from(bestById.values()).map(v => v.model);
-      setModels(combinedModels);
+        return combinedModels;
+      };
 
-      // Persist provider mapping for best-priced winners
-      const newMap = loadModelProviderMap();
-      let changed = false;
-      for (const [id, entry] of bestById.entries()) {
-        if (newMap[id] !== entry.base) {
-          newMap[id] = entry.base;
-          changed = true;
+      // Process each provider as it responds
+      const fetchPromises = bases.map(async (url) => {
+        const base = url.endsWith('/') ? url : `${url}/`;
+        try {
+          const res = await fetch(`${base}v1/models`);
+          if (!res.ok) throw new Error(`Failed ${res.status}`);
+          const json = await res.json();
+          const list: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+            ...m,
+            id: m.id.split('/').pop() || m.id
+          })) : [];
+          
+          // Save provider results
+          modelsFromAllProviders[base] = list;
+          
+          // Update best-priced models
+          for (const m of list) {
+            const existing = bestById.get(m.id);
+            if (!existing) {
+              bestById.set(m.id, { model: m, base });
+              continue;
+            }
+            const currentCost = estimateMinCost(m);
+            const existingCost = estimateMinCost(existing.model);
+            if (currentCost < existingCost) {
+              bestById.set(m.id, { model: m, base });
+            }
+          }
+          
+          // Update UI with current best models
+          processedCount++;
+          updateBestModels();
+          
+          return { success: true, base, list };
+        } catch (error) {
+          processedCount++;
+          console.warn(`Failed to fetch models from ${base}:`, error);
+          return { success: false, base };
         }
-      }
-      if (changed) saveModelProviderMap(newMap);
+      });
+
+      // Wait for all to complete (but UI updates happen progressively)
+      await Promise.allSettled(fetchPromises);
+
+      // Save all provider results to localStorage
+      try {
+        setStorageItem('modelsFromAllProviders', modelsFromAllProviders);
+      } catch {}
+
+      // Final update to ensure we have the latest state
+      const combinedModels = updateBestModels();
 
       // Select model based on URL param or last used
       let modelToSelect: Model | null = null;
@@ -203,8 +232,12 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
               const res = await fetch(`${normalized}v1/models`);
               if (res.ok) {
                 const json = await res.json();
-                const providerList: Model[] = Array.isArray(json?.data) ? json.data : [];
-                const found = providerList.find((m: Model) => m.id === id) ?? null;
+                const providerList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+                  ...m,
+                  id: m.id.split('/').pop() || m.id
+                })) : [];
+                const transformedId = id.split('/').pop() || id;
+                const found = providerList.find((m: Model) => m.id === transformedId) ?? null;
                 if (found) {
                   // cache to storage for future
                   upsertCachedProviderModels(normalized, providerList);
@@ -217,7 +250,19 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
       }
 
       if (!modelToSelect) {
-        const compatible = combinedModels.filter((m: Model) => m.sats_pricing && currentBalance >= (m.sats_pricing as any).max_cost);
+        const compatible = combinedModels.filter((m: Model) => {
+          try {
+            const sp: any = m.sats_pricing as any;
+            if (!sp) return false;
+            const required = Math.max(
+              Number(sp.max_cost) || 0,
+              Number(sp.max_completion_cost) || 0
+            );
+            return required > 0 && currentBalance >= required;
+          } catch {
+            return false;
+          }
+        });
         if (compatible.length > 0) modelToSelect = compatible[0];
       }
       setSelectedModel(modelToSelect);
@@ -231,13 +276,99 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     }
   }, [searchParams, baseUrlsList, bootstrapProviders]);
 
-  // Fetch models when providers are available and user is authenticated
+  // Fetch available mints from each provider's /v1/info endpoint
+  const fetchMints = useCallback(async () => {
+    try {
+      let bases = baseUrlsList;
+      if (!bases || bases.length === 0) {
+        // If no providers yet, skip (will be called again after bootstrap)
+        return;
+      }
+
+      // Store mints from all providers
+      const mintsFromAllProviders: Record<string, string[]> = {};
+
+      // Fetch info from each provider
+      const fetchPromises = bases.map(async (url) => {
+        const base = url.endsWith('/') ? url : `${url}/`;
+        try {
+          const res = await fetch(`${base}v1/info`);
+          if (!res.ok) throw new Error(`Failed ${res.status}`);
+          const json = await res.json();
+          
+          // Extract mints array from response
+          const mints: string[] = Array.isArray(json?.mints) ? json.mints : [];
+          
+          // Save provider mints
+          mintsFromAllProviders[base] = mints;
+          
+          return { success: true, base, mints };
+        } catch (error) {
+          console.warn(`Failed to fetch mints from ${base}:`, error);
+          return { success: false, base };
+        }
+      });
+
+      // Wait for all to complete
+      await Promise.allSettled(fetchPromises);
+
+      // Save all provider mints to localStorage
+      try {
+        saveMintsFromAllProviders(mintsFromAllProviders);
+      } catch (error) {
+        console.error('Error saving mints to localStorage:', error);
+      }
+    } catch (error) {
+      console.error('Error while fetching mints', error);
+    }
+  }, [baseUrlsList]);
+
+  // Fetch models and mints when providers are available and user is authenticated
   // Intentionally NOT dependent on balance to avoid reloading the selector on wallet updates
   useEffect(() => {
     if (!isAuthenticated) return;
     // Always attempt to fetch; will bootstrap providers if missing
     fetchModels(balance);
+    fetchMints();
   }, [isAuthenticated, baseUrlsList.length]);
+
+  // Auto-select model based on balance when balance changes
+  // Only auto-selects if no model is selected or current model is not available
+  useEffect(() => {
+    if (!isAuthenticated || models.length === 0) return;
+
+    const lastUsedModelId = loadLastUsedModel();
+    if (lastUsedModelId) {
+      const model = models.find((m: Model) => m.id === lastUsedModelId);
+      if (model) {
+        setSelectedModel(model);
+      }
+    }
+    // Only auto-select if no model is selected or current model is not available
+    if (!selectedModel) {
+      const compatible = models.filter((m: Model) => isModelAvailable(m, balance))
+        .sort((a, b) => {
+          const aMaxCost = Math.max(
+            Number(a.sats_pricing?.max_cost) || 0,
+            Number(a.sats_pricing?.max_completion_cost) || 0
+          );
+          const bMaxCost = Math.max(
+            Number(b.sats_pricing?.max_cost) || 0,
+            Number(b.sats_pricing?.max_completion_cost) || 0
+          );
+          return bMaxCost - aMaxCost; // Descending order
+        });
+      
+      if (compatible.length > 0) {
+        // Select the first compatible model (models are already sorted by price)
+        handleModelChange(compatible[0].id);
+      }
+    }
+    if (selectedModel) {
+      const totalPendingBalance = getPendingCashuTokenDistribution().reduce((total, item) => total + item.amount, 0);
+      setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + totalPendingBalance));
+    }
+  }, [balance, models, isAuthenticated, selectedModel]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
     console.log('rdlogs: handleModelChange', modelId, configuredKeyOverride);
@@ -259,7 +390,10 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
             const res = await fetch(`${normalized}v1/models`);
             if (!res.ok) throw new Error(`Failed ${res.status}`);
             const json = await res.json();
-            const freshList: Model[] = Array.isArray(json?.data) ? json.data : [];
+            const freshList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+              ...m,
+              id: m.id.split('/').pop() || m.id
+            })) : [];
             // cache back to storage
             upsertCachedProviderModels(normalized, freshList);
             return freshList.find((m: Model) => m.id === parsed.id);
@@ -311,11 +445,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
 
   }, [models]);
 
-  const setMintUrl = useCallback((url: string) => {
-    setMintUrlState(url);
-    saveMintUrl(url);
-  }, []);
-
   const setBaseUrl = useCallback((url: string) => {
     const normalizedUrl = url.endsWith('/') ? url : `${url}/`;
     setBaseUrlState(normalizedUrl);
@@ -328,14 +457,13 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     models,
     selectedModel,
     isLoadingModels,
-    mintUrl,
     baseUrl,
     setModels,
     setSelectedModel,
     setIsLoadingModels,
-    setMintUrl,
     setBaseUrl,
     fetchModels,
-    handleModelChange
+    handleModelChange,
+    lowBalanceWarningForModel
   };
 };

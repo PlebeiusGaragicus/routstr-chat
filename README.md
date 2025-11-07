@@ -124,6 +124,59 @@ Key directories:
 - `utils/` and `lib/`: Utilities and integrations (Cashu, Nostr)
 - `test/`: Scripts and docs for Lightning/regtest testing
 
+## API Mocking with MSW
+
+This project uses [Mock Service Worker (MSW)](https://mswjs.io/) for API mocking in development. This allows you to test error scenarios and edge cases without hitting the real backend.
+
+### Testing the 413 Payload Too Large Error
+
+To test the 413 error scenario:
+
+1. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+2. **Open the app in your browser** and wait for the service worker to initialize (check Network tab for `mockServiceWorker.js`).
+
+3. **Enable the 413 mock scenario** in your browser console:
+   ```javascript
+   localStorage.setItem('msw:scenario', '413');
+   // Optional: add latency delay
+   localStorage.setItem('msw:latency', '1500'); // milliseconds
+   ```
+
+4. **Refresh the page** and trigger a chat request. The API call to `v1/chat/completions` will return a 413 error with the payload:
+   ```json
+   {
+     "error": {
+       "message": "Payload Too Large",
+       "code": "PAYLOAD_TOO_LARGE",
+       "status": 413
+     }
+   }
+   ```
+
+5. **Disable the mock** when done:
+   ```javascript
+   localStorage.removeItem('msw:scenario');
+   localStorage.removeItem('msw:latency');
+   ```
+
+The mock handler is configured in `mocks/handlers.ts` and automatically starts in development mode via `components/ClientProviders.tsx`.
+
+### Minibits Mint Mock Data
+
+**⚠️ Warning:** If you encounter unusual mint errors for Minibits in development mode (e.g., keyset errors, unexpected responses), the cached mock data in `mocks/handlers.ts` may be outdated. The mock responses for `/v1/keysets` and `/v1/info` endpoints should be updated periodically to match the current Minibits mint state.
+
+To update the mock data:
+1. Fetch the latest data from the real mint:
+   ```bash
+   curl https://mint.minibits.cash/Bitcoin/v1/keysets
+   curl https://mint.minibits.cash/Bitcoin/v1/info
+   ```
+2. Update the corresponding handlers in `mocks/handlers.ts` with the fresh responses.
+
 ## License
 
 MIT

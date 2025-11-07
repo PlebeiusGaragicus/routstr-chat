@@ -1,17 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Message, TransactionHistory } from '@/types/chat';
+import { Message, MessageContent, MessageAttachment, TransactionHistory } from '@/types/chat';
 import { createTextMessage, createMultimodalMessage } from '@/utils/messageUtils';
 import { fetchAIResponse } from '@/utils/apiUtils';
-import { loadTransactionHistory, saveTransactionHistory, loadUsingNip60, saveUsingNip60 } from '@/utils/storageUtils';
-import { calculateBalance } from '@/lib/cashu';
-import { getBalanceFromStoredProofs, getPendingCashuTokenAmount } from '@/utils/cashuUtils'; // Removed getPendingCashuTokenAmount import
-import { useCashuStore } from '@/stores/cashuStore';
-import { useCashuWallet } from '@/hooks/useCashuWallet';
-import { useCashuToken } from '@/hooks/useCashuToken';
+import { getPendingCashuTokenAmount } from '@/utils/cashuUtils';
+import { useCashuWithXYZ } from './useCashuWithXYZ';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import React from 'react';
-import { useAuth } from '@/context/AuthProvider';
-import { useCreateCashuWallet } from '@/hooks/useCreateCashuWallet';
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -26,7 +19,7 @@ export interface UseChatActionsReturn {
   mintBalances: Record<string, number>;
   mintUnits: Record<string, string>;
   isBalanceLoading: boolean;
-  uploadedImages: string[];
+  uploadedAttachments: MessageAttachment[];
   transactionHistory: TransactionHistory[];
   hotTokenBalance: number;
   usingNip60: boolean;
@@ -35,9 +28,8 @@ export interface UseChatActionsReturn {
   setIsLoading: (loading: boolean) => void;
   setStreamingContent: (content: string) => void;
   setBalance: React.Dispatch<React.SetStateAction<number>>;
-  setUploadedImages: React.Dispatch<React.SetStateAction<string[]>>;
+  setUploadedAttachments: React.Dispatch<React.SetStateAction<MessageAttachment[]>>;
   setTransactionHistory: React.Dispatch<React.SetStateAction<TransactionHistory[]>>;
-  setUsingNip60: (using: boolean) => void;
   sendMessage: (
     messages: Message[],
     setMessages: (messages: Message[]) => void,
@@ -45,7 +37,6 @@ export interface UseChatActionsReturn {
     createNewConversation: (initialMessages?: Message[]) => string,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
@@ -60,8 +51,7 @@ export interface UseChatActionsReturn {
     setEditingContent: (content: string) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => Promise<void>;
@@ -71,8 +61,7 @@ export interface UseChatActionsReturn {
     setMessages: (messages: Message[]) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => void;
@@ -100,167 +89,29 @@ export const useChatActions = (): UseChatActionsReturn => {
     if (!conversationId) return '';
     return thinkingContentByConversation[conversationId] ?? '';
   }, [thinkingContentByConversation]);
-  const [balance, setBalance] = useState(0);
-  const [currentMintUnit, setCurrentMintUnit] = useState('sat');
-  const [isBalanceLoading, setIsBalanceLoading] = useState(true);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [pendingCashuAmountState, setPendingCashuAmountState] = useState(0);
-  const [transactionHistory, setTransactionHistoryState] = useState<TransactionHistory[]>([]);
-  const [hotTokenBalance, setHotTokenBalance] = useState<number>(0);
-  const [usingNip60, setUsingNip60State] = useState(() => loadUsingNip60());
+  const [uploadedAttachments, setUploadedAttachments] = useState<MessageAttachment[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Cashu wallet hooks
-  const { wallet, isLoading: isWalletLoading, didRelaysTimeout } = useCashuWallet();
-  const cashuStore = useCashuStore();
-  const { sendToken, receiveToken, cleanSpentProofs } = useCashuToken();
-  const { logins } = useAuth();
-  const { mutate: handleCreateWallet, isPending: isCreatingWallet, error: createWalletError } = useCreateCashuWallet();
-
-  // Load transaction history on mount
-  useEffect(() => {
-    const history = loadTransactionHistory();
-    setTransactionHistoryState(history);
-  }, []);
-
-  // Calculate mint balances
-  const { balances: mintBalances, units: mintUnits } = React.useMemo(() => {
-    if (!cashuStore.proofs) return { balances: {}, units: {} };
-    return calculateBalance(cashuStore.proofs);
-  }, [cashuStore.proofs, cashuStore.mints]);
-
-  useEffect(() => {
-    setCurrentMintUnit(mintUnits[cashuStore.activeMintUrl??'']);
-  }, [mintUnits, cashuStore.activeMintUrl]);
-
-  // Update balance based on wallet type
-  useEffect(() => {
-    const fetchAndSetBalances = async () => {
-      if (usingNip60) {
-        if (isWalletLoading) {
-          setIsBalanceLoading(true);
-          setBalance(0);
-        } else {
-          setIsBalanceLoading(false);
-          let totalBalance = 0;
-          for (const mintUrl in mintBalances) {
-            const balance = mintBalances[mintUrl];
-            const unit = mintUnits[mintUrl];
-            if (unit === 'msat') {
-              totalBalance += (balance / 1000);
-            } else {
-              totalBalance += balance;
-            }
-          }
-          setBalance(Math.round((totalBalance + pendingCashuAmountState)*100)/100);
-        }
-      } else {
-        // Legacy wallet balance calculation would go here
-        setIsBalanceLoading(false);
-        setBalance(getBalanceFromStoredProofs() + pendingCashuAmountState);
-      }
-    };
-    fetchAndSetBalances();
-  }, [mintBalances, mintUnits, usingNip60, isWalletLoading, pendingCashuAmountState]);
-
-  // Effect to listen for changes in localStorage for 'current_cashu_token'
-  useEffect(() => {
-    const updatePendingAmount = () => {
-      console.log('rdlogs: pendigl', getPendingCashuTokenAmount())
-      setPendingCashuAmountState(getPendingCashuTokenAmount());
-    };
-
-    // Initial update
-    updatePendingAmount();
-
-    // Listen for storage events
-    window.addEventListener('storage', updatePendingAmount);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('storage', updatePendingAmount);
-    };
-  }, [pendingCashuAmountState]);
-
-  // Set active mint URL based on wallet and current mint URL
-  useEffect(() => {
-    if (logins.length > 0) {
-      if (wallet) {
-        const currentActiveMintUrl = cashuStore.getActiveMintUrl();
-        
-        // Only set active mint URL if it's not already set or if current one is not in wallet mints
-        if (!currentActiveMintUrl || !wallet.mints?.includes(currentActiveMintUrl)) {
-          if (wallet.mints?.includes(DEFAULT_MINT_URL)) {
-            cashuStore.setActiveMintUrl(DEFAULT_MINT_URL);
-          } else if (wallet.mints && wallet.mints.length > 0) {
-            cashuStore.setActiveMintUrl(wallet.mints[0]);
-          }
-        }
-      }
-
-      if (!isWalletLoading) {
-        
-        if (didRelaysTimeout) {
-          console.log('rdlogs: Skipping wallet creation due to relay timeout');
-          return;
-        }
-        
-        if (wallet) {
-          console.log('rdlogs: Wallet found: ', wallet);
-          // Call cleanSpentProofs for each mint in the wallet
-          wallet.mints?.forEach(mint => {
-            cleanSpentProofs(mint);
-          });
-        } else {
-          console.log('rdlogs: No wallet found, creating new wallet');
-          handleCreateWallet();
-        }
-      } else {
-        console.log('rdlogs: Wallet still loading, skipping actions');
-      }
-    }
-  }, [wallet, isWalletLoading, logins, handleCreateWallet, didRelaysTimeout]);
-
-  // Auto-switch active mint to one that has balance if current has zero (NIP-60 only)
-  useEffect(() => {
-    if (!usingNip60) return;
-
-    const activeUrl = cashuStore.getActiveMintUrl?.() ?? cashuStore.activeMintUrl;
-    const activeBalance = activeUrl ? (mintBalances[activeUrl] ?? 0) : 0;
-
-    // Respect user manual selection, even if empty
-    if (cashuStore.userSelectedMintUrl && cashuStore.userSelectedMintUrl === activeUrl) {
-      return;
-    }
-
-    // If current active has balance, keep it
-    if (activeBalance > 0) return;
-
-    // Find mint with highest non-zero balance
-    const candidates = Object.entries(mintBalances).filter(([, balance]) => (balance ?? 0) > 0);
-    if (candidates.length === 0) return;
-    const [bestMint] = candidates.sort((a, b) => (b[1] as number) - (a[1] as number))[0];
-
-    if (bestMint && bestMint !== activeUrl) {
-      cashuStore.setActiveMintUrl(bestMint);
-    }
-  }, [usingNip60, mintBalances, cashuStore.activeMintUrl]);
+  // Get all balance and wallet functionality from useCashuWithXYZ
+  const {
+    balance,
+    setBalance,
+    currentMintUnit,
+    mintBalances,
+    mintUnits,
+    isBalanceLoading,
+    setPendingCashuAmountState,
+    transactionHistory,
+    setTransactionHistory,
+    hotTokenBalance,
+    usingNip60,
+    spendCashu,
+    storeCashu,
+    cashuStore
+  } = useCashuWithXYZ();
 
   // Autoscroll moved to ChatMessages to honor user scroll position
-
-  const setTransactionHistory = useCallback((value: React.SetStateAction<TransactionHistory[]>) => {
-    setTransactionHistoryState(prev => {
-      const newHistory = typeof value === 'function' ? value(prev) : value;
-      saveTransactionHistory(newHistory);
-      return newHistory;
-    });
-  }, []);
-
-  const setUsingNip60 = useCallback((using: boolean) => {
-    setUsingNip60State(using);
-    saveUsingNip60(using);
-  }, []);
 
   const sendMessage = useCallback(async (
     messages: Message[],
@@ -269,7 +120,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     createNewConversation: (initialMessages?: Message[]) => string,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
@@ -280,11 +130,11 @@ export const useChatActions = (): UseChatActionsReturn => {
       return;
     }
 
-    if (!inputMessage.trim() && uploadedImages.length === 0) return;
+    if (!inputMessage.trim() && uploadedAttachments.length === 0) return;
 
     // Create user message with text and images
-    const userMessage = uploadedImages.length > 0
-      ? createMultimodalMessage('user', inputMessage, uploadedImages)
+    const userMessage = uploadedAttachments.length > 0
+      ? createMultimodalMessage('user', inputMessage, uploadedAttachments)
       : createTextMessage('user', inputMessage);
 
     const updatedMessages = [...messages, userMessage];
@@ -296,19 +146,18 @@ export const useChatActions = (): UseChatActionsReturn => {
     }
 
     setInputMessage('');
-    setUploadedImages([]);
+    setUploadedAttachments([]);
 
     await performAIRequest(
       updatedMessages,
       setMessages,
       selectedModel,
       baseUrl,
-      mintUrl,
       originConversationId,
       saveConversationById,
       getActiveConversationId
     );
-  }, [inputMessage, uploadedImages]);
+  }, [inputMessage, uploadedAttachments]);
 
   const saveInlineEdit = useCallback(async (
     editingMessageIndex: number | null,
@@ -319,16 +168,45 @@ export const useChatActions = (): UseChatActionsReturn => {
     setEditingContent: (content: string) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     if (editingMessageIndex !== null && editingContent.trim()) {
       const updatedMessages = [...messages];
+      const originalMessage = updatedMessages[editingMessageIndex];
+      
+      // Preserve attachments from original message
+      let newContent: string | MessageContent[];
+      if (typeof originalMessage.content === 'string') {
+        // Simple case: was just text, remains just text
+        newContent = editingContent;
+      } else {
+        // Complex case: preserve attachments and hidden text, update the visible text
+        const updatedContent: MessageContent[] = [];
+        let textReplaced = false;
+
+        originalMessage.content.forEach(item => {
+          if (item.type === 'text' && !item.hidden) {
+            if (!textReplaced) {
+              updatedContent.push({ ...item, text: editingContent });
+              textReplaced = true;
+            }
+            return;
+          }
+          updatedContent.push(item);
+        });
+
+        if (!textReplaced) {
+          updatedContent.unshift({ type: 'text', text: editingContent });
+        }
+        
+        newContent = updatedContent;
+      }
+      
       updatedMessages[editingMessageIndex] = {
-        ...updatedMessages[editingMessageIndex],
-        content: editingContent
+        ...originalMessage,
+        content: newContent
       };
 
       const truncatedMessages = updatedMessages.slice(0, editingMessageIndex + 1);
@@ -337,14 +215,16 @@ export const useChatActions = (): UseChatActionsReturn => {
       setEditingMessageIndex(null);
       setEditingContent('');
 
-      const originId = originConversationId;
+      const originConversationId = activeConversationId ?? getActiveConversationId();
+      if (!originConversationId) {
+        throw new Error('No active conversation ID found');
+      }
       await performAIRequest(
         truncatedMessages,
         setMessages,
         selectedModel,
         baseUrl,
-        mintUrl,
-        originId,
+        originConversationId,
         saveConversationById,
         getActiveConversationId
       );
@@ -357,19 +237,21 @@ export const useChatActions = (): UseChatActionsReturn => {
     setMessages: (messages: Message[]) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
-    originConversationId: string | null,
+    activeConversationId: string | null,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     const newMessages = messages.slice(0, index);
     setMessages(newMessages);
+    const originConversationId = activeConversationId ?? getActiveConversationId();
+    if (!originConversationId) {
+      throw new Error('No active conversation ID found');
+    }
     performAIRequest(
       newMessages,
       setMessages,
       selectedModel,
       baseUrl,
-      mintUrl,
       originConversationId,
       saveConversationById,
       getActiveConversationId
@@ -381,8 +263,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     setMessages: (messages: Message[]) => void,
     selectedModel: any,
     baseUrl: string,
-    mintUrl: string,
-    originConversationId: string | null,
+    originConversationId: string,
     saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
@@ -401,15 +282,19 @@ export const useChatActions = (): UseChatActionsReturn => {
     const updateMessages = (newMessages: Message[]) => {
       currentMessages = newMessages;
       const currentlyActive = getActiveConversationId();
-      if (originConversationId && currentlyActive !== originConversationId) {
+      if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
+        console.log('rdlogs: ONE messages: ', currentMessages, originConversationId);
         // Persist to the origin conversation without disrupting the UI of the current one
         saveConversationById(originConversationId, newMessages);
       } else {
+        console.log('rdlogs: TWO messages: ', currentMessages, originConversationId);
         setMessages(newMessages);
+        saveConversationById(originConversationId, newMessages);
       }
     };
 
     try {
+      const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
       await fetchAIResponse({
         messageHistory,
         selectedModel,
@@ -417,9 +302,8 @@ export const useChatActions = (): UseChatActionsReturn => {
         mintUrl,
         usingNip60,
         balance,
-        unit: mintUnits[cashuStore.activeMintUrl??mintUrl],
-        sendToken: usingNip60 ? sendToken : undefined,
-        receiveToken,
+        spendCashu: spendCashu,
+        storeCashu: storeCashu,
         activeMintUrl: cashuStore.activeMintUrl,
         onStreamingUpdate: (content) => {
           // Ignore stale updates from previous streams
@@ -443,8 +327,7 @@ export const useChatActions = (): UseChatActionsReturn => {
         onBalanceUpdate: setBalance,
         onTransactionUpdate: (transaction) => {
           const updated = [...transactionHistory, transaction];
-          setTransactionHistoryState(updated);
-          saveTransactionHistory(updated);
+          setTransactionHistory(updated);
           return updated;
         },
         transactionHistory,
@@ -463,7 +346,7 @@ export const useChatActions = (): UseChatActionsReturn => {
         setThinkingContentByConversation(prev => ({ ...prev, [originConversationId]: '' }));
       }
     }
-  }, [usingNip60, balance, sendToken, receiveToken, cashuStore.activeMintUrl, transactionHistory, setPendingCashuAmountState]);
+  }, [usingNip60, balance, spendCashu, storeCashu, transactionHistory, setPendingCashuAmountState]);
 
   return {
     inputMessage,
@@ -478,7 +361,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     mintBalances,
     mintUnits,
     isBalanceLoading,
-    uploadedImages,
+    uploadedAttachments,
     transactionHistory,
     hotTokenBalance,
     usingNip60,
@@ -487,9 +370,8 @@ export const useChatActions = (): UseChatActionsReturn => {
     setIsLoading,
     setStreamingContent,
     setBalance: setBalance,
-    setUploadedImages,
+    setUploadedAttachments,
     setTransactionHistory,
-    setUsingNip60,
     sendMessage,
     saveInlineEdit,
     retryMessage

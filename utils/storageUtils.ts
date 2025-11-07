@@ -1,5 +1,5 @@
 import { TransactionHistory } from '@/types/chat';
-import { useCashuStore } from '../stores/cashuStore';
+import { useCashuStore } from '@/features/wallet/state/cashuStore';
 
 /**
  * SSR-safe check for localStorage availability
@@ -383,18 +383,18 @@ export const saveUsingNip60 = (usingNip60: boolean): void => {
 };
 
 /**
- * Check if user has seen the tutorial
- * @returns True if tutorial has been seen
+ * Check if user has seen the top-up prompt
+ * @returns True if top-up prompt has been seen
  */
-export const hasSeenTutorial = (): boolean => {
-  return hasStorageItem('hasSeenTutorial');
+export const hasSeenTopUpPrompt = (): boolean => {
+  return hasStorageItem(STORAGE_KEYS.TOPUP_PROMPT_SEEN);
 };
 
 /**
- * Mark tutorial as seen
+ * Mark top-up prompt as seen
  */
-export const markTutorialAsSeen = (): void => {
-  setStorageItem('hasSeenTutorial', 'true');
+export const markTopUpPromptSeen = (): void => {
+  setStorageItem(STORAGE_KEYS.TOPUP_PROMPT_SEEN, 'true');
 };
 
 /**
@@ -418,7 +418,7 @@ export const saveSidebarOpen = (isOpen: boolean): void => {
  * @returns Sidebar collapsed state, defaults to false
  */
 export const loadSidebarCollapsed = (): boolean => {
-  return getStorageItem<boolean>('sidebar_collapsed', false);
+  return getStorageItem<boolean>('sidebar_collapsed', true);
 };
 
 /**
@@ -430,10 +430,27 @@ export const saveSidebarCollapsed = (isCollapsed: boolean): void => {
 };
 
 /**
+ * Load active conversation ID from localStorage
+ * @returns Active conversation ID or null
+ */
+export const loadActiveConversationId = (): string | null => {
+  return getStorageItem<string | null>(STORAGE_KEYS.ACTIVE_CONVERSATION_ID, null);
+};
+
+/**
+ * Save active conversation ID to localStorage
+ * @param conversationId Conversation ID to save
+ */
+export const saveActiveConversationId = (conversationId: string | null): void => {
+  setStorageItem(STORAGE_KEYS.ACTIVE_CONVERSATION_ID, conversationId);
+};
+
+/**
  * Storage keys used throughout the application
  */
 export const STORAGE_KEYS = {
   CONVERSATIONS: 'saved_conversations',
+  ACTIVE_CONVERSATION_ID: 'active_conversation_id',
   TRANSACTION_HISTORY: 'transaction_history',
   FAVORITE_MODELS: 'favorite_models',
   CONFIGURED_MODELS: 'configured_models',
@@ -443,13 +460,15 @@ export const STORAGE_KEYS = {
   BASE_URL: 'base_url',
   BASE_URLS_LIST: 'base_urls_list',
   USING_NIP60: 'usingNip60',
-  TUTORIAL_SEEN: 'hasSeenTutorial',
   SIDEBAR_OPEN: 'sidebar_open',
   SIDEBAR_COLLAPSED: 'sidebar_collapsed',
   LOCAL_CASHU_TOKENS: 'local_cashu_tokens',
   CASHU_PROOFS: 'cashu_proofs',
   WRAPPED_CASHU_TOKENS: 'wrapped_cashu_tokens',
-  RELAYS: 'nostr_relays'
+  RELAYS: 'nostr_relays',
+  TOPUP_PROMPT_SEEN: 'topup_prompt_seen',
+  DISABLED_PROVIDERS: 'disabled_providers',
+  MINTS_FROM_ALL_PROVIDERS: 'mints_from_all_providers'
 } as const;
 
 /**
@@ -518,4 +537,59 @@ export const migrateCurrentCashuToken = (baseUrl: string): void => {
   } catch (error) {
     console.error('Error migrating current_cashu_token:', error);
   }
+};
+
+/**
+ * Load disabled providers from localStorage
+ * @returns Array of disabled provider base URLs
+ */
+export const loadDisabledProviders = (): string[] => {
+  return getStorageItem<string[]>(STORAGE_KEYS.DISABLED_PROVIDERS, []);
+};
+
+/**
+ * Save disabled providers to localStorage
+ * @param disabledProviders Array of disabled provider base URLs
+ */
+export const saveDisabledProviders = (disabledProviders: string[]): void => {
+  setStorageItem(STORAGE_KEYS.DISABLED_PROVIDERS, disabledProviders);
+};
+
+/**
+ * Load mints from all providers
+ * @returns Record mapping provider base URL to array of mint URLs
+ */
+export const loadMintsFromAllProviders = (): Record<string, string[]> => {
+  return getStorageItem<Record<string, string[]>>(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, {});
+};
+
+/**
+ * Save mints from all providers to localStorage
+ * @param mintsMap Record mapping provider base URL to array of mint URLs
+ */
+export const saveMintsFromAllProviders = (mintsMap: Record<string, string[]>): void => {
+  setStorageItem(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, mintsMap);
+};
+
+/**
+ * Get mints for a specific provider
+ * @param providerBaseUrl Provider base URL
+ * @returns Array of mint URLs for the provider
+ */
+export const getProviderMints = (providerBaseUrl: string): string[] => {
+  const allMints = loadMintsFromAllProviders();
+  const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+  return allMints[normalized] || [];
+};
+
+/**
+ * Set mints for a specific provider
+ * @param providerBaseUrl Provider base URL
+ * @param mints Array of mint URLs
+ */
+export const setProviderMints = (providerBaseUrl: string, mints: string[]): void => {
+  const allMints = loadMintsFromAllProviders();
+  const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+  allMints[normalized] = mints;
+  saveMintsFromAllProviders(allMints);
 };

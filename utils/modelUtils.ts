@@ -36,3 +36,41 @@ export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
     return undefined;
   }
 }
+
+
+// Determine required minimum sats to run a request for a model
+export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): number => {
+  try {
+    const approximateTokens = apiMessages ? Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84) : 10000; // Assumed tokens for minimum balance calculation
+    const sp: any = model?.sats_pricing as any;
+    
+    if (!sp) return 0;
+    
+    // If we don't have max_completion_cost, fall back to max_cost
+    if (!sp.max_completion_cost) {
+      return sp.max_cost ?? 50;
+    }
+    
+    // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
+    const promptCosts = (sp.prompt || 0) * approximateTokens;
+    const totalEstimatedCosts = promptCosts + sp.max_completion_cost;
+    return totalEstimatedCosts * 1.05; // Added a 5% margin
+  } catch (e) {
+    console.error(e);
+    return 0;
+  }
+};
+
+// Check if a model is available based on balance
+export const isModelAvailable = (model: Model, balance: number) => {
+  try {
+    const required = getRequiredSatsForModel(model);
+    if (!required || required <= 0) return true;
+    return balance >= required;
+  }
+  catch(error){ 
+    console.log(model);
+    console.error(error);
+    return true;
+  }
+};

@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Copy, Eye, EyeOff, Info, Check, Plus, RefreshCw, Key, ChevronDown, ChevronRight, ChevronUp, Pencil, X } from 'lucide-react';
-import { getBalanceFromStoredProofs, refundRemainingBalance, create60CashuToken, generateApiToken, unifiedRefund } from '@/utils/cashuUtils';
+import { getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund } from '@/utils/cashuUtils';
 import { toast } from 'sonner';
 import { useApiKeysSync } from '@/hooks/useApiKeysSync'; // Import the new hook
 import { useCurrentUser } from '@/hooks/useCurrentUser'; // For checking user login
-import { useCashuStore } from '@/stores/cashuStore';
-import { useCashuToken } from '@/hooks/useCashuToken';
-import { calculateBalance } from '@/lib/cashu';
+import { useCashuStore, useCashuToken, calculateBalanceByMint } from '@/features/wallet';
+import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
+import SettingsDialog from '@/components/ui/SettingsDialog';
+import { DEFAULT_MINT_URL } from '@/lib/utils';
 
 export interface StoredApiKey {
   key: string;
@@ -19,14 +20,13 @@ export interface StoredApiKey {
 }
 
 interface ApiKeysTabProps {
-  mintUrl: string;
   baseUrl: string;
-  usingNip60: boolean;
   baseUrls: string[]; // kept for backwards compatibility but will be ignored
   setActiveTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void;
+  isMobile?: boolean;
 }
 
-const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsProp, setActiveTab }: ApiKeysTabProps) => {
+const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isMobile }: ApiKeysTabProps) => {
   // Available provider base URLs (aggregated from providers API + current baseUrl)
   const [availableBaseUrls, setAvailableBaseUrls] = useState<string[]>([]);
   const [isLoadingBaseUrls, setIsLoadingBaseUrls] = useState<boolean>(false);
@@ -94,14 +94,16 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
     setCloudSyncEnabled
   } = useApiKeysSync();
   const cashuStore = useCashuStore();
-  const { sendToken, receiveToken } = useCashuToken();
+  const usingNip60 = cashuStore.getUsingNip60();
+  const { receiveToken } = useCashuToken();
+  const { spendCashu } = useCashuWithXYZ();
 
   const [localMintBalance, setLocalMintBalance] = useState(0);
 
   const { balances: mintBalances, units: mintUnits } = useMemo(() => {
     if (!cashuStore.proofs) return { balances: {}, units: {} };
-    return calculateBalance(cashuStore.proofs);
-  }, [cashuStore.proofs]);
+    return calculateBalanceByMint(cashuStore.proofs, cashuStore.mints);
+  }, [cashuStore.proofs, cashuStore.mints]);
 
   useEffect(() => {
     if (!usingNip60) {
@@ -120,6 +122,7 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
   }, [mintBalances, mintUnits, cashuStore.activeMintUrl, usingNip60]);
 
   const [showTooltip, setShowTooltip] = useState(false); // New state for tooltip visibility
+  const [showMaxBalanceTooltip, setShowMaxBalanceTooltip] = useState(false); // Tooltip for max balance info
   const [apiKeyAmount, setApiKeyAmount] = useState('');
   const [storedApiKeys, setStoredApiKeys] = useState<StoredApiKey[]>([]); // This will now primarily represent the active keys
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -274,25 +277,22 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
         return;
       }
       
-      if (usingNip60) {
-        if (!cashuStore.activeMintUrl) {
-          toast.error('No active mint selected');
-          return;
-        }
-        console.log("tryuing my best");
-        token = await create60CashuToken(
-          cashuStore.activeMintUrl,
-          sendToken,
-          parseInt(apiKeyAmount)
-        );
-      } else {
-        token = await generateApiToken(mintUrl, parseInt(apiKeyAmount));
-      }
-
-      if (!token) {
-        toast.error('Failed to generate Cashu token for API key creation.');
+      if (!cashuStore.activeMintUrl) {
+        toast.error('No active mint selected');
         return;
       }
+      const result = await spendCashu(
+        cashuStore.activeMintUrl,
+        parseInt(apiKeyAmount),
+        selectedNewApiKeyBaseUrl
+      );
+
+      if (result.status === 'failed' || !result.token) {
+        toast.error(result.error || 'Failed to generate Cashu token for API key creation.');
+        return;
+      }
+
+      token = result.token;
 
       const response = await fetch(`${selectedNewApiKeyBaseUrl}v1/wallet/info`, {
         headers: {
@@ -502,6 +502,7 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
       if (keyDataToDelete) {
         // Attempt to refund the balance
         const urlToUse = keyDataToDelete.baseUrl || baseUrl; // Use key-specific baseUrl or fallback to global
+        const mintUrl = usingNip60 ? cashuStore.activeMintUrl || DEFAULT_MINT_URL : DEFAULT_MINT_URL;
         const refundResult = await unifiedRefund(mintUrl, urlToUse, usingNip60, receiveToken, keyDataToDelete.key);
 
         if (refundResult.success) {
@@ -562,26 +563,25 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
     const urlToUse = keyToTopUp.baseUrl || baseUrl; // Moved here
     try {
       let cashuToken: string | null | { hasTokens: false } | undefined;
-      
-      // Create cashu token based on the wallet type
-      if (usingNip60) {
-        if (!cashuStore.activeMintUrl) {
-          toast.error('No active mint selected');
-          return;
-        }
-        cashuToken = await create60CashuToken(
-          cashuStore.activeMintUrl,
-          sendToken,
-          parseInt(topUpAmount)
-        );
-      } else {
-        cashuToken = await generateApiToken(mintUrl, parseInt(topUpAmount));
-      }
 
-      if (!cashuToken) {
-        toast.error('Failed to generate Cashu token for top up.');
+
+      if (!cashuStore.activeMintUrl) {
+        toast.error('No active mint selected');
         return;
       }
+
+      const result = await spendCashu(
+        cashuStore.activeMintUrl,
+        parseInt(topUpAmount),
+        urlToUse
+      );
+      
+      if (result.status === 'failed' || !result.token) {
+        toast.error(result.error || 'Failed to generate Cashu token for top up.');
+        return;
+      }
+
+      cashuToken = result.token;
 
       // Use the key-specific baseUrl or fallback to global baseUrl
       // Make the topup request to the backend
@@ -723,21 +723,53 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
       <div className="bg-white/5 border border-white/10 rounded-md p-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-white/70">Available Balance</div>
+            <div className="text-sm text-white/70 flex items-center gap-2">
+              Available Balance
+              <div
+                className="relative inline-block"
+                onMouseEnter={() => setShowMaxBalanceTooltip(true)}
+                onMouseLeave={() => setShowMaxBalanceTooltip(false)}
+              >
+                <Info className="h-4 w-4 text-white/60 hover:text-white transition-colors cursor-pointer" />
+                <div
+                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-black text-white text-xs rounded-md shadow-lg transition-opacity duration-300 w-64 border border-white/30 whitespace-normal z-50 ${
+                    showMaxBalanceTooltip ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                  }`}
+                >
+                  Currently we don't have multiple mint spends yet, so the mint with highest balance is shown here.
+                </div>
+              </div>
+            </div>
             <div className="text-lg font-semibold text-white">
-              {localMintBalance} sats
-              {usingNip60 && cashuStore.activeMintUrl && (
-                <span className="text-xs text-white/50 ml-2">
-                  ({cashuStore.activeMintUrl.replace(/^https?:\/\//, '')})
-                  <button
-                    onClick={() => setActiveTab('wallet')}
-                    className="ml-2 text-white/70 hover:text-white text-xs font-medium"
-                    type="button"
-                  >
-                    Switch
-                  </button>
-                </span>
-              )}
+              {usingNip60 && cashuStore.proofs && Object.keys(mintBalances).length > 1 && (() => {
+                let maxBalance = 0;
+                let maxBalanceMintUrl = '';
+                for (const mintUrl in mintBalances) {
+                  const balance = mintBalances[mintUrl];
+                  const unit = mintUnits[mintUrl];
+                  if (unit === 'msat') {
+                    if (balance / 1000 > maxBalance) {
+                      maxBalance = balance / 1000;
+                      maxBalanceMintUrl = mintUrl;
+                    }
+                  } else {
+                    if (balance > maxBalance) {
+                      maxBalance = balance;
+                      maxBalanceMintUrl = mintUrl;
+                    }
+                  }
+                }
+                return maxBalance !== localMintBalance && (
+                  <>
+                    {maxBalance} sats
+                    {usingNip60 && maxBalanceMintUrl && (
+                      <span className="text-xs text-white/50 ml-2">
+                        ({maxBalanceMintUrl.replace(/^https?:\/\//, '')})
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -929,6 +961,7 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
                           setIsRefundingKey(keyData.key); // Set loading for this specific key
                           try {
                             const urlToUse = keyData.baseUrl || baseUrl; // Use key-specific baseUrl or fallback to global
+                            const mintUrl = usingNip60 ? cashuStore.activeMintUrl || DEFAULT_MINT_URL : DEFAULT_MINT_URL;
                             const refundResult = await unifiedRefund(mintUrl, urlToUse, usingNip60, receiveToken, keyData.key);
                             if (refundResult.success) {
                               toast.success(refundResult.message || 'Refund completed successfully!');
@@ -966,89 +999,95 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
       <div className="pb-20"></div>
 
       {showConfirmation && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-black rounded-lg p-6 max-w-md w-full border border-white/10">
-            {isLoading || isSyncingApiKeys ? (
-              <>
-                <h4 className="text-lg font-semibold text-white mb-4">Creating API Key...</h4>
-                <p className="text-sm text-white/70 mb-4">Please wait while your API key is being generated and {cloudSyncEnabled ? 'synced to the cloud' : 'stored locally'}.</p>
-                <div className="flex justify-center">
-                  <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </div>
-              </>
-            ) : (
-              <>
-                <h4 className="text-lg font-semibold text-white mb-4">Confirm API Key Creation</h4>
-                <p className="text-sm text-white/70 mb-4">
-                  Note: Your API keys will be stored {cloudSyncEnabled ? 'in the cloud (Nostr) and also cached locally.' : 'only locally. If you clear your local storage, your keys and thus the BALANCE attached to them will be LOST.'}
-                </p>
-                <div className="flex items-center space-x-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="API Key Label (optional)"
-                    value={newApiKeyLabel}
-                    onChange={(e) => setNewApiKeyLabel(e.target.value)}
-                    className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
-                  />
-                </div>
-                <div className="flex items-center space-x-2 mb-4">
-                  <input
-                    type="number"
-                    placeholder="Amount"
-                    value={apiKeyAmount}
-                    onChange={(e) => setApiKeyAmount(e.target.value)}
-                    className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
-                  />
-                  <button
-                    onClick={() => setApiKeyAmount(localMintBalance.toString())}
-                    className="px-3 py-2 bg-white/5 border border-white/20 text-white/70 rounded-md text-sm hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Max
-                  </button>
-                </div>
-                {availableBaseUrls.length >= 1 && (
-                  <div className="mb-4">
-                    <p className="text-sm text-white/70 mb-2">Select Base URL for this API Key:</p>
-                    <div className="max-h-32 overflow-y-auto space-y-2">
-                      {availableBaseUrls.map((url: string, index: number) => (
-                        <div className="flex items-center gap-2" key={index}>
-                          <input
-                            type="radio"
-                            id={`newApiKeyBaseUrl-${index}`}
-                            name="newApiKeyBaseUrl"
-                            className="accent-gray-500"
-                            checked={selectedNewApiKeyBaseUrl === url}
-                            onChange={() => setSelectedNewApiKeyBaseUrl(url)}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <label htmlFor={`newApiKeyBaseUrl-${index}`} className="text-sm text-white truncate block" title={url}>{url}</label>
-                          </div>
-                        </div>
-                      ))}
+        <SettingsDialog
+          open={showConfirmation}
+          onOpenChange={(open) => { if (!open) setShowConfirmation(false); }}
+          isMobile={isMobile}
+          nested
+          title="Create API Key"
+        >
+          <div className={isMobile ? "px-4" : ""}>
+                {isLoading || isSyncingApiKeys ? (
+                  <>
+                    <h4 className="text-lg font-semibold text-white mb-4">Creating API Key...</h4>
+                    <p className="text-sm text-white/70 mb-4">Please wait while your API key is being generated and {cloudSyncEnabled ? 'synced to the cloud' : 'stored locally'}.</p>
+                    <div className="flex justify-center">
+                      <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
                     </div>
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-lg font-semibold text-white mb-4">Confirm API Key Creation</h4>
+                    <p className="text-sm text-white/70 mb-4">
+                      Note: Your API keys will be stored {cloudSyncEnabled ? 'in the cloud (Nostr) and also cached locally.' : 'only locally. If you clear your local storage, your keys and thus the BALANCE attached to them will be LOST.'}
+                    </p>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="API Key Label (optional)"
+                        value={newApiKeyLabel}
+                        onChange={(e) => setNewApiKeyLabel(e.target.value)}
+                        className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2 mb-4">
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        value={apiKeyAmount}
+                        onChange={(e) => setApiKeyAmount(e.target.value)}
+                        className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <button
+                        onClick={() => setApiKeyAmount(localMintBalance.toString())}
+                        className="px-3 py-2 bg-white/5 border border-white/20 text-white/70 rounded-md text-sm hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                      >
+                        Max
+                      </button>
+                    </div>
+                    {availableBaseUrls.length >= 1 && (
+                      <div className="mb-4">
+                        <p className="text-sm text-white/70 mb-2">Select Base URL for this API Key:</p>
+                        <div className="max-h-32 overflow-y-auto space-y-2">
+                          {availableBaseUrls.map((url: string, index: number) => (
+                            <div className="flex items-center gap-2" key={index}>
+                              <input
+                                type="radio"
+                                id={`newApiKeyBaseUrl-${index}`}
+                                name="newApiKeyBaseUrl"
+                                className="accent-gray-500"
+                                checked={selectedNewApiKeyBaseUrl === url}
+                                onChange={() => setSelectedNewApiKeyBaseUrl(url)}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <label htmlFor={`newApiKeyBaseUrl-${index}`} className="text-sm text-white truncate block" title={url}>{url}</label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+              <div className="flex justify-end space-x-2 mt-auto">
+                      <button
+                        className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                        onClick={() => setShowConfirmation(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                        onClick={confirmCreateApiKey}
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-end space-x-2">
-                  <button
-                    className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
-                    onClick={() => setShowConfirmation(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
-                    onClick={confirmCreateApiKey}
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </>
-            )}
           </div>
-        </div>
+        </SettingsDialog>
       )}
 
       {showDeleteConfirmation && (
@@ -1138,6 +1177,12 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
                   placeholder="Enter amount"
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void confirmTopUp();
+                    }
+                  }}
                   className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
@@ -1174,98 +1219,122 @@ const ApiKeysTab = ({ mintUrl, baseUrl, usingNip60, baseUrls: _ignoredBaseUrlsPr
 
       {/* Add API Key Modal */}
       {showAddApiKeyModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-black rounded-lg p-6 max-w-md w-full border border-white/10">
-            {isAddingApiKey ? (
-              <>
-                <h4 className="text-lg font-semibold text-white mb-4">Adding API Key...</h4>
-                <p className="text-sm text-white/70 mb-4">
-                  Please wait while your API key is being verified and {cloudSyncEnabled ? 'synced to the cloud' : 'stored locally'}.
-                </p>
-                <div className="flex justify-center">
-                  <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </div>
-              </>
-            ) : (
-              <>
-                <h4 className="text-lg font-semibold text-white mb-4">Add Existing API Key</h4>
-                <p className="text-sm text-white/70 mb-4">
-                  Add an existing API key to manage it here. The key will be verified before adding.
-                </p>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-white/70 mb-2">API Key Label (optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Production Key"
-                      value={manualApiKeyLabel}
-                      onChange={(e) => setManualApiKeyLabel(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-white/70 mb-2">API Key</label>
-                    <input
-                      type="text"
-                      placeholder="Enter your API key"
-                      value={manualApiKey}
-                      onChange={(e) => setManualApiKey(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-white/20"
-                    />
-                  </div>
-
-                {availableBaseUrls.length >= 1 && (
-                    <div>
-                      <label className="block text-sm text-white/70 mb-2">Base URL</label>
-                      <div className="max-h-32 overflow-y-auto space-y-2 bg-white/5 rounded-md p-2 border border-white/10">
-                      {availableBaseUrls.map((url: string, index: number) => (
-                          <div className="flex items-center gap-2" key={index}>
-                            <input
-                              type="radio"
-                              id={`manualApiKeyBaseUrl-${index}`}
-                              name="manualApiKeyBaseUrl"
-                              className="accent-gray-500"
-                              checked={selectedManualApiKeyBaseUrl === url}
-                              onChange={() => setSelectedManualApiKeyBaseUrl(url)}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <label htmlFor={`manualApiKeyBaseUrl-${index}`} className="text-sm text-white truncate block" title={url}>{url}</label>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+        <SettingsDialog
+          open={showAddApiKeyModal}
+          onOpenChange={(open) => {
+            if (!open) {
+                              setShowAddApiKeyModal(false);
+                              setManualApiKey('');
+                              setManualApiKeyLabel('');
+            }
+          }}
+          isMobile={isMobile}
+          nested
+          title="Add API Key"
+        >
+          <div className={isMobile ? "px-4" : ""}>
+                {isAddingApiKey ? (
+                  <>
+                    <h4 className="text-lg font-semibold text-white mb-4">Adding API Key...</h4>
+                    <p className="text-sm text-white/70 mb-4">
+                      Please wait while your API key is being verified and {cloudSyncEnabled ? 'synced to the cloud' : 'stored locally'}.
+                    </p>
+                    <div className="flex justify-center">
+                      <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
                     </div>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-lg font-semibold text-white mb-4">Add Existing API Key</h4>
+                    <p className="text-sm text-white/70 mb-4">
+                      Add an existing API key to manage it here. The key will be verified before adding.
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm text-white/70 mb-2">API Key Label (optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., Production Key"
+                          value={manualApiKeyLabel}
+                          onChange={(e) => setManualApiKeyLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void confirmAddApiKey();
+                            }
+                          }}
+                          className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                        />
+                      </div>
 
-                <div className="flex justify-end space-x-2 mt-6">
-                  <button
-                    className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
-                    onClick={() => {
-                      setShowAddApiKeyModal(false);
-                      setManualApiKey('');
-                      setManualApiKeyLabel('');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
-                    onClick={confirmAddApiKey}
-                    disabled={!manualApiKey.trim()}
-                  >
-                    Add API Key
-                  </button>
-                </div>
-              </>
-            )}
+                      <div>
+                        <label className="block text-sm text-white/70 mb-2">API Key</label>
+                        <input
+                          type="text"
+                          placeholder="Enter your API key"
+                          value={manualApiKey}
+                          onChange={(e) => setManualApiKey(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void confirmAddApiKey();
+                            }
+                          }}
+                          className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-white/20"
+                        />
+                      </div>
+
+                    {availableBaseUrls.length >= 1 && (
+                        <div>
+                          <label className="block text-sm text-white/70 mb-2">Base URL</label>
+                          <div className="max-h-32 overflow-y-auto space-y-2 bg-white/5 rounded-md p-2 border border-white/10">
+                          {availableBaseUrls.map((url: string, index: number) => (
+                              <div className="flex items-center gap-2" key={index}>
+                                <input
+                                  type="radio"
+                                  id={`manualApiKeyBaseUrl-${index}`}
+                                  name="manualApiKeyBaseUrl"
+                                  className="accent-gray-500"
+                                  checked={selectedManualApiKeyBaseUrl === url}
+                                  onChange={() => setSelectedManualApiKeyBaseUrl(url)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <label htmlFor={`manualApiKeyBaseUrl-${index}`} className="text-sm text-white truncate block" title={url}>{url}</label>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end space-x-2 mt-6">
+                      <button
+                        className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                        onClick={() => {
+                          setShowAddApiKeyModal(false);
+                          setManualApiKey('');
+                          setManualApiKeyLabel('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                        onClick={confirmAddApiKey}
+                        disabled={!manualApiKey.trim()}
+                      >
+                        Add API Key
+                      </button>
+                    </div>
+                  </>
+                )}
           </div>
-        </div>
+        </SettingsDialog>
       )}
     </div>
   );
