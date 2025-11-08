@@ -213,7 +213,7 @@ export function useCashuWithXYZ() {
       }
     };
 
-  if (isAuthenticated && process.env.NODE_ENV === 'production') {
+  if (isAuthenticated && false && process.env.NODE_ENV === 'production') {
       void initializeWallet();
     }
   }, [initWallet]);
