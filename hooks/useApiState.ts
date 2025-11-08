@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders } from '@/utils/storageUtils';
-import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable } from '@/utils/modelUtils';
+import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable, getRequiredSatsForModel } from '@/utils/modelUtils';
 import { getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
 
 export interface UseApiStateReturn {
@@ -261,6 +261,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
           );
           return bMaxCost - aMaxCost; // Descending order
         });
+        console.log("rdlogs: compatible", compatible.slice(5));
         if (compatible.length > 0) modelToSelect = compatible[0];
       }
       setSelectedModel(modelToSelect);
@@ -346,16 +347,11 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
     if (!selectedModel) {
       const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
         .sort((a, b) => {
-          const aMaxCost = Math.max(
-            Number(a.sats_pricing?.max_cost) || 0,
-            Number(a.sats_pricing?.max_completion_cost) || 0
-          );
-          const bMaxCost = Math.max(
-            Number(b.sats_pricing?.max_cost) || 0,
-            Number(b.sats_pricing?.max_completion_cost) || 0
-          );
+          const aMaxCost = getRequiredSatsForModel(a);
+          const bMaxCost = getRequiredSatsForModel(b);
           return bMaxCost - aMaxCost; // Descending order
         });
+      console.log("rdlogs: compatible12", compatible);
       
       if (compatible.length > 0) {
         // Select the first compatible model (models are already sorted by price)
