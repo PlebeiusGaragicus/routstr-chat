@@ -24,7 +24,7 @@ export interface UseApiStateReturn {
  * Handles API endpoint configuration, model fetching and caching,
  * model selection state, and API error handling
  */
-export const useApiState = (isAuthenticated: boolean, balance: number, maxBalance: number): UseApiStateReturn => {
+export const useApiState = (isAuthenticated: boolean, balance: number, maxBalance: number, pendingCashuAmountState: number): UseApiStateReturn => {
   const searchParams = useSearchParams();
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
@@ -249,7 +249,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       }
 
       if (!modelToSelect) {
-        const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance))
+        const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
         .sort((a, b) => {
           const aMaxCost = Math.max(
             Number(a.sats_pricing?.max_cost) || 0,
@@ -344,7 +344,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
     }
     // Only auto-select if no model is selected or current model is not available
     if (!selectedModel) {
-      const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance))
+      const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
         .sort((a, b) => {
           const aMaxCost = Math.max(
             Number(a.sats_pricing?.max_cost) || 0,

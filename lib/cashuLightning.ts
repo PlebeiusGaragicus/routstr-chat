@@ -56,10 +56,10 @@ export async function createLightningInvoice(mintUrl: string, amount: number): P
       expiresAt: mintQuote.expiry ? mintQuote.expiry * 1000 : undefined,
     };
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NetworkError when attempting to fetch resource')) {
+    if (error instanceof Error && (error.message.includes('NetworkError when attempting to fetch resource') || error.message.includes('Failed to fetch') || error.message.includes('Load failed'))) {
       throw new Error(`Mint connection error ${mintUrl}. The mint is blocking your IP or is down.`);
     }
-    console.error('Error creating Lightning invoice:', error);
+   console.error('Error creating Lightning invoice:', error);
     throw error;
   }
 }
