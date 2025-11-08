@@ -15,7 +15,7 @@ export interface Nip60TokenEvent {
 }
 
 interface CashuStore {
-  mints: { url: string, mintInfo?: GetInfoResponse, keysets?: MintKeyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse> }[];
+  mints: { url: string, mintInfo?: GetInfoResponse, keysets?: MintKeyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number}[];
   proofs: ProofWithEventId[];
   privkey?: string;
   activeMintUrl?: string;
@@ -30,6 +30,8 @@ interface CashuStore {
   setMintInfo: (url: string, mintInfo: GetInfoResponse) => void;
   setKeysets: (url: string, keysets: MintKeyset[]) => void;
   setKeys: (url: string, keys: Record<string, MintKeys>[]) => void;
+  setLastUpdate: (url: string, lastUpdate: number) => void;
+  getLastUpdate: (url: string) => number;
   addProofs: (proofs: Proof[], eventId: string) => void;
   removeProofs: (proofs: Proof[]) => void;
   setPrivkey: (privkey: string) => void;
@@ -107,6 +109,21 @@ export const useCashuStore = create<CashuStore>()(
 
       setKeys(url, keys) {
         set({ mints: get().mints.map((mint) => mint.url === url ? { ...mint, keys } : mint) })
+      },
+
+      setLastUpdate(url, lastUpdate) {
+        set({ mints: get().mints.map((mint) => mint.url === url ? { ...mint, lastUpdate } : mint) })
+      },
+
+      getLastUpdate(url: string) {
+        const mint = get().mints.find((mint) => mint.url === url);
+        if (!mint) {
+          throw new Error('No mint found for url');
+        }
+        if (!mint.lastUpdate) {
+          return 0;
+        }
+        return mint.lastUpdate;
       },
 
       addProofs(proofs, eventId) {

@@ -83,6 +83,7 @@ export function formatBalance(balance: number, unit: string): string {
 }
 
 export async function activateMint(mintUrl: string): Promise<{ mintInfo: GetInfoResponse, keysets: MintKeyset[] }> {
+  console.log('rdlogs: activateMint2', mintUrl)
   const mint = new CashuMint(mintUrl);
   const wallet = new CashuWallet(mint);
   const msatWallet = new CashuWallet(mint, {'unit': 'msat'});
@@ -97,6 +98,7 @@ export async function activateMint(mintUrl: string): Promise<{ mintInfo: GetInfo
 }
 
 export async function updateMintKeys(mintUrl: string, keysets: MintKeyset[]): Promise<{ keys: Record<string, MintKeys>[] }> {
+  console.log('rdlogs: updateMintKeys', mintUrl)
   const mint = new CashuMint(mintUrl);
   const wallet = new CashuWallet(mint);
   const msatWallet = new CashuWallet(mint, {'unit': 'msat'});
