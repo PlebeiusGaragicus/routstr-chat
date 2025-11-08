@@ -26,12 +26,12 @@ interface CashuStore {
   setUsingNip60: (usingNip60: boolean) => void;
   getUsingNip60: () => boolean;
   addMint: (url: string) => void;
-  getMint: (url: string) => { url: string, mintInfo?: GetInfoResponse, keysets?: MintKeyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse> };
+  getMint: (url: string) => { url: string, mintInfo?: GetInfoResponse, keysets?: MintKeyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number } | undefined;
   setMintInfo: (url: string, mintInfo: GetInfoResponse) => void;
   setKeysets: (url: string, keysets: MintKeyset[]) => void;
   setKeys: (url: string, keys: Record<string, MintKeys>[]) => void;
   setLastUpdate: (url: string, lastUpdate: number) => void;
-  getLastUpdate: (url: string) => number;
+  getLastUpdate: (url: string) => number | undefined;
   addProofs: (proofs: Proof[], eventId: string) => void;
   removeProofs: (proofs: Proof[]) => void;
   setPrivkey: (privkey: string) => void;
@@ -94,7 +94,7 @@ export const useCashuStore = create<CashuStore>()(
       getMint(url) {
         const mint = get().mints.find((mint) => mint.url === url);
         if (!mint) {
-          throw new Error('No mint found for url');
+          return undefined;
         }
         return mint;
       },
@@ -118,7 +118,7 @@ export const useCashuStore = create<CashuStore>()(
       getLastUpdate(url: string) {
         const mint = get().mints.find((mint) => mint.url === url);
         if (!mint) {
-          throw new Error('No mint found for url');
+          return 0;
         }
         if (!mint.lastUpdate) {
           return 0;

@@ -388,17 +388,16 @@ export function useCashuToken() {
       const mint = new CashuMint(mintUrl);
       
       // Get preferred unit: msat over sat if both are active
-      let keysets = mintDetails.keysets;
+      let keysets = mintDetails?.keysets;
       if (!keysets) {
         console.log('rdlogs: clean spengn= FETCHING', mintUrl); 
-        const keysetsX = (await mint.getKeySets()).keysets;
-        keysets = keysetsX;
+        keysets = (await mint.getKeySets()).keysets;
       }
-      const activeKeysets = keysets.filter(k => k.active);
-      const units = [...new Set(activeKeysets.map(k => k.unit))];
-      const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : units[0]);
+      const activeKeysets = keysets?.filter(k => k.active);
+      const units = [...new Set(activeKeysets?.map(k => k.unit))];
+      const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
       
-      const wallet = new CashuWallet(mint, { unit: preferredUnit, keysets: mintDetails.keysets });
+      const wallet = new CashuWallet(mint, { unit: preferredUnit, keysets: keysets });
 
       await wallet.loadMint();
 

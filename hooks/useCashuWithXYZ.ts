@@ -26,6 +26,7 @@ export interface SpendCashuResult {
 export function useCashuWithXYZ() {
   // Balance and wallet state
   const [balance, setBalance] = useState(0);
+  const [maxBalance, setMaxBalance] = useState(0);
   const [currentMintUnit, setCurrentMintUnit] = useState('sat');
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [pendingCashuAmountState, setPendingCashuAmountState] = useState(0);
@@ -79,16 +80,20 @@ export function useCashuWithXYZ() {
         } else {
           setIsBalanceLoading(false);
           let totalBalance = 0;
+          let maxBalance = 0;
           for (const mintUrl in mintBalances) {
             const balance = mintBalances[mintUrl];
             const unit = mintUnits[mintUrl];
             if (unit === 'msat') {
               totalBalance += (balance / 1000);
+              maxBalance = Math.max(maxBalance, balance / 1000);
             } else {
               totalBalance += balance;
+              maxBalance = Math.max(maxBalance, balance);
             }
           }
           setBalance(Math.round((totalBalance + pendingCashuAmountState)*100)/100);
+          setMaxBalance(maxBalance);
         }
       } else {
         // Legacy wallet balance calculation would go here
@@ -573,6 +578,7 @@ export function useCashuWithXYZ() {
     // Balance and wallet state
     balance,
     setBalance,
+    maxBalance,
     currentMintUnit,
     mintBalances,
     mintUnits,

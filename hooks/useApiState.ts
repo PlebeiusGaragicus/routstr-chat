@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
-import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { loadMintUrl, saveMintUrl, loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders } from '@/utils/storageUtils';
+import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable } from '@/utils/modelUtils';
 import { getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
 
@@ -25,7 +24,7 @@ export interface UseApiStateReturn {
  * Handles API endpoint configuration, model fetching and caching,
  * model selection state, and API error handling
  */
-export const useApiState = (isAuthenticated: boolean, balance: number): UseApiStateReturn => {
+export const useApiState = (isAuthenticated: boolean, balance: number, maxBalance: number): UseApiStateReturn => {
   const searchParams = useSearchParams();
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
@@ -98,7 +97,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   }, [baseUrl]);
 
   // Fetch available models from API and handle URL model selection
-  const fetchModels = useCallback(async (currentBalance: number) => {
+  const fetchModels = useCallback(async () => {
     try {
       setIsLoadingModels(true);
       let bases = baseUrlsList;
@@ -250,18 +249,17 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
       }
 
       if (!modelToSelect) {
-        const compatible = combinedModels.filter((m: Model) => {
-          try {
-            const sp: any = m.sats_pricing as any;
-            if (!sp) return false;
-            const required = Math.max(
-              Number(sp.max_cost) || 0,
-              Number(sp.max_completion_cost) || 0
-            );
-            return required > 0 && currentBalance >= required;
-          } catch {
-            return false;
-          }
+        const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance))
+        .sort((a, b) => {
+          const aMaxCost = Math.max(
+            Number(a.sats_pricing?.max_cost) || 0,
+            Number(a.sats_pricing?.max_completion_cost) || 0
+          );
+          const bMaxCost = Math.max(
+            Number(b.sats_pricing?.max_cost) || 0,
+            Number(b.sats_pricing?.max_completion_cost) || 0
+          );
+          return bMaxCost - aMaxCost; // Descending order
         });
         if (compatible.length > 0) modelToSelect = compatible[0];
       }
@@ -328,7 +326,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
   useEffect(() => {
     if (!isAuthenticated) return;
     // Always attempt to fetch; will bootstrap providers if missing
-    fetchModels(balance);
+    fetchModels();
     fetchMints();
   }, [isAuthenticated, baseUrlsList.length]);
 
@@ -346,7 +344,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number): UseApiSt
     }
     // Only auto-select if no model is selected or current model is not available
     if (!selectedModel) {
-      const compatible = models.filter((m: Model) => isModelAvailable(m, balance))
+      const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance))
         .sort((a, b) => {
           const aMaxCost = Math.max(
             Number(a.sats_pricing?.max_cost) || 0,

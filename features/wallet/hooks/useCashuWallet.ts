@@ -112,17 +112,19 @@ export function useCashuWallet() {
         const mintService = new MintService();
         await Promise.all(walletData.mints.map(async (mint) => {
           try {
-            if (cashuStore.getLastUpdate(mint) > Date.now() - 60 * 60 * 1000) {
+            const lastUpdate = cashuStore.getLastUpdate(mint);
+            if (lastUpdate && lastUpdate > Date.now() - 60 * 60 * 1000) {
               console.log('mint already activated', mint);
               return;
+            } else {
+              const { mintInfo, keysets } = await mintService.activateMint(mint);
+              cashuStore.addMint(mint);
+              cashuStore.setMintInfo(mint, mintInfo);
+              cashuStore.setKeysets(mint, keysets);
+              const { keys } = await mintService.updateMintKeys(mint, keysets);
+              cashuStore.setKeys(mint, keys);
+              cashuStore.setLastUpdate(mint, Date.now());
             }
-            const { mintInfo, keysets } = await mintService.activateMint(mint);
-            cashuStore.addMint(mint);
-            cashuStore.setMintInfo(mint, mintInfo);
-            cashuStore.setKeysets(mint, keysets);
-            const { keys } = await mintService.updateMintKeys(mint, keysets);
-            cashuStore.setKeys(mint, keys);
-            cashuStore.setLastUpdate(mint, Date.now());
           } catch (error) {
             console.error(`Failed to activate or update mint ${mint}:`, error);
             // Skip this mint and continue with others
