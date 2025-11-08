@@ -378,7 +378,7 @@ export function useCashuWithXYZ() {
         excludeMints
       );
       const providerMints = loadMintsFromAllProviders()[baseUrl];
-      if (selectedMintUrl && !providerMints?.includes(selectedMintUrl)) {
+      if (selectedMintUrl && baseUrl !== '' && !providerMints?.includes(selectedMintUrl)) {
         let alternateMintUrl: string | null = selectedMintUrl;
         let alternateMintBalance: number = selectedMintBalance;
         while (alternateMintUrl && !providerMints?.includes(alternateMintUrl) && !excludeMints.includes(alternateMintUrl)) {
@@ -399,7 +399,7 @@ export function useCashuWithXYZ() {
         }
       }
 
-    if (activeMintBalanceInSats >= adjustedAmount && providerMints?.includes(mintUrl)) {
+    if (activeMintBalanceInSats >= adjustedAmount && (baseUrl === '' || providerMints?.includes(mintUrl))) {
         try {
           token = await sendToken(mintUrl, adjustedAmount, p2pkPubkey);
         } catch (error) {
@@ -428,7 +428,7 @@ export function useCashuWithXYZ() {
             error: `Error generating token: ${errorMsg}`
           };
         }
-      } else if (selectedMintUrl && selectedMintBalance >= adjustedAmount) {
+      } else if (selectedMintUrl && baseUrl !== '' && selectedMintBalance >= adjustedAmount) {
         console.log(`Active mint insufficient. Using mint ${selectedMintUrl} with balance ${selectedMintBalance} sats instead`);
         try {
           token = await sendToken(selectedMintUrl, adjustedAmount, p2pkPubkey);
@@ -459,7 +459,7 @@ export function useCashuWithXYZ() {
           error: `Error generating token from alternate mint: ${errorMsg}`
         };
       }
-    } else if (totalPendingBalance + selectedMintBalance >= adjustedAmount && retryCount < 1) {
+    } else if (totalPendingBalance + selectedMintBalance >= adjustedAmount && retryCount < 1 ) {
       console.log('=== Attempting to refund pending balances and retry ===');
       console.log(`Total pending balance: ${totalPendingBalance} sats`);
       console.log(`Selected mint balance: ${selectedMintBalance} sats`);

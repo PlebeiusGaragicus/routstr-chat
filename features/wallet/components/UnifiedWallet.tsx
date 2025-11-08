@@ -31,7 +31,7 @@ const UnifiedWallet: React.FC<UnifiedWalletProps> = ({
   return (
     <div className="space-y-6">
       {/* NIP-60 Toggle */}
-      <div className="bg-white/5 border border-white/10 rounded-md p-4">
+      {/* <div className="bg-white/5 border border-white/10 rounded-md p-4">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white">Use NIP-60 Wallet</span>
           <button
@@ -49,7 +49,7 @@ const UnifiedWallet: React.FC<UnifiedWalletProps> = ({
             />
           </button>
         </div>
-      </div>
+      </div> */}
 
       {usingNip60 ? (
         <SixtyWallet 
