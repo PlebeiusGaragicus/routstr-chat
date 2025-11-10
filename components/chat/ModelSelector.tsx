@@ -290,7 +290,9 @@ export default function ModelSelector({
   // Split into configured and all (remaining) models
   const configuredModelsList = filteredModels.filter(model => isConfiguredModel(model.id));
   const remainingModelsList = filteredModels.filter(model => !isConfiguredModel(model.id));
-  const recommendedModelsList = filteredModels.filter(model => recommendedModels.includes(model.id)); 
+  const recommendedModelsList = recommendedModels
+    .map(modelId => filteredModels.find(model => model.id === modelId))
+    .filter((model): model is Model => model !== undefined); 
 
   // Calculate unique models and providers for display (excluding disabled providers)
   const { uniqueModelCount, uniqueProviderCount } = useMemo(() => {
@@ -872,6 +874,25 @@ export default function ModelSelector({
                       <div className="border-t border-white/10 my-1" />
                     )}
 
+                    {/* Recommended Models Section */}
+                    <div className="p-1">
+                      <div className="px-2 py-1 text-xs font-medium text-white/60">
+                        Recommended Models
+                      </div>
+                      {recommendedModelsList.length > 0 ? (
+                        <div className="space-y-1">
+                          {recommendedModelsList.map((model) => renderModelItem(model, false))}
+                        </div>
+                      ) : (
+                        <div className="p-2 text-sm text-white/50 text-center">No models found</div>
+                      )}
+                    </div>
+
+                    {/* Separator */}
+                    {(!!selectedModel || favoriteEntries.length > 0) && remainingModelsList.length > 0 && (
+                      <div className="border-t border-white/10 my-1" />
+                    )}
+
                     {/* All Models Section */}
                     <div className="p-1">
                       <div className="px-2 py-1 text-xs font-medium text-white/60">
@@ -981,26 +1002,45 @@ export default function ModelSelector({
                     </div>
                   )}
 
-                  {/* Separator */}
-                  {(!!selectedModel || favoriteEntries.length > 0) && remainingModelsList.length > 0 && (
-                    <div className="border-t border-white/10 my-1" />
-                  )}
+                    {/* Separator */}
+                    {(!!selectedModel || favoriteEntries.length > 0) && remainingModelsList.length > 0 && (
+                      <div className="border-t border-white/10 my-1" />
+                    )}
 
-                  {/* All Models Section */}
-                  <div className="p-1">
-                    <div className="px-2 py-1 text-xs font-medium text-white/60">
-                      All Models {uniqueModelCount > 0 && uniqueProviderCount > 0 && (
-                        <span className="text-white/40">({uniqueModelCount} models from {uniqueProviderCount} providers)</span>
+                    {/* Recommended Models Section */}
+                    <div className="p-1">
+                      <div className="px-2 py-1 text-xs font-medium text-white/60">
+                        Recommended Models
+                      </div>
+                      {recommendedModelsList.length > 0 ? (
+                        <div className="space-y-1">
+                          {recommendedModelsList.map((model) => renderModelItem(model, false))}
+                        </div>
+                      ) : (
+                        <div className="p-2 text-sm text-white/50 text-center">No models found</div>
                       )}
                     </div>
-                    {remainingModelsList.length > 0 ? (
-                      <div className="space-y-1">
-                        {remainingModelsList.filter(m => m.id !== selectedModel?.id).map((model) => renderModelItem(model, false))}
-                      </div>
-                    ) : (
-                      <div className="p-2 text-sm text-white/50 text-center">No models found</div>
+
+                    {/* Separator */}
+                    {(!!selectedModel || favoriteEntries.length > 0) && remainingModelsList.length > 0 && (
+                      <div className="border-t border-white/10 my-1" />
                     )}
-                  </div>
+
+                    {/* All Models Section */}
+                    <div className="p-1">
+                      <div className="px-2 py-1 text-xs font-medium text-white/60">
+                        All Models {uniqueModelCount > 0 && uniqueProviderCount > 0 && (
+                          <span className="text-white/40">({uniqueModelCount} models from {uniqueProviderCount} providers)</span>
+                        )}
+                      </div>
+                      {remainingModelsList.length > 0 ? (
+                        <div className="space-y-1">
+                          {remainingModelsList.filter(m => m.id !== selectedModel?.id).map((model) => renderModelItem(model, false))}
+                        </div>
+                      ) : (
+                        <div className="p-2 text-sm text-white/50 text-center">No models found</div>
+                      )}
+                    </div>
                 </div>
               )}
             </div>

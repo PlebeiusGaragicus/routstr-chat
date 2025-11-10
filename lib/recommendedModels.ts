@@ -1,5 +1,24 @@
 export const recommendedModels = [
+  'kimi-k2-thinking',
   'gpt-5',
+  'gemini-2.5-flash-image',
   'claude-sonnet-4.5',
-  'kimi-k2-thinking'
+  'minimax-m2',
+  'grok-4-fast',
+  'gpt-5-image',
+  'gemini-2.5-pro',
+  'deepseek-v3.2-exp',
+  'glm-4.6',
+  'qwen3-vl-235b-a22b-thinking',
+  'claude-opus-4.1',
+  'gpt-5-mini',
+  'gpt-oss-120b',
+  'gemini-2.5-flash',
+  'gpt-oss-20b',
+  'grok-code-fast-1',
+  'kimi-linear-48b-a3b-instruct',
+  'gpt-5-nano',
+  'gpt-5-image-mini',
+  'qwen3-coder-plus',
+  'gemma-3n-e4b-it'
 ];

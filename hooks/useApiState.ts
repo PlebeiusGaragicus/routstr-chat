@@ -10,9 +10,7 @@ export interface UseApiStateReturn {
   selectedModel: Model | null;
   isLoadingModels: boolean;
   baseUrl: string;
-  setModels: (models: Model[]) => void;
   setSelectedModel: (model: Model | null) => void;
-  setIsLoadingModels: (loading: boolean) => void;
   setBaseUrl: (url: string) => void;
   fetchModels: (balance: number) => Promise<void>; // Modified to accept balance
   handleModelChange: (modelId: string, configuredKeyOverride?: string) => void;
@@ -55,7 +53,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
   // Bootstrap provider bases from the directory when none are configured
   const bootstrapProviders = useCallback(async (): Promise<string[]> => {
     try {
-      setIsLoadingModels(true);
       const res = await fetch('https://api.routstr.com/v1/providers/');
       if (!res.ok) throw new Error(`Failed providers ${res.status}`);
       const data = await res.json();
@@ -84,8 +81,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
     } catch (e) {
       console.error('Failed to bootstrap providers', e);
       return [];
-    } finally {
-      setIsLoadingModels(false);
     }
   }, [normalizeBase]);
 
@@ -337,14 +332,16 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
     if (!isAuthenticated || models.length === 0) return;
 
     const lastUsedModelId = loadLastUsedModel();
-    if (lastUsedModelId) {
-      const model = models.find((m: Model) => m.id === lastUsedModelId);
-      if (model) {
-        setSelectedModel(model);
-      }
-    }
+
     // Only auto-select if no model is selected or current model is not available
-    if (!selectedModel) {
+    if (!selectedModel && !isLoadingModels) {
+      console.log("rdlogs: lastUsedModelId", lastUsedModelId, isLoadingModels);
+      if (lastUsedModelId) {
+        const model = models.find((m: Model) => m.id === lastUsedModelId);
+        if (model) {
+          handleModelChange(model.id);
+        }
+      }
       const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
         .sort((a, b) => {
           const aMaxCost = getRequiredSatsForModel(a);
@@ -362,7 +359,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       const totalPendingBalance = getPendingCashuTokenDistribution().reduce((total, item) => total + item.amount, 0);
       setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + totalPendingBalance));
     }
-  }, [balance, models, isAuthenticated, selectedModel]);
+  }, [balance, models, isAuthenticated, selectedModel, isLoadingModels]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
     console.log('rdlogs: handleModelChange', modelId, configuredKeyOverride);
@@ -452,9 +449,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
     selectedModel,
     isLoadingModels,
     baseUrl,
-    setModels,
     setSelectedModel,
-    setIsLoadingModels,
     setBaseUrl,
     fetchModels,
     handleModelChange,
