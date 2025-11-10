@@ -124,14 +124,15 @@ export const loadConversationsFromStorage = (): Conversation[] => {
  * @param initialMessages Optional initial messages for the conversation
  * @returns Object with new conversation and updated conversations array
  */
-export const createNewConversation = (
+export const createAndStoreNewConversation = (
   existingConversations: Conversation[],
-  initialMessages: Message[] = []
+  initialMessages: Message[] = [],
+  timestamp?: string
 ): {
   newConversation: Conversation;
   updatedConversations: Conversation[];
 } => {
-  const newId = Date.now().toString();
+  const newId = timestamp ?? Date.now().toString();
   const messagesToStore = stripImageDataFromMessages(initialMessages);
   const newConversation: Conversation = {
     id: newId,

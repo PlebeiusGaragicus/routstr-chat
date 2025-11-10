@@ -257,8 +257,6 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
     .filter(message => message.role !== 'system')
     .map(convertMessageForAPI);
   
-  console.log(apiMessages);
-
   const tokenAmount = getRequiredSatsForModel(selectedModel, apiMessages);
   let tokenBalance = 0;
 
@@ -393,7 +391,7 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
   } catch (error) {
     console.log('API Error: ', error);
     if (error instanceof Error) {
-      logApiError(error.message, onMessageAppend);
+      logApiError('Error in fetchAIReponse: '+error.message + ' | ' + error.stack, onMessageAppend);
     } else {
       logApiError('An unknown error occurred', onMessageAppend);
     }

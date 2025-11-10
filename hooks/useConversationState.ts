@@ -3,7 +3,7 @@ import { Conversation, Message } from '@/types/chat';
 import {
   loadConversationsFromStorage,
   saveConversationToStorage,
-  createNewConversation,
+  createAndStoreNewConversation,
   deleteConversationFromStorage,
   findConversationById,
   clearAllConversations
@@ -24,7 +24,7 @@ export interface UseConversationStateReturn {
   setMessages: (messages: Message[]) => void;
   setEditingMessageIndex: (index: number | null) => void;
   setEditingContent: (content: string) => void;
-  createNewConversationHandler: (initialMessages?: Message[]) => string;
+  createNewConversationHandler: (initialMessages?: Message[], timestamp?: string) => string;
   loadConversation: (conversationId: string) => void;
   deleteConversation: (conversationId: string, e: React.MouseEvent) => void;
   clearConversations: () => void;
@@ -104,10 +104,11 @@ export const useConversationState = (): UseConversationStateReturn => {
     saveActiveConversationId(conversationId);
   }, []);
 
-  const createNewConversationHandler = useCallback((initialMessages: Message[] = []) => {
+  const createNewConversationHandler = useCallback((initialMessages: Message[] = [], timestamp?: string) => {
     let createdId: string = '';
     setConversations(prevConversations => {
-      const { newConversation, updatedConversations } = createNewConversation(prevConversations, initialMessages);
+      const { newConversation, updatedConversations } = createAndStoreNewConversation(prevConversations, initialMessages, timestamp);
+      console.log('rdlogs, secondary creattion', newConversation.id)
       createdId = newConversation.id;
       setActiveConversationIdWithStorage(newConversation.id);
       // Set messages to the initial messages (empty array if none provided)
@@ -115,7 +116,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       return updatedConversations;
     });
     return createdId;
-  }, [setActiveConversationIdWithStorage]);
+  }, []);
 
   const loadConversation = useCallback((conversationId: string) => {
     setConversations(prevConversations => {

@@ -7,6 +7,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';
 import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels, getRequiredSatsForModel, isModelAvailable } from '@/utils/modelUtils';
+import { recommendedModels } from '@/lib/recommendedModels';
 
 interface ModelSelectorProps {
   selectedModel: Model | null;
@@ -289,6 +290,7 @@ export default function ModelSelector({
   // Split into configured and all (remaining) models
   const configuredModelsList = filteredModels.filter(model => isConfiguredModel(model.id));
   const remainingModelsList = filteredModels.filter(model => !isConfiguredModel(model.id));
+  const recommendedModelsList = filteredModels.filter(model => recommendedModels.includes(model.id)); 
 
   // Calculate unique models and providers for display (excluding disabled providers)
   const { uniqueModelCount, uniqueProviderCount } = useMemo(() => {

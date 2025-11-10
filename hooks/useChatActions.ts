@@ -34,7 +34,7 @@ export interface UseChatActionsReturn {
     messages: Message[],
     setMessages: (messages: Message[]) => void,
     activeConversationId: string | null,
-    createNewConversation: (initialMessages?: Message[]) => string,
+    createNewConversation: (initialMessages?: Message[], timestamp?: string) => string,
     selectedModel: any,
     baseUrl: string,
     isAuthenticated: boolean,
@@ -117,7 +117,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     messages: Message[],
     setMessages: (messages: Message[]) => void,
     activeConversationId: string | null,
-    createNewConversation: (initialMessages?: Message[]) => string,
+    createNewConversationHandler: (initialMessages?: Message[], timestamp?: string) => string,
     selectedModel: any,
     baseUrl: string,
     isAuthenticated: boolean,
@@ -140,7 +140,9 @@ export const useChatActions = (): UseChatActionsReturn => {
     const updatedMessages = [...messages, userMessage];
     
     // Determine origin conversation id and update UI optimistically
-    const originConversationId = activeConversationId ?? createNewConversation(updatedMessages);
+    const timestamp = Date.now().toString();
+    const originConversationId = activeConversationId ?? createNewConversationHandler(updatedMessages, timestamp);
+    console.log('rdlogs: culprit', originConversationId)
     if (activeConversationId) {
       setMessages(updatedMessages);
     }
@@ -283,7 +285,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       currentMessages = newMessages;
       const currentlyActive = getActiveConversationId();
       if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
-        console.log('rdlogs: ONE messages: ', currentMessages, originConversationId);
+        console.log('rdlogs: ONE messages: ', currentMessages, originConversationId, currentlyActive);
         // Persist to the origin conversation without disrupting the UI of the current one
         saveConversationById(originConversationId, newMessages);
       } else {
