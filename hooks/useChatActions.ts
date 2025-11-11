@@ -320,7 +320,6 @@ export const useChatActions = (): UseChatActionsReturn => {
             setThinkingContentByConversation(prev => ({ ...prev, [originConversationId]: content }));
           }
         },
-        onMessagesUpdate: updateMessages,
         onMessageAppend: (message) => {
           // Append to current messages state
           const updatedMessages = [...currentMessages, message];

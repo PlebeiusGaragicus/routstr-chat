@@ -4,7 +4,7 @@ import { useCashuStore, useCashuWallet, useCreateCashuWallet } from '@/features/
 import { calculateBalanceByMint } from '@/features/wallet';
 import { getBalanceFromStoredProofs, getPendingCashuTokenAmount, fetchBalances, getPendingCashuTokenDistribution, unifiedRefund } from '@/utils/cashuUtils';
 import { useWalletOperations } from '@/features/wallet/hooks/useWalletOperations';
-import { getLocalCashuToken, loadMintsFromAllProviders, removeLocalCashuToken, setLocalCashuToken } from '@/utils/storageUtils';
+import { getLocalCashuToken, loadMintsFromAllProviders, removeLocalCashuToken, setLocalCashuToken, setProviderMints } from '@/utils/storageUtils';
 import { loadTransactionHistory, saveTransactionHistory } from '@/utils/storageUtils';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
 import { TransactionHistory } from '@/types/chat';
@@ -92,6 +92,7 @@ export function useCashuWithXYZ() {
               maxBalance = Math.max(maxBalance, balance);
             }
           }
+          console.log('BALANCE BEING TRIGGERS', getPendingCashuTokenAmount())
           setBalance(Math.round((totalBalance + pendingCashuAmountState)*100)/100);
           setMaxBalance(maxBalance);
         }
@@ -373,7 +374,6 @@ export function useCashuWithXYZ() {
       } else {
         activeMintBalanceInSats = activeMintBalance;
       }
-      console.log('rdlogs: activeMintBalanceInSats', activeMintBalanceInSats);
 
       // Check if any mint has sufficient balance
       let { selectedMintUrl, selectedMintBalance } = selectMintWithBalance(
@@ -382,7 +382,23 @@ export function useCashuWithXYZ() {
         adjustedAmount,
         excludeMints
       );
-      const providerMints = loadMintsFromAllProviders()[baseUrl];
+      console.log('rdlogs: selectedMintUrl', selectedMintUrl, selectedMintBalance);
+      let providerMints = loadMintsFromAllProviders()[baseUrl];
+      console.log('rdlogs: providerMints', providerMints);
+      if (!providerMints) {
+        const response = await fetch(`${baseUrl}v1/info`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        if (response.ok) {
+          const json = await response.json();
+          providerMints = json.mints;
+          setProviderMints(baseUrl, providerMints);
+        }
+      }
       if (selectedMintUrl && baseUrl !== '' && !providerMints?.includes(selectedMintUrl)) {
         let alternateMintUrl: string | null = selectedMintUrl;
         let alternateMintBalance: number = selectedMintBalance;
@@ -404,7 +420,10 @@ export function useCashuWithXYZ() {
         }
       }
 
-    if (activeMintBalanceInSats >= adjustedAmount && (baseUrl === '' || providerMints?.includes(mintUrl))) {
+      console.log('mintUrl', mintUrl)
+      console.log('activeMintBlance', activeMintBalanceInSats >= adjustedAmount, providerMints?.includes(mintUrl), baseUrl === '')
+    
+      if (activeMintBalanceInSats >= adjustedAmount && (baseUrl === '' || providerMints?.includes(mintUrl))) {
         try {
           token = await sendToken(mintUrl, adjustedAmount, p2pkPubkey);
         } catch (error) {

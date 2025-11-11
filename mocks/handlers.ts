@@ -111,6 +111,34 @@ export const handlers = [
       );
     }
 
+
+    if (scenario && (scenario === '400-model-not-found')) {
+      const latency = request.headers.get('X-Mock-Latency');
+      if (latency) {
+        const ms = Number.isNaN(Number(latency))
+          ? latency === 'slow' ? 1500 : latency === 'timeout' ? 10000 : 0
+          : Number(latency);
+        if (ms > 0) await delay(ms);
+      }
+
+      return HttpResponse.json(
+        {
+          error: {
+            message: "Model 'gpt-oss-20b' not found",
+            type: "invalid_model",
+            code: 400
+          },
+          request_id: "17f6608b-f8af-454e-9e97-8d71cdc849e3"
+        },
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
     if (scenario && (scenario === '413' || scenario === 'payload-too-large')) {
       const latency = request.headers.get('X-Mock-Latency');
       if (latency) {

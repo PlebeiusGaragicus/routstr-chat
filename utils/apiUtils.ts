@@ -1,6 +1,6 @@
 import { Message, MessageContent, TransactionHistory } from '@/types/chat';
 import { convertMessageForAPI, createTextMessage, extractThinkingFromStream } from './messageUtils';
-import { fetchBalances, getBalanceFromStoredProofs, refundRemainingBalance, unifiedRefund, UnifiedRefundResult } from '@/utils/cashuUtils';
+import { fetchBalances, getBalanceFromStoredProofs, getPendingCashuTokenAmount, refundRemainingBalance, unifiedRefund, UnifiedRefundResult } from '@/utils/cashuUtils';
 import { getLocalCashuToken, removeLocalCashuToken, getStorageItem } from './storageUtils';
 import { getDecodedToken } from '@cashu/cashu-ts';
 import { isThinkingCapableModel } from './thinkingParser';
@@ -21,7 +21,6 @@ export interface FetchAIResponseParams {
   activeMintUrl?: string | null;
   onStreamingUpdate: (content: string) => void;
   onThinkingUpdate: (content: string) => void;
-  onMessagesUpdate: (messages: Message[]) => void;
   onMessageAppend: (message: Message) => void;
   onBalanceUpdate: (balance: number) => void;
   onTransactionUpdate: (transaction: TransactionHistory) => void;
@@ -194,6 +193,7 @@ async function routstrRequest(params: {
     }
   }
 
+  (response as any).baseUrl = baseUrl;
   return response;
 }
 
@@ -217,7 +217,6 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
     activeMintUrl,
     onStreamingUpdate,
     onThinkingUpdate,
-    onMessagesUpdate,
     onMessageAppend,
     onBalanceUpdate,
     onTransactionUpdate,
@@ -281,19 +280,9 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
     else {
       tokenBalance = tokenAmount;
     }
-  
-    const decodedToken = getDecodedToken(token)
-    if (decodedToken.unit == 'msat') {
-      onTokenCreated(tokenAmount)
-    }
-    else {
-      let roundedTokenAmount = tokenAmount;
-      if (roundedTokenAmount % 1 !== 0) {
-        roundedTokenAmount = Math.ceil(roundedTokenAmount);
-      }
-      onTokenCreated(roundedTokenAmount);
-    }
 
+    onTokenCreated(getPendingCashuTokenAmount())
+  
     // Track providers that have returned 50X errors for automatic failover
     const failedProviders = new Set<string>();
     
@@ -325,11 +314,11 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
 
     // Handle refund and balance update
     if (response.status === 200) {
+      const baseUrlUsed = (response as any).baseUrl;
 
       const streamingResult = await processStreamingResponse(response, onStreamingUpdate, onThinkingUpdate, selectedModel?.id); 
       if (streamingResult.content || streamingResult.images) {
-        const assistantMessage = createAssistantMessage(streamingResult);
-        onMessagesUpdate([...messageHistory, assistantMessage]);
+        onMessageAppend(createAssistantMessage(streamingResult));
       }
 
       let estimatedCosts = 0; // Initialize to 0
@@ -346,7 +335,7 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
 
       await handlePostResponseRefund({
         mintUrl,
-        baseUrl,
+        baseUrl: baseUrlUsed,
         usingNip60,
         storeCashu,
         tokenBalance,
@@ -357,7 +346,7 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
         transactionHistory,
         onMessageAppend,
         estimatedCosts,
-        unit: decodedToken.unit ?? 'sat'
+        unit: getDecodedToken(token).unit ?? 'sat'
       });
     }
     else {
@@ -366,8 +355,12 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
 
   } catch (error) {
     console.log('API Error: ', error);
+    const isDev = process.env.NODE_ENV === 'development';
+    const isBeta = typeof window !== 'undefined' && window.location.origin === 'https://beta.chat.routstr.com';
+    
     if (error instanceof Error) {
-      logApiError('Error in fetchAIReponse: '+error.message + ' | ' + error.stack, onMessageAppend);
+      const errorMsg = 'Error in fetchAIReponse: ' + error.message + ((isDev || isBeta) ? ' | ' + error.stack : '');
+      logApiError(errorMsg, onMessageAppend);
     } else {
       logApiError('An unknown error occurred', onMessageAppend);
     }
@@ -447,10 +440,26 @@ async function handleApiError(
     if (errorMessage.includes("is not a valid model ID")) {
       return { retry: retryOnInsufficientBalance, reason: "not a valid model ID" };
     }
-    else if (errorMessage.includes("not found")) {
-      return { retry: retryOnInsufficientBalance, reason: "insufficient balance" };
+    else if (/Model\s+'[^']+'\s+not found/.test(errorMessage)) {
+      const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
+      if (!refundStatus.success){
+        await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
+      }
+    
+      // Mark current provider as failed
+      failedProviders.add(baseUrl);
+      
+      // Try to find next best provider for 50X errors
+      const nextProvider = findNextBestProvider(selectedModel?.id, baseUrl, failedProviders);
+      
+      if (nextProvider) {
+        console.log(`Provider ${baseUrl} returned ${response.status}, switching to ${nextProvider}`);
+        onMessageAppend(createTextMessage('system', `Provider ${baseUrl} is experiencing issues. Retrying with ${nextProvider}...`));
+        return { retry: true, reason: response.status.toString(), newBaseUrl: nextProvider };
+      }
+      return { retry: retryOnInsufficientBalance, reason: "model not found" };
     }
-    await logApiErrorForResponse(response, baseUrl, onMessageAppend);
+    await logApiErrorForResponse(response, baseUrl, onMessageAppend, errorMessage);
     return { retry: false, reason: response.status.toString() };
   }
   else if (response.status === 500 || response.status === 502) {
@@ -942,8 +951,8 @@ async function readResponseBodyText(response: Response): Promise<string> {
 }
 
 
-async function logApiErrorForResponse(response: Response, baseUrl: string, onMessageAppend: (message: Message) => void): Promise<void> {
-  const responseBodyText = await readResponseBodyText(response);
+async function logApiErrorForResponse(response: Response, baseUrl: string, onMessageAppend: (message: Message) => void, errorMessage?: string): Promise<void> {
+  const responseBodyText = errorMessage || await readResponseBodyText(response);
   const requestId = response.headers.get('x-routstr-request-id');
   const mainMessage = responseBodyText + ". Trying to get a refund.";
   const requestIdText = requestId ? `Request ID: ${requestId}` : '';

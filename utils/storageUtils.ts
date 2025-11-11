@@ -561,7 +561,12 @@ export const saveDisabledProviders = (disabledProviders: string[]): void => {
  * @returns Record mapping provider base URL to array of mint URLs
  */
 export const loadMintsFromAllProviders = (): Record<string, string[]> => {
-  return getStorageItem<Record<string, string[]>>(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, {});
+  const allProviderMints = getStorageItem<Record<string, string[]>>(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, {});
+  const normalizedMints = Object.entries(allProviderMints).map(([baseUrl, mints]) => {
+    const normalizedMints = mints.map(mint => mint.endsWith('/') ? mint.slice(0, -1) : mint);
+    return [baseUrl, normalizedMints];
+  });
+  return Object.fromEntries(normalizedMints);
 };
 
 /**
