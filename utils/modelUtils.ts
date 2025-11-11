@@ -15,7 +15,8 @@ export function normalizeBaseUrl(base?: string | null): string | null {
 // Provider models cache helpers shared across app
 // Kept here to avoid duplicating localStorage logic in components
 import type { Model } from '@/data/models';
-import { getStorageItem, setStorageItem } from '@/utils/storageUtils';
+import { recommendedModels } from '@/lib/recommendedModels';
+import { getStorageItem, loadLastUsedModel, setStorageItem } from '@/utils/storageUtils';
 
 export function upsertCachedProviderModels(baseUrl: string, models: Model[]): void {
   try {
@@ -74,3 +75,59 @@ export const isModelAvailable = (model: Model, balance: number) => {
     return true;
   }
 };
+
+export const modelSelectionStrategy = async (models: Model[], maxBalance: number, pendingCashuAmountState: number): Promise<Model | null> => {
+  let modelToSelect: Model | null = null;
+  const lastUsedModelId = loadLastUsedModel();
+  if (!modelToSelect) {
+    if (lastUsedModelId && lastUsedModelId.includes('@@')) {
+      const { id, base } = parseModelKey(lastUsedModelId);
+      const fixedBase = normalizeBaseUrl(base);
+      if (!fixedBase) return null;
+      const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
+      const allByProvider = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
+      const list = allByProvider?.[normalized] || allByProvider?.[lastUsedModelId] || [];
+      modelToSelect = Array.isArray(list) ? (list.find((m: Model) => m.id === id) ?? null) : null;
+      if (!modelToSelect) {
+        const res = await fetch(`${normalized}v1/models`);
+        if (res.ok) {
+          const json = await res.json();
+          const providerList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+            ...m,
+            id: m.id.split('/').pop() || m.id
+          })) : [];
+          const transformedId = id.split('/').pop() || id;
+          const found = providerList.find((m: Model) => m.id === transformedId) ?? null;
+          if (found) {
+            // cache to storage for future
+            upsertCachedProviderModels(normalized, providerList);
+            modelToSelect = found;
+          }
+        }
+      }
+    }
+    else if (lastUsedModelId) {
+      modelToSelect = models.find((m: Model) => m.id === lastUsedModelId) ?? null;
+    }
+  }
+
+  if (!modelToSelect) {
+    const recommended = models.filter((m: Model) => recommendedModels.includes(m.id))
+      .sort((a, b) => recommendedModels.indexOf(a.id) - recommendedModels.indexOf(b.id));
+    const compatible = recommended.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState));
+   if (compatible.length > 0) modelToSelect = compatible[0];
+  }
+
+  if (!modelToSelect) {
+    const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
+    .sort((a, b) => {
+      const aMaxCost = getRequiredSatsForModel(a);
+      const bMaxCost = getRequiredSatsForModel(b);
+      return bMaxCost - aMaxCost; // Descending order
+    });
+    console.log("rdlogs: compatible", compatible.slice(5));
+    if (compatible.length > 0) modelToSelect = compatible[0];
+  }
+  
+  return modelToSelect;
+}

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
-import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders } from '@/utils/storageUtils';
-import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable, getRequiredSatsForModel } from '@/utils/modelUtils';
+import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders, setProviderLastUpdate, getProviderLastUpdate } from '@/utils/storageUtils';
+import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable, getRequiredSatsForModel, modelSelectionStrategy } from '@/utils/modelUtils';
 import { getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
+import { recommendedModels } from '@/lib/recommendedModels';
 
 export interface UseApiStateReturn {
   models: Model[];
@@ -22,7 +23,7 @@ export interface UseApiStateReturn {
  * Handles API endpoint configuration, model fetching and caching,
  * model selection state, and API error handling
  */
-export const useApiState = (isAuthenticated: boolean, balance: number, maxBalance: number, pendingCashuAmountState: number): UseApiStateReturn => {
+export const useApiState = (isAuthenticated: boolean, balance: number, maxBalance: number, pendingCashuAmountState: number, isWalletLoading: boolean): UseApiStateReturn => {
   const searchParams = useSearchParams();
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
@@ -145,16 +146,34 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       const fetchPromises = bases.map(async (url) => {
         const base = url.endsWith('/') ? url : `${url}/`;
         try {
-          const res = await fetch(`${base}v1/models`);
-          if (!res.ok) throw new Error(`Failed ${res.status}`);
-          const json = await res.json();
-          const list: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
-            ...m,
-            id: m.id.split('/').pop() || m.id
-          })) : [];
+          // Check if we need to fetch or can use cached data
+          const lastUpdate = getProviderLastUpdate(base);
+          const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+          const shouldFetch = !lastUpdate || (Date.now() - lastUpdate) > ONE_HOUR;
           
-          // Save provider results
-          modelsFromAllProviders[base] = list;
+          let list: Model[];
+          
+          if (shouldFetch) {
+            // Fetch fresh data from provider
+            const res = await fetch(`${base}v1/models`);
+            if (!res.ok) throw new Error(`Failed ${res.status}`);
+            const json = await res.json();
+            list = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
+              ...m,
+              id: m.id.split('/').pop() || m.id
+            })) : [];
+            
+            // Save provider results
+            modelsFromAllProviders[base] = list;
+            
+            // Update timestamp for this provider
+            setProviderLastUpdate(base, Date.now());
+          } else {
+            // Load from storage (cached data is fresh enough)
+            const cachedModels = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {});
+            list = cachedModels[base] || [];
+            modelsFromAllProviders[base] = list;
+          }
           
           // Update best-priced models
           for (const m of list) {
@@ -201,63 +220,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       }
       const lastUsedModelId = loadLastUsedModel();
       if (!modelToSelect) {
-        if (lastUsedModelId && lastUsedModelId.includes('@@')) {
-          const { id } = parseModelKey(lastUsedModelId);
-          const fixedBaseRaw = parseModelKey(lastUsedModelId).base;
-          const fixedBase = normalizeBaseUrl(fixedBaseRaw);
-          if (!fixedBase) return;
-          const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
-          const allByProvider = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
-          const list = allByProvider?.[normalized] || allByProvider?.[lastUsedModelId] || [];
-          modelToSelect = Array.isArray(list) ? (list.find((m: Model) => m.id === id) ?? null) : null;
-        }
-        else if (lastUsedModelId) {
-          modelToSelect = combinedModels.find((m: Model) => m.id === lastUsedModelId) ?? null;
-        }
-      }
-      if (!modelToSelect) {
-        // If last used was provider-specific but not found in cache, fetch it on-demand
-        if (lastUsedModelId && lastUsedModelId.includes('@@')) {
-          try {
-            const { id, base } = parseModelKey(lastUsedModelId);
-            const fixedBase = normalizeBaseUrl(base);
-            if (fixedBase) {
-              const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
-              const res = await fetch(`${normalized}v1/models`);
-              if (res.ok) {
-                const json = await res.json();
-                const providerList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
-                  ...m,
-                  id: m.id.split('/').pop() || m.id
-                })) : [];
-                const transformedId = id.split('/').pop() || id;
-                const found = providerList.find((m: Model) => m.id === transformedId) ?? null;
-                if (found) {
-                  // cache to storage for future
-                  upsertCachedProviderModels(normalized, providerList);
-                  modelToSelect = found;
-                }
-              }
-            }
-          } catch {}
-        }
-      }
-
-      if (!modelToSelect) {
-        const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
-        .sort((a, b) => {
-          const aMaxCost = Math.max(
-            Number(a.sats_pricing?.max_cost) || 0,
-            Number(a.sats_pricing?.max_completion_cost) || 0
-          );
-          const bMaxCost = Math.max(
-            Number(b.sats_pricing?.max_cost) || 0,
-            Number(b.sats_pricing?.max_completion_cost) || 0
-          );
-          return bMaxCost - aMaxCost; // Descending order
-        });
-        console.log("rdlogs: compatible", compatible.slice(5));
-        if (compatible.length > 0) modelToSelect = compatible[0];
+        modelToSelect = await modelSelectionStrategy(combinedModels, maxBalance, pendingCashuAmountState);
       }
       setSelectedModel(modelToSelect);
       if (modelToSelect && lastUsedModelId && !lastUsedModelId.includes('@@')) saveLastUsedModel(modelToSelect.id);
@@ -330,35 +293,25 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
   // Only auto-selects if no model is selected or current model is not available
   useEffect(() => {
     if (!isAuthenticated || models.length === 0) return;
+    console.log('balance', balance);
 
-    const lastUsedModelId = loadLastUsedModel();
-
-    // Only auto-select if no model is selected or current model is not available
-    if (!selectedModel && !isLoadingModels) {
-      console.log("rdlogs: lastUsedModelId", lastUsedModelId, isLoadingModels);
-      if (lastUsedModelId) {
-        const model = models.find((m: Model) => m.id === lastUsedModelId);
+    // Async function to handle model selection
+    const selectModel = async () => {
+      // Only auto-select if no model is selected or current model is not available
+      if (!selectedModel && !isLoadingModels && !isWalletLoading) {
+        const model = await modelSelectionStrategy(models, maxBalance, pendingCashuAmountState);
+        console.log(models);
         if (model) {
           handleModelChange(model.id);
         }
       }
-      const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
-        .sort((a, b) => {
-          const aMaxCost = getRequiredSatsForModel(a);
-          const bMaxCost = getRequiredSatsForModel(b);
-          return bMaxCost - aMaxCost; // Descending order
-        });
-      console.log("rdlogs: compatible12", compatible);
-      
-      if (compatible.length > 0) {
-        // Select the first compatible model (models are already sorted by price)
-        handleModelChange(compatible[0].id);
+      if (selectedModel && !isWalletLoading) {
+        const totalPendingBalance = getPendingCashuTokenDistribution().reduce((total, item) => total + item.amount, 0);
+        setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + totalPendingBalance));
       }
-    }
-    if (selectedModel) {
-      const totalPendingBalance = getPendingCashuTokenDistribution().reduce((total, item) => total + item.amount, 0);
-      setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + totalPendingBalance));
-    }
+    };
+
+    selectModel();
   }, [balance, models, isAuthenticated, selectedModel, isLoadingModels]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {

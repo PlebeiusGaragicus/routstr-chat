@@ -8,30 +8,6 @@ import { SpendCashuResult } from '@/hooks/useCashuWithXYZ';
 import { Model } from '@/data/models';
 import { getRequiredSatsForModel } from './modelUtils';
 
-/**
- * Helper function to properly read response body text from a ReadableStream
- */
-async function readResponseBodyText(response: Response): Promise<string> {
-  if (!response.body) {
-    return '';
-  }
-  
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let text = '';
-  
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      text += decoder.decode(value, { stream: true });
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  
-  return text;
-}
 
 export interface FetchAIResponseParams {
   messageHistory: Message[];
@@ -466,10 +442,13 @@ async function handleApiError(
     return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
   }
   else if (response.status === 400) {
-    const errorMessage = await response.text();
+    const errorMessage = await readResponseBodyText(response);
     console.error("rdlogs:rdlogs:smh 400 error: ", errorMessage);
     if (errorMessage.includes("is not a valid model ID")) {
       return { retry: retryOnInsufficientBalance, reason: "not a valid model ID" };
+    }
+    else if (errorMessage.includes("not found")) {
+      return { retry: retryOnInsufficientBalance, reason: "insufficient balance" };
     }
     await logApiErrorForResponse(response, baseUrl, onMessageAppend);
     return { retry: false, reason: response.status.toString() };
@@ -936,6 +915,32 @@ async function handlePostResponseRefund(params: {
   localStorage.setItem('transaction_history', JSON.stringify([...transactionHistory, newTransaction]));
   onTransactionUpdate(newTransaction);
 }
+
+/**
+ * Helper function to properly read response body text from a ReadableStream
+ */
+async function readResponseBodyText(response: Response): Promise<string> {
+  if (!response.body) {
+    return '';
+  }
+  
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let text = '';
+  
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  
+  return text;
+}
+
 
 async function logApiErrorForResponse(response: Response, baseUrl: string, onMessageAppend: (message: Message) => void): Promise<void> {
   const responseBodyText = await readResponseBodyText(response);

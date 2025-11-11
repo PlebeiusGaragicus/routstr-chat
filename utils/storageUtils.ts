@@ -468,7 +468,8 @@ export const STORAGE_KEYS = {
   RELAYS: 'nostr_relays',
   TOPUP_PROMPT_SEEN: 'topup_prompt_seen',
   DISABLED_PROVIDERS: 'disabled_providers',
-  MINTS_FROM_ALL_PROVIDERS: 'mints_from_all_providers'
+  MINTS_FROM_ALL_PROVIDERS: 'mints_from_all_providers',
+  LAST_MODELS_UPDATE: 'lastModelsUpdate'
 } as const;
 
 /**
@@ -592,4 +593,43 @@ export const setProviderMints = (providerBaseUrl: string, mints: string[]): void
   const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
   allMints[normalized] = mints;
   saveMintsFromAllProviders(allMints);
+};
+
+/**
+ * Load the timestamps of the last models update from localStorage
+ * @returns Record mapping provider base URL to timestamp in milliseconds
+ */
+export const loadLastModelsUpdate = (): Record<string, number> => {
+  return getStorageItem<Record<string, number>>(STORAGE_KEYS.LAST_MODELS_UPDATE, {});
+};
+
+/**
+ * Save the timestamps of the last models update to localStorage
+ * @param timestampsMap Record mapping provider base URL to timestamp in milliseconds
+ */
+export const saveLastModelsUpdate = (timestampsMap: Record<string, number>): void => {
+  setStorageItem(STORAGE_KEYS.LAST_MODELS_UPDATE, timestampsMap);
+};
+
+/**
+ * Get the last update timestamp for a specific provider
+ * @param providerBaseUrl Provider base URL
+ * @returns Timestamp in milliseconds or null if never updated
+ */
+export const getProviderLastUpdate = (providerBaseUrl: string): number | null => {
+  const allTimestamps = loadLastModelsUpdate();
+  const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+  return allTimestamps[normalized] || null;
+};
+
+/**
+ * Set the last update timestamp for a specific provider
+ * @param providerBaseUrl Provider base URL
+ * @param timestamp Timestamp in milliseconds
+ */
+export const setProviderLastUpdate = (providerBaseUrl: string, timestamp: number): void => {
+  const allTimestamps = loadLastModelsUpdate();
+  const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+  allTimestamps[normalized] = timestamp;
+  saveLastModelsUpdate(allTimestamps);
 };
