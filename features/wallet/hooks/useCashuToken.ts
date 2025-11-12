@@ -165,11 +165,22 @@ export function useCashuToken() {
             throw new Error(`Not enough funds on mint ${mintUrl} after cleaning spent proofs`);
           }
 
-          // Use advanced proof selection with tolerance fallback
-          const result = selectProofsAdvanced(amount, proofs, activeKeysets, mintUrl);
-          proofsToKeep = result.proofsToKeep;
-          proofsToSend = result.proofsToSend;
-          console.log('rdlogs: proofsToSend', proofsToSend);
+          try {          
+            const result = selectProofsAdvanced(amount, proofs, activeKeysets, mintUrl);
+            // Use advanced proof selection with tolerance fallback
+            proofsToKeep = result.proofsToKeep;
+            proofsToSend = result.proofsToSend;
+            console.log('rdlogs: proofsToSend', proofsToSend);
+          } catch (error) {
+            try {
+              const result = await wallet.send(amount, proofs, { pubkey: p2pkPubkey, privkey: cashuStore.privkey});
+              proofsToKeep = result.keep;
+              proofsToSend = result.send;
+            } catch (error2) {
+              const message = error2 instanceof Error ? error2.message : String(error2);
+              throw new Error(`Having issues with the mint ${mintUrl}, please refresh your app try again. `);
+            }
+          }
         } else {
           // Re-throw the error if it's not a "Token already spent" error
           throw error;

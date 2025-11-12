@@ -1,5 +1,5 @@
 import { Proof } from '../domain/Proof';
-import { MintKeyset } from '@cashu/cashu-ts';
+import { CashuWallet, MintKeyset } from '@cashu/cashu-ts';
 import { calculateFees } from './fees';
 
 /**
@@ -259,8 +259,7 @@ export function selectProofsAdvanced(
       overpaymentPercent
     };
   } else {
-    console.log('rdlogs: Cannot make change within tolerance');
-    throw new Error(`Cannot make change for amount ${amount} within tolerance on mint ${mintUrl}`);
+     throw new Error(`Cannot make change for amount ${amount} within tolerance on mint ${mintUrl}`);
   }
 }
 
