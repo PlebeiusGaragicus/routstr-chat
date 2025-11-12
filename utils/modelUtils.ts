@@ -43,6 +43,7 @@ export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
 export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): number => {
   try {
     const approximateTokens = apiMessages ? Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84) : 10000; // Assumed tokens for minimum balance calculation
+    if (apiMessages) console.log("OUR TOKENS", approximateTokens);
     const sp: any = model?.sats_pricing as any;
     
     if (!sp) return 0;
@@ -55,7 +56,9 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
     // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
     const promptCosts = (sp.prompt || 0) * approximateTokens;
     const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.05;
-    return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in come image input calculations, this cost balloons up. Gotta figure out how to calculate image tokens. 
+    console.log("TOTAL EST", totalEstimatedCosts, sp.max_cost)
+    // return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in come image input calculations, this cost balloons up. Gotta figure out how to calculate image tokens. 
+    return totalEstimatedCosts; // Backend has a bug here.it's calculating image tokens wrong. gotta switch to different logic once its fixed
   } catch (e) {
     console.error(e);
     return 0;

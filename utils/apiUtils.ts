@@ -326,6 +326,7 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       if (streamingResult.usage) {
         if ( streamingResult.usage.completion_tokens !== undefined && streamingResult.usage.prompt_tokens !== undefined) {
           estimatedCosts = selectedModel?.sats_pricing.completion * streamingResult.usage.completion_tokens + selectedModel?.sats_pricing.prompt * streamingResult.usage.prompt_tokens
+          console.log("prompt TOKENS", streamingResult.usage.prompt_tokens);
           console.log("Estimated costs: ", estimatedCosts);
         }
       }
