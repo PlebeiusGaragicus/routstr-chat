@@ -300,7 +300,6 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       // Only auto-select if no model is selected or current model is not available
       if (!selectedModel && !isLoadingModels && !isWalletLoading) {
         const model = await modelSelectionStrategy(models, maxBalance, pendingCashuAmountState);
-        console.log(models);
         if (model) {
           handleModelChange(model.id);
         }
@@ -339,6 +338,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
               id: m.id.split('/').pop() || m.id
             })) : [];
             // cache back to storage
+            console.log("FRESH LIST ", freshList)
             upsertCachedProviderModels(normalized, freshList);
             return freshList.find((m: Model) => m.id === parsed.id);
           } catch {

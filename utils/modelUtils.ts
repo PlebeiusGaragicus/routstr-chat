@@ -23,7 +23,8 @@ export function upsertCachedProviderModels(baseUrl: string, models: Model[]): vo
     const normalized = normalizeBaseUrl(baseUrl);
     if (!normalized) return;
     const existing = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
-    setStorageItem('modelsFromAllProviders', { ...existing, [normalized]: models });
+    console.log('asdfasdfasdfasdfasdf', models);
+   setStorageItem('modelsFromAllProviders', { ...existing, [normalized]: models });
   } catch {}
 }
 
@@ -98,6 +99,7 @@ export const modelSelectionStrategy = async (models: Model[], maxBalance: number
           })) : [];
           const transformedId = id.split('/').pop() || id;
           const found = providerList.find((m: Model) => m.id === transformedId) ?? null;
+          console.log("SMG", providerList);
           if (found) {
             // cache to storage for future
             upsertCachedProviderModels(normalized, providerList);
@@ -125,7 +127,6 @@ export const modelSelectionStrategy = async (models: Model[], maxBalance: number
       const bMaxCost = getRequiredSatsForModel(b);
       return bMaxCost - aMaxCost; // Descending order
     });
-    console.log("rdlogs: compatible", compatible.slice(5));
     if (compatible.length > 0) modelToSelect = compatible[0];
   }
   

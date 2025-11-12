@@ -85,39 +85,7 @@ export default function ModelSelector({
     }
   }, [models]);
 
-  // Normalize base URL to ensure trailing slash and protocol (moved to utils)
-
-  // Fetch and cache models for a specific provider base URL
-  const fetchAndCacheProviderModels = async (baseRaw: string): Promise<void> => {
-    const base = normalizeBaseUrl(baseRaw);
-    if (!base) return;
-    // Avoid duplicate fetches
-    if (loadingProviderBases.has(base)) return;
-    setLoadingProviderBases(prev => new Set(prev).add(base));
-    try {
-      const res = await fetch(`${base}v1/models`);
-      if (!res.ok) throw new Error(`Failed to fetch models for ${base}: ${res.status}`);
-      const json = await res.json();
-      const list: readonly Model[] = Array.isArray(json?.data) ? json.data : [];
-      const map: Record<string, Model> = {};
-      for (const m of list) {
-        map[m.id] = m;
-      }
-      setProviderModelCache(prev => ({ ...prev, [base]: map }));
-      // Also persist into localStorage modelsFromAllProviders so other parts can read it
-      upsertCachedProviderModels(base, list as Model[]);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingProviderBases(prev => {
-        const next = new Set(prev);
-        next.delete(base);
-        return next;
-      });
-    }
-  };
-
-  // Helpers to parse provider-qualified keys (moved to utils)
+ // Helpers to parse provider-qualified keys (moved to utils)
 
   // Current model helpers for top-of-list section
   const currentConfiguredKeyMemo: string | undefined = useMemo(() => {
@@ -174,16 +142,6 @@ export default function ModelSelector({
     return Array.from(bases);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configuredModels, models, modelProviderMap, currentConfiguredKeyMemo, detailsBaseUrl]);
-
-  useEffect(() => {
-    // Prefetch any needed bases not yet cached
-    for (const base of neededProviderBases) {
-      if (!providerModelCache[base]) {
-        void fetchAndCacheProviderModels(base);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [neededProviderBases]);
 
 
   // Deduplicate models across providers by picking the best-priced variant per id

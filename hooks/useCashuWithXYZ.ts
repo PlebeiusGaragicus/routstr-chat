@@ -92,8 +92,8 @@ export function useCashuWithXYZ() {
               maxBalance = Math.max(maxBalance, balance);
             }
           }
-          console.log('BALANCE BEING TRIGGERS', getPendingCashuTokenAmount())
-          setBalance(Math.round((totalBalance + pendingCashuAmountState)*100)/100);
+          const balanceBeingSet = Math.round((totalBalance)*100)/100;
+          setBalance(balanceBeingSet);
           setMaxBalance(maxBalance);
         }
       } else {
@@ -122,7 +122,7 @@ export function useCashuWithXYZ() {
     return () => {
       window.removeEventListener('storage', updatePendingAmount);
     };
-  }, [pendingCashuAmountState]);
+  }, []); // Remove pendingCashuAmountState from deps to avoid stale closure
 
   // Set active mint URL based on wallet and current mint URL
   useEffect(() => {
@@ -384,7 +384,6 @@ export function useCashuWithXYZ() {
       );
       console.log('rdlogs: selectedMintUrl', selectedMintUrl, selectedMintBalance);
       let providerMints = loadMintsFromAllProviders()[baseUrl];
-      console.log('rdlogs: providerMints', providerMints);
       if (!providerMints) {
         const response = await fetch(`${baseUrl}v1/info`, {
           method: 'GET',
@@ -420,7 +419,6 @@ export function useCashuWithXYZ() {
         }
       }
 
-      console.log('mintUrl', mintUrl)
       console.log('activeMintBlance', activeMintBalanceInSats >= adjustedAmount, providerMints?.includes(mintUrl), baseUrl === '')
     
       if (activeMintBalanceInSats >= adjustedAmount && (baseUrl === '' || providerMints?.includes(mintUrl))) {

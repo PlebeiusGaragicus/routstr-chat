@@ -31,6 +31,7 @@ import type { TransactionHistory } from '@/types/chat';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
+import { getPendingCashuTokenAmount } from '@/utils/cashuUtils';
 
 /**
  * User balance and authentication status component with comprehensive wallet popover
@@ -52,6 +53,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
   const [activeTab, setActiveTab] = useState<'overview' | 'send' | 'receive' | 'activity' | 'invoice'>('overview');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const [localBalance, setLocalBalance] = useState(0);
   
   // Send state
   const [sendTab, setSendTab] = useState<'token' | 'lightning'>('token');
@@ -81,9 +83,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
   const [successMessage, setSuccessMessage] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   
-  // Auto-checking refs
-  const autoCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    // Auto-checking refs
+    const autoCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const balanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     initWallet,
@@ -272,17 +275,21 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
     }, 150);
   };
 
-  // Clean up intervals on unmount
-  useEffect(() => {
-    return () => {
-      if (autoCheckIntervalRef.current) {
-        clearInterval(autoCheckIntervalRef.current);
-      }
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-      }
-    };
-  }, []);
+    // Clean up intervals on unmount
+    useEffect(() => {
+      return () => {
+        if (autoCheckIntervalRef.current) {
+          clearInterval(autoCheckIntervalRef.current);
+        }
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+        if (balanceIntervalRef.current) {
+          clearInterval(balanceIntervalRef.current);
+          balanceIntervalRef.current = null;
+        }
+      };
+    }, []);
 
   // Reset states when popover opens/closes
   React.useEffect(() => {
@@ -345,6 +352,31 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
       stopAutoChecking();
     }
   }, [activeTab, isAutoChecking, stopAutoChecking]);
+
+  React.useEffect(() => {
+    const every50ms = () => {
+      setLocalBalance(balance + getPendingCashuTokenAmount());
+    };
+
+    // Run immediately once
+    every50ms();
+
+    // Clear existing interval before creating a new one
+    if (balanceIntervalRef.current) {
+      clearInterval(balanceIntervalRef.current);
+    }
+
+    // Run every 50ms
+    balanceIntervalRef.current = setInterval(every50ms, 210);
+
+    // Cleanup on dependency change or unmount
+    return () => {
+      if (balanceIntervalRef.current) {
+        clearInterval(balanceIntervalRef.current);
+        balanceIntervalRef.current = null;
+      }
+    };
+  }, [balance]);
 
   // Auto-checking for mint quote
   const startAutoChecking = useCallback(() => {
@@ -878,7 +910,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
             <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
           </svg>
           <span className={isMobile ? 'text-xs' : 'text-sm'}>
-            {isBalanceLoading ? 'loading' : `${balance} sats`}
+            {isBalanceLoading ? 'loading' : `${localBalance} sats`}
           </span>
         </button>
       </PopoverTrigger>
@@ -1032,7 +1064,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                 </div>
                 <div className="text-white/60 text-sm mb-2">Balance</div>
                 <div className="text-white text-2xl font-bold">
-                  {isBalanceLoading ? 'loading' : `${balance} sats`}
+                  {isBalanceLoading ? 'loading' : `${localBalance} sats`}
                 </div>
               </div>
 
