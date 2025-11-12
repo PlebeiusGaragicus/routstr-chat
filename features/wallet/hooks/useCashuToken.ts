@@ -136,7 +136,7 @@ export function useCashuToken() {
       }, {} as Record<number, number>);
       // console.log('rdlogs: Proof denomination groups:', denominationCounts);
       amount = preferredUnit == 'msat' ? amount * 1000 : amount;
-      console.log('amiout', amount);
+      console.log('amount being sent', amount);
       if (proofsAmount < amount) {
         throw new Error(`Not enough funds on mint ${mintUrl}`);
       }
@@ -186,7 +186,8 @@ export function useCashuToken() {
           secret: p.secret || '',
           C: p.C || ''
         })),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        tokenAmount: amount
       }));
       const sendFees = calculateFees(proofsToSend, activeKeysets);
       // console.log('rdlogs: fees to send ', amount, ' is ', sendFees)

@@ -104,20 +104,6 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
     return calculateBalanceByMint(cashuStore.proofs, cashuStore.mints);
   }, [cashuStore.proofs, cashuStore.mints]);
 
-  useEffect(() => {
-    let totalBalance = 0;
-    for (const mintUrl in mintBalances) {
-      const balance = mintBalances[mintUrl];
-      const unit = mintUnits[mintUrl];
-      if (unit === 'msat') {
-        totalBalance += balance / 1000;
-      } else {
-        totalBalance += balance;
-      }
-    }
-    setBalance(totalBalance);
-  }, [mintBalances, mintUnits, setBalance]);
-
   const handleCreateInvoice = async (quickMintAmount?: number) => {
     if (!cashuStore.activeMintUrl) {
       setError(

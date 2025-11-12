@@ -54,8 +54,8 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
     
     // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
     const promptCosts = (sp.prompt || 0) * approximateTokens;
-    const totalEstimatedCosts = promptCosts + sp.max_completion_cost;
-    return totalEstimatedCosts * 1.05; // Added a 5% margin
+    const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.05;
+    return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in come image input calculations, this cost balloons up. Gotta figure out how to calculate image tokens. 
   } catch (e) {
     console.error(e);
     return 0;

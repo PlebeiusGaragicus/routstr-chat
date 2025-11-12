@@ -142,7 +142,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     // Determine origin conversation id and update UI optimistically
     const timestamp = Date.now().toString();
     const originConversationId = activeConversationId ?? createNewConversationHandler(updatedMessages, timestamp);
-    console.log('rdlogs: culprit', originConversationId)
     if (activeConversationId) {
       setMessages(updatedMessages);
     }

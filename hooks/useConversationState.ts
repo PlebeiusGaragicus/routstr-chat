@@ -108,7 +108,6 @@ export const useConversationState = (): UseConversationStateReturn => {
     let createdId: string = '';
     setConversations(prevConversations => {
       const { newConversation, updatedConversations } = createAndStoreNewConversation(prevConversations, initialMessages, timestamp);
-      console.log('rdlogs, secondary creattion', newConversation.id)
       createdId = newConversation.id;
       setActiveConversationIdWithStorage(newConversation.id);
       // Set messages to the initial messages (empty array if none provided)

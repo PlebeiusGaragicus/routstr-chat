@@ -316,7 +316,12 @@ export const unifiedRefund = async (
 
 export const getPendingCashuTokenAmount = (): number => {
   const distribution = getPendingCashuTokenDistribution();
-  return distribution.reduce((total, item) => total + item.amount, 0);
+  const tempKeys = Object.keys(localStorage).filter(key => key.startsWith('pending_send_proofs_'));
+  const tempAmount = tempKeys.reduce((total, key) => {
+    const data = JSON.parse(localStorage.getItem(key) || '{}');
+    return total + data.tokenAmount;
+  }, 0);
+  return distribution.reduce((total, item) => total + item.amount, 0) + tempAmount;
 };
 
 export const getPendingCashuTokenDistribution = (): { baseUrl: string; amount: number }[] => {
