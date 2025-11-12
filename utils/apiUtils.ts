@@ -317,8 +317,15 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
       const baseUrlUsed = (response as any).baseUrl;
 
       const streamingResult = await processStreamingResponse(response, onStreamingUpdate, onThinkingUpdate, selectedModel?.id); 
-      if (streamingResult.content || streamingResult.images) {
+      console.log("STREMING RESULTS", streamingResult);
+      if (streamingResult.finish_reason === "content_filter") {
+        onMessageAppend(createTextMessage('assistant', "Your request was denied due to content filtering. "))
+      }
+      else if (streamingResult.content || streamingResult.images) {
         onMessageAppend(createAssistantMessage(streamingResult));
+      }
+      else {
+        logApiError("The provider did not respond to this request. ", onMessageAppend)
       }
 
       let estimatedCosts = 0; // Initialize to 0
