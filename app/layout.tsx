@@ -4,6 +4,7 @@ import "./globals.css";
 import ClientProviders from "@/components/ClientProviders";
 import { Toaster } from "sonner";
 import BitcoinConnectClient from "@/components/bitcoin-connect/BitcoinConnectClient";
+import SWUpdater from "@/components/SWUpdater";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +19,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Routstr",
   description: "The future of AI access is permissionless, private, and decentralized",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#111111",
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Routstr",
+  },
 };
 
 export const viewport: Viewport = {
@@ -38,6 +50,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <ClientProviders>
+          <SWUpdater />
           {children}
           <Toaster theme="dark" />
           <BitcoinConnectClient />

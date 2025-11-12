@@ -3,7 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
 import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders, setProviderLastUpdate, getProviderLastUpdate } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable, getRequiredSatsForModel, modelSelectionStrategy } from '@/utils/modelUtils';
-import { getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
+import { getPendingCashuTokenAmount, getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
 import { recommendedModels } from '@/lib/recommendedModels';
 
 export interface UseApiStateReturn {
@@ -305,13 +305,12 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
         }
       }
       if (selectedModel && !isWalletLoading) {
-        const totalPendingBalance = getPendingCashuTokenDistribution().reduce((total, item) => total + item.amount, 0);
-        setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + totalPendingBalance));
+        setLowBalanceWarningForModel(!isModelAvailable(selectedModel, balance + getPendingCashuTokenAmount()));
       }
     };
 
     selectModel();
-  }, [balance, models, isAuthenticated, selectedModel, isLoadingModels]);
+  }, [balance, models, isAuthenticated, selectedModel, isLoadingModels, pendingCashuAmountState]);
 
   const handleModelChange = useCallback((modelId: string, configuredKeyOverride?: string) => {
     console.log('rdlogs: handleModelChange', modelId, configuredKeyOverride);
