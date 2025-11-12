@@ -38,12 +38,153 @@ export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
   }
 }
 
+/**
+ * Extract image resolution (width, height) from a base64 data URL without DOM.
+ * Supports PNG and JPEG. Returns null if format unsupported or parsing fails.
+ */
+function getImageResolutionFromDataUrl(dataUrl: string): { width: number; height: number } | null {
+  try {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+
+    const commaIdx = dataUrl.indexOf(',');
+    if (commaIdx === -1) return null;
+
+    const meta = dataUrl.slice(5, commaIdx); // e.g. "image/png;base64"
+    const base64 = dataUrl.slice(commaIdx + 1);
+
+    // Decode base64 to binary
+    const binary = typeof atob === 'function'
+      ? atob(base64)
+      : Buffer.from(base64, 'base64').toString('binary');
+
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+
+    const isPNG = meta.includes('image/png');
+    const isJPEG = meta.includes('image/jpeg') || meta.includes('image/jpg');
+
+    // PNG: width/height are 4-byte big-endian at offsets 16 and 20
+    if (isPNG) {
+      // Validate PNG signature
+      const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+      for (let i = 0; i < sig.length; i++) {
+        if (bytes[i] !== sig[i]) return null;
+      }
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      const width = view.getUint32(16, false);
+      const height = view.getUint32(20, false);
+      if (width > 0 && height > 0) return { width, height };
+      return null;
+    }
+
+    // JPEG: parse markers to SOF0/SOF2 for dimensions
+    if (isJPEG) {
+      let offset = 0;
+      // JPEG SOI 0xFFD8
+      if (bytes[offset++] !== 0xFF || bytes[offset++] !== 0xD8) return null;
+
+      while (offset < bytes.length) {
+        // Find marker
+        while (offset < bytes.length && bytes[offset] !== 0xFF) offset++;
+        if (offset + 1 >= bytes.length) break;
+
+        // Skip fill bytes 0xFF
+        while (bytes[offset] === 0xFF) offset++;
+        const marker = bytes[offset++];
+
+        // Standalone markers without length
+        if (marker === 0xD8 || marker === 0xD9) continue; // SOI/EOI
+
+        if (offset + 1 >= bytes.length) break;
+        const length = (bytes[offset] << 8) | bytes[offset + 1];
+        offset += 2;
+
+        // SOF0 (0xC0) or SOF2 (0xC2) contain dimensions
+        if (marker === 0xC0 || marker === 0xC2) {
+          if (length < 7 || offset + length - 2 > bytes.length) return null;
+          const precision = bytes[offset];
+          const height = (bytes[offset + 1] << 8) | bytes[offset + 2];
+          const width = (bytes[offset + 3] << 8) | bytes[offset + 4];
+          if (precision > 0 && width > 0 && height > 0) return { width, height };
+          return null;
+        } else {
+          // Skip this segment
+          offset += length - 2;
+        }
+      }
+      return null;
+    }
+
+    // Unsupported formats (e.g., webp/gif) - skip for now
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 // Determine required minimum sats to run a request for a model
 export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): number => {
   try {
-    const approximateTokens = apiMessages ? Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84) : 10000; // Assumed tokens for minimum balance calculation
-    if (apiMessages) console.log("OUR TOKENS", approximateTokens);
+    let imageTokens = 0;
+    if (apiMessages) {
+      for (const msg of apiMessages as any[]) {
+        const content = (msg as any)?.content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            const isImage = part && typeof part === 'object' && part.type === 'image_url';
+            const url: string | undefined =
+              isImage
+                ? (typeof part.image_url === 'string'
+                    ? part.image_url
+                    : part.image_url?.url)
+                : undefined;
+
+            // Expecting a base64 data URL for local image inputs
+            if (url && typeof url === 'string' && url.startsWith('data:')) {
+              const res = getImageResolutionFromDataUrl(url);
+              if (res) {
+                const patchSize = 32;
+                const patchesW = Math.floor((res.width + patchSize - 1) / patchSize);
+                const patchesH = Math.floor((res.height + patchSize - 1) / patchSize);
+                const tokensFromImage = patchesW * patchesH;
+                imageTokens += tokensFromImage;
+                console.log('IMAGE INPUT RESOLUTION', {
+                  width: res.width,
+                  height: res.height,
+                  tokensFromImage
+                });
+              } else {
+                console.log('IMAGE INPUT RESOLUTION', 'unknown (unsupported format or parse failure)');
+              }
+            }
+          }
+        }
+      }
+    }
+    // Remove image_url parts from apiMessages when estimating text token count
+    const apiMessagesNoImages = apiMessages // SWITCH AFTER NODE UPDAATES
+      ? (apiMessages as any[]).map((m: any) => {
+          if (Array.isArray(m?.content)) {
+            const filtered = m.content.filter(
+              (p: any) => !(p && typeof p === 'object' && p.type === 'image_url')
+            );
+            return { ...m, content: filtered };
+          }
+          return m;
+        })
+      : undefined;
+
+    const approximateTokens = apiMessages
+      ? Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84)
+      : 10000; // Assumed tokens for minimum balance calculation
+
+    const totalInputTokens = approximateTokens + imageTokens;
+
+    if (apiMessages) {
+      console.log("OUR TOKENS (TEXT-ONLY)", approximateTokens);
+      console.log("IMAGE TOKENS", imageTokens, "TOTAL INPUT TOKENS", totalInputTokens);
+    }
     const sp: any = model?.sats_pricing as any;
     
     if (!sp) return 0;
@@ -54,10 +195,9 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
     }
     
     // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
-    const promptCosts = (sp.prompt || 0) * approximateTokens;
+    const promptCosts = (sp.prompt || 0) * totalInputTokens;
     const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.05;
-    console.log("TOTAL EST", totalEstimatedCosts, sp.max_cost)
-    // return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in come image input calculations, this cost balloons up. Gotta figure out how to calculate image tokens. 
+    // return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in some image input calculations, this cost balloons up. Now includes image tokens via 32px patches.
     return totalEstimatedCosts; // Backend has a bug here.it's calculating image tokens wrong. gotta switch to different logic once its fixed
   } catch (e) {
     console.error(e);
