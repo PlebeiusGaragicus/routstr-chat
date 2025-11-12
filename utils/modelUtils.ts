@@ -23,7 +23,6 @@ export function upsertCachedProviderModels(baseUrl: string, models: Model[]): vo
     const normalized = normalizeBaseUrl(baseUrl);
     if (!normalized) return;
     const existing = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
-    console.log('asdfasdfasdfasdfasdf', models);
    setStorageItem('modelsFromAllProviders', { ...existing, [normalized]: models });
   } catch {}
 }
