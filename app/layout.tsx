@@ -20,10 +20,13 @@ export const metadata: Metadata = {
   title: "Routstr",
   description: "The future of AI access is permissionless, private, and decentralized",
   manifest: "/manifest.webmanifest",
-  themeColor: "#111111",
   icons: {
-    icon: "/icons/icon-192.png",
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: "/icons/apple-touch-icon.png",
+    shortcut: "/icons/icon-192.png",
   },
   appleWebApp: {
     capable: true,
@@ -36,6 +39,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#111111",
 };
 
 export default function RootLayout({
