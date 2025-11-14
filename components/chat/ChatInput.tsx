@@ -175,6 +175,55 @@ export default function ChatInput({
     setUploadedAttachments((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const handlePaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    const imageItems: DataTransferItem[] = [];
+    
+    // Collect all image items from clipboard
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        imageItems.push(items[i]);
+      }
+    }
+
+    if (imageItems.length === 0) return;
+
+    // Prevent default paste behavior for images
+    event.preventDefault();
+
+    const attachmentsToAdd: { attachment: MessageAttachment; file: File }[] = [];
+
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      try {
+        const dataUrl = await convertFileToBase64(file);
+        const attachment: MessageAttachment = {
+          id: createAttachmentId(),
+          name: file.name || `pasted-image-${Date.now()}.${file.type.split('/')[1]}`,
+          mimeType: file.type,
+          size: file.size,
+          dataUrl,
+          type: 'image'
+        };
+
+        attachmentsToAdd.push({ attachment, file });
+      } catch (error) {
+        console.error('Error converting pasted image to base64:', error);
+      }
+    }
+
+    if (attachmentsToAdd.length > 0) {
+      setUploadedAttachments((prev) => [
+        ...prev,
+        ...attachmentsToAdd.map(item => item.attachment)
+      ]);
+    }
+  };
+
   return (
     <>
       {/* Greeting message when centered */}
@@ -276,6 +325,7 @@ export default function ChatInput({
                 ref={textareaRef}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
