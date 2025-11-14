@@ -397,10 +397,13 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
         onMessageAppend(createTextMessage('assistant', "Your request was denied due to content filtering. "))
       }
       else if (streamingResult.content || streamingResult.images) {
-        if (streamingResult.content === "<image>") {
+        const hasImages = streamingResult.images && streamingResult.images.length > 0;
+        if (streamingResult.content === "<image>" && !hasImages) {
           onMessageAppend(createTextMessage('assistant', "This model has issues when using through OpenRouter. We're working on finding alternatives. "))
         }
-        onMessageAppend(createAssistantMessage(streamingResult));
+        else {
+          onMessageAppend(createAssistantMessage(streamingResult));
+        }
       }
       else {
         logApiError("The provider did not respond to this request. ", onMessageAppend)
