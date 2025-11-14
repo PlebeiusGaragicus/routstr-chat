@@ -37,6 +37,8 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCentered, setIsCentered] = useState(!hasMessages);
   const [showRedButton, setShowRedButton] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
   const { isSidebarOpen } = useChat();
   const unifiedBgClass = isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#181818]';
   const maxTextareaHeight = isMobile ? 176 : 240;
@@ -224,6 +226,105 @@ export default function ChatInput({
     }
   };
 
+  // Drag and Drop Handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+
+    // Check if the dragged item contains files
+    if (e.dataTransfer.types && e.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // This is necessary to allow dropping
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const processImageFile = async (file: File) => {
+    // Validate file type - accept images and PDFs
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    
+    if (!isImage && !isPdf) {
+      alert("Please select an image or PDF file");
+      return;
+    }
+
+    // Reject SVG files
+    if (file.type === "image/svg+xml") {
+      alert("SVG files are not supported. Please use PNG, JPG, or WebP");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size must be less than 10MB");
+      return;
+    }
+
+    try {
+      const dataUrl = await convertFileToBase64(file);
+      const attachment: MessageAttachment = {
+        id: createAttachmentId(),
+        name: file.name,
+        mimeType: file.type,
+        size: file.size,
+        dataUrl,
+        type: isImage ? 'image' : 'file'
+      };
+
+      setUploadedAttachments((prev) => [...prev, attachment]);
+
+      // Extract text from PDF if applicable
+      if (isPdf) {
+        extractTextFromPdf(file)
+          .then(text => {
+            if (!text.trim()) return;
+            setUploadedAttachments(prev =>
+              prev.map(item =>
+                item.id === attachment.id ? { ...item, textContent: text } : item
+              )
+            );
+          })
+          .catch(error => {
+            console.warn('Failed to extract text from PDF attachment, continuing without text content.', error);
+          });
+      }
+    } catch (error) {
+      console.error('Error processing file:', error);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Process all dropped files
+      for (let i = 0; i < files.length; i++) {
+        await processImageFile(files[i]);
+      }
+    }
+  };
+
   return (
     <>
       {/* Greeting message when centered */}
@@ -266,7 +367,17 @@ export default function ChatInput({
       >
         <div className={`${isMobile ? 'w-full max-w-none px-4 pb-3' : 'mx-auto w-full ' + (isCentered ? 'max-w-[38rem]' : 'max-w-[44rem]') + ' px-4 sm:px-6 lg:px-0'}`}>
           {/* Unified Input Container with Attachment Preview Inside */}
-          <div className="relative flex flex-col w-full bg-white/10 rounded-3xl transition-all duration-300 ease-out">
+          <div 
+            className={`relative flex flex-col w-full rounded-3xl transition-all duration-300 ease-out ${
+              isDragging
+                ? 'bg-linear-to-br from-purple-500/20 via-purple-500/10 to-purple-500/5 border-2 border-dashed border-purple-400/70 shadow-[0_0_40px_-5px_rgba(168,85,247,0.5)] scale-[1.01]'
+                : 'bg-white/10 border border-white/10'
+            }`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
