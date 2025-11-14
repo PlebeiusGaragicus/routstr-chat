@@ -397,6 +397,9 @@ export const fetchAIResponse = async (params: FetchAIResponseParams): Promise<vo
         onMessageAppend(createTextMessage('assistant', "Your request was denied due to content filtering. "))
       }
       else if (streamingResult.content || streamingResult.images) {
+        if (streamingResult.content === "<image>") {
+          onMessageAppend(createTextMessage('assistant', "This model has issues when using through OpenRouter. We're working on finding alternatives. "))
+        }
         onMessageAppend(createAssistantMessage(streamingResult));
       }
       else {
@@ -803,6 +806,7 @@ async function processStreamingResponse(
 
           try {
             const parsedData = JSON.parse(jsonData);
+            console.log(parsedData);
 
             // Handle reasoning delta. OpenRouter does this. 
             if (parsedData.choices &&
@@ -898,6 +902,9 @@ async function processStreamingResponse(
           } catch {
             // Swallow parse errors for streaming chunks
           }
+        }
+        else {
+          onStreamingUpdate("Generating...")
         }
       }
     } catch {
