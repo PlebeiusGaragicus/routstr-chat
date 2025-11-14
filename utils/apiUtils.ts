@@ -60,7 +60,7 @@ function findNextBestProvider(
       if (baseUrl === currentBaseUrl || failedProviders.has(baseUrl) || disabledProviders.has(baseUrl)) {
         continue;
       }
-      console.log('checking ', baseUrl)
+      console.log('checking ', modelId, baseUrl)
       if (baseUrl === "https://api.routstr.com/") {
         console.log("ALL MODLES", models)
       }
@@ -145,10 +145,11 @@ async function routstrRequest(params: {
   console.log("rdlogs: rdlogs: headers: ", baseUrl, providerVersion)
   
   // For provider version 0.1.X, send only the leaf ID (after the last '/')
-  const modelIdForRequest =
-    /^0\.1\./.test(providerVersion)
-      ? (selectedModel?.id?.split('/').pop() ?? selectedModel?.id)
-      : selectedModel?.id;
+  let modelIdForRequest = selectedModel.id;
+  if (/^0\.1\./.test(providerVersion)) {
+    const newModelInfo = await backwardCompatibleModel(selectedModel.id, baseUrl);
+    modelIdForRequest = newModelInfo?.id ?? selectedModel.id;
+  }
 
   let response: Response;
   try {
@@ -1081,4 +1082,20 @@ function logApiError(
   }
 
   onMessageAppend(createTextMessage('system', errorMessage));
+}
+
+async function backwardCompatibleModel(selectedModel: string, baseUrl: string): Promise<Model | null> {
+  try {
+    const response = await fetch(`${baseUrl}v1/models`);
+    if (!response.ok) {
+      console.error(`Failed to fetch models: ${response.status}`);
+      return null;
+    }
+    const json = await response.json();
+    const models = Array.isArray(json?.data) ? json.data : [];
+    return models.find((m: Model) => m.id.split('/')[1] === selectedModel) || null;
+  } catch (error) {
+    console.error("Error fetching models:", error);
+    return null;
+  }
 }
