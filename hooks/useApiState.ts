@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Model } from '@/data/models';
-import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders, setProviderLastUpdate, getProviderLastUpdate } from '@/utils/storageUtils';
+import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders, setProviderLastUpdate, getProviderLastUpdate, saveInfoFromAllProviders } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable, getRequiredSatsForModel, modelSelectionStrategy } from '@/utils/modelUtils';
 import { getPendingCashuTokenAmount, getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
 import { recommendedModels } from '@/lib/recommendedModels';
@@ -243,6 +243,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       }
 
       // Store mints from all providers
+      const infoFromAllProviders: Record<string, any> = {};
       const mintsFromAllProviders: Record<string, string[]> = {};
 
       // Fetch info from each provider
@@ -258,8 +259,10 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
           
           // Save provider mints
           mintsFromAllProviders[base] = mints;
+          // Save full provider info
+          infoFromAllProviders[base] = json;
           
-          return { success: true, base, mints };
+          return { success: true, base, mints, info: json };
         } catch (error) {
           console.warn(`Failed to fetch mints from ${base}:`, error);
           return { success: false, base };
@@ -269,11 +272,16 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
       // Wait for all to complete
       await Promise.allSettled(fetchPromises);
 
-      // Save all provider mints to localStorage
+      // Save all provider mints and info to localStorage
       try {
         saveMintsFromAllProviders(mintsFromAllProviders);
       } catch (error) {
         console.error('Error saving mints to localStorage:', error);
+      }
+      try {
+        saveInfoFromAllProviders(infoFromAllProviders);
+      } catch (error) {
+        console.error('Error saving provider info to localStorage:', error);
       }
     } catch (error) {
       console.error('Error while fetching mints', error);

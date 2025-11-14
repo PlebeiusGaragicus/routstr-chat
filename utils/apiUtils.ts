@@ -1,12 +1,12 @@
 import { Message, MessageContent, TransactionHistory } from '@/types/chat';
 import { convertMessageForAPI, createTextMessage, extractThinkingFromStream } from './messageUtils';
 import { fetchBalances, getBalanceFromStoredProofs, getPendingCashuTokenAmount, refundRemainingBalance, unifiedRefund, UnifiedRefundResult } from '@/utils/cashuUtils';
-import { getLocalCashuToken, removeLocalCashuToken, getStorageItem } from './storageUtils';
+import { getLocalCashuToken, removeLocalCashuToken, getStorageItem, loadDisabledProviders, getOrFetchProviderInfo } from './storageUtils';
 import { getDecodedToken } from '@cashu/cashu-ts';
 import { isThinkingCapableModel } from './thinkingParser';
 import { SpendCashuResult } from '@/hooks/useCashuWithXYZ';
 import { Model } from '@/data/models';
-import { getRequiredSatsForModel } from './modelUtils';
+import { getModelForBase, getRequiredSatsForModel } from './modelUtils';
 
 
 export interface FetchAIResponseParams {
@@ -53,10 +53,16 @@ function findNextBestProvider(
     // Find all providers that offer this model
     const candidateProviders: Array<{ baseUrl: string; model: Model; cost: number }> = [];
     
+    const disabledProviders = new Set<string>(loadDisabledProviders())
+    
     for (const [baseUrl, models] of Object.entries(modelsFromAllProviders)) {
       // Skip current provider and failed providers
-      if (baseUrl === currentBaseUrl || failedProviders.has(baseUrl)) {
+      if (baseUrl === currentBaseUrl || failedProviders.has(baseUrl) || disabledProviders.has(baseUrl)) {
         continue;
+      }
+      console.log('checking ', baseUrl)
+      if (baseUrl === "https://api.routstr.com/") {
+        console.log("ALL MODLES", models)
       }
       
       // Find the model in this provider's list
@@ -134,17 +140,85 @@ async function routstrRequest(params: {
       if (latency) headers['X-Mock-Latency'] = latency;
     } catch {}
   }
-  console.log("rdlogs: rdlogs: headers: ", baseUrl)
+  const providerInfo = await getOrFetchProviderInfo(baseUrl);
+  const providerVersion = providerInfo?.version ?? '';
+  console.log("rdlogs: rdlogs: headers: ", baseUrl, providerVersion)
+  
+  // For provider version 0.1.X, send only the leaf ID (after the last '/')
+  const modelIdForRequest =
+    /^0\.1\./.test(providerVersion)
+      ? (selectedModel?.id?.split('/').pop() ?? selectedModel?.id)
+      : selectedModel?.id;
 
-  const response = await fetch(`${baseUrl}v1/chat/completions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: selectedModel?.id,
-      messages: apiMessages,
-      stream: true
-    })
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelIdForRequest,
+        messages: apiMessages,
+        stream: true
+      })
+    });
+  } catch (error: any) {
+    // Handle network fetch errors and attempt provider failover
+    const message = typeof error?.message === 'string' ? error.message : '';
+    const isNetworkError =
+      error instanceof TypeError ||
+      message.includes('NetworkError when attempting to fetch resource') ||
+      message.includes('Failed to fetch') ||
+      message.includes('Load failed');
+
+    if (isNetworkError) {
+      const refundStatus = await unifiedRefund(mintUrl, baseUrl, usingNip60, storeCashu);
+      if (!refundStatus.success){
+        await logApiErrorForRefund(refundStatus, baseUrl, onMessageAppend);
+      }
+    
+      // Mark current provider as failed and try the next best one
+      failedProviders.add(baseUrl);
+      const nextProvider = findNextBestProvider(selectedModel?.id, baseUrl, failedProviders);
+
+      if (nextProvider) {
+        onMessageAppend(createTextMessage('system', `Provider ${baseUrl} is unreachable. Retrying with ${nextProvider}...`));
+
+        const newBaseModel = await getModelForBase(nextProvider, selectedModel.id) ?? selectedModel;
+        const tokenAmountNew = getRequiredSatsForModel(newBaseModel, apiMessages);
+
+        // Acquire a new token for the next provider and retry recursively
+        const newTokenResult = await spendCashu(mintUrl, tokenAmountNew, nextProvider, true);
+        if (newTokenResult.status === 'failed' || !newTokenResult.token) {
+          throw new Error(
+            newTokenResult.error ||
+            `Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`
+          );
+        }
+
+        const newResponse = await routstrRequest({
+          apiMessages,
+          selectedModel: newBaseModel,
+          baseUrl: nextProvider,
+          mintUrl,
+          usingNip60,
+          tokenAmount,
+          spendCashu,
+          storeCashu,
+          activeMintUrl,
+          onMessageAppend,
+          token: newTokenResult.token,
+          retryOnInsufficientBalance: false,
+          failedProviders
+        });
+
+        (newResponse as any).tokenBalance = tokenAmount;
+        return newResponse;
+      }
+    }
+
+    // If not a recognized network error or no alternate provider available, rethrow
+    throw error;
+  }
 
   if (!response.ok) {
     const retryVerdict = await handleApiError(response, {
@@ -164,11 +238,11 @@ async function routstrRequest(params: {
       // Use new baseUrl if switching providers (for 50X errors)
       const retryBaseUrl = retryVerdict.newBaseUrl || baseUrl;
       let newSelectedModel = selectedModel;
-      if (retryVerdict.reason === "not a valid model ID") {
-        newSelectedModel = await backwardCompatibleModel(selectedModel?.id, baseUrl);
-      }
+
+      newSelectedModel = await getModelForBase(retryBaseUrl, selectedModel?.id)
+      const tokenAmountNew = getRequiredSatsForModel(newSelectedModel, apiMessages)
       
-      const newTokenResult = await spendCashu(mintUrl, tokenAmount, retryBaseUrl, true); // reuse token is true here but the two scenarios where we're retrying remove locally stored token anyway. 
+      const newTokenResult = await spendCashu(mintUrl, tokenAmountNew, retryBaseUrl, true); // reuse token is true here but the two scenarios where we're retrying remove locally stored token anyway. 
       if (newTokenResult.status === 'failed' || !newTokenResult.token) {
         throw new Error(newTokenResult.error || `Insufficient balance. Please add more funds to continue. You need at least ${Number(tokenAmount).toFixed(0)} sats to use ${selectedModel?.id}`);
       }
@@ -179,7 +253,7 @@ async function routstrRequest(params: {
         baseUrl: retryBaseUrl,
         mintUrl,
         usingNip60,
-        tokenAmount,
+        tokenAmount: tokenAmountNew,
         spendCashu,
         storeCashu,
         onMessageAppend,
@@ -437,9 +511,19 @@ async function handleApiError(
     }
     
     removeLocalCashuToken(baseUrl); // Pass baseUrl here
-    if (response.status === 413) {
-      return { retry: false, reason: response.status.toString() };
+    // Mark current provider as failed
+    failedProviders.add(baseUrl);
+    
+    // Try to find next best provider for 50X errors
+    const nextProvider = findNextBestProvider(selectedModel?.id, baseUrl, failedProviders);
+    console.log("Fidning next probi", nextProvider);
+    
+    if (nextProvider) {
+      console.log(`Provider ${baseUrl} returned ${response.status}, switching to ${nextProvider}`);
+      onMessageAppend(createTextMessage('system', `Provider ${baseUrl} is experiencing issues. Retrying with ${nextProvider}...`));
+      return { retry: true, reason: response.status.toString(), newBaseUrl: nextProvider };
     }
+
     return { retry: retryOnInsufficientBalance, reason: response.status.toString() };
   }
   else if (response.status === 400) {
@@ -997,20 +1081,4 @@ function logApiError(
   }
 
   onMessageAppend(createTextMessage('system', errorMessage));
-}
-
-async function backwardCompatibleModel(selectedModel: string, baseUrl: string): Promise<Model | null> {
-  try {
-    const response = await fetch(`${baseUrl}v1/models`);
-    if (!response.ok) {
-      console.error(`Failed to fetch models: ${response.status}`);
-      return null;
-    }
-    const json = await response.json();
-    const models = Array.isArray(json?.data) ? json.data : [];
-    return models.find((m: Model) => m.id.includes(selectedModel)) || null;
-  } catch (error) {
-    console.error("Error fetching models:", error);
-    return null;
-  }
 }

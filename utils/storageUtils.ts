@@ -469,6 +469,7 @@ export const STORAGE_KEYS = {
   TOPUP_PROMPT_SEEN: 'topup_prompt_seen',
   DISABLED_PROVIDERS: 'disabled_providers',
   MINTS_FROM_ALL_PROVIDERS: 'mints_from_all_providers',
+  INFO_FROM_ALL_PROVIDERS: 'info_from_all_providers',
   LAST_MODELS_UPDATE: 'lastModelsUpdate'
 } as const;
 
@@ -598,6 +599,55 @@ export const setProviderMints = (providerBaseUrl: string, mints: string[]): void
   const normalized = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
   allMints[normalized] = mints;
   saveMintsFromAllProviders(allMints);
+};
+
+/**
+ * Load full /v1/info responses from all providers
+ * @returns Record mapping provider base URL to info object
+ */
+export const loadInfoFromAllProviders = (): Record<string, any> => {
+  return getStorageItem<Record<string, any>>(STORAGE_KEYS.INFO_FROM_ALL_PROVIDERS, {});
+};
+
+/**
+ * Save full /v1/info responses from all providers to localStorage
+ * @param infoMap Record mapping provider base URL to info object
+ */
+export const saveInfoFromAllProviders = (infoMap: Record<string, any>): void => {
+  setStorageItem(STORAGE_KEYS.INFO_FROM_ALL_PROVIDERS, infoMap);
+};
+/**
+ * Get cached /v1/info for a single provider, otherwise fetch and cache it.
+ * @param providerBaseUrl Provider base URL (with or without trailing slash)
+ * @param forceRefresh When true, ignores cache and fetches fresh info
+ * @returns The provider info object, or null on failure
+ */
+export const getOrFetchProviderInfo = async (providerBaseUrl: string, forceRefresh: boolean = false): Promise<any | null> => {
+  const base = providerBaseUrl.endsWith('/') ? providerBaseUrl : `${providerBaseUrl}/`;
+
+  if (!forceRefresh) {
+    const cachedAll = loadInfoFromAllProviders();
+    const cached = cachedAll[base];
+    if (cached) {
+      return cached;
+    }
+  }
+
+  try {
+    const res = await fetch(`${base}v1/info`);
+    if (!res.ok) throw new Error(`Failed ${res.status}`);
+    const json = await res.json();
+
+    // Cache into INFO_FROM_ALL_PROVIDERS
+    const allInfo = loadInfoFromAllProviders();
+    allInfo[base] = json;
+    saveInfoFromAllProviders(allInfo);
+
+    return json;
+  } catch (error) {
+    console.warn(`Failed to fetch provider info from ${base}:`, error);
+    return null;
+  }
 };
 
 /**

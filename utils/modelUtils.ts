@@ -37,6 +37,45 @@ export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
     return undefined;
   }
 }
+/**
+ * Get a specific model object for a given provider base URL.
+ * - Checks local storage cache first
+ * - Falls back to fetching from `${baseUrl}/v1/models`
+ * - Caches fetched list for future lookups
+ */
+export async function getModelForBase(baseUrl: string, modelId: string): Promise<Model | null> {
+  try {
+    const normalized = normalizeBaseUrl(baseUrl);
+    if (!normalized) return null;
+
+    // 1) Try cached models
+    const cached = getCachedProviderModels(normalized) ?? getCachedProviderModels(baseUrl) ?? [];
+    if (Array.isArray(cached) && cached.length > 0) {
+      const hit = cached.find((m: Model) => m.id === modelId) ?? null;
+      if (hit) return hit;
+    }
+
+    // 2) Fetch from provider and cache
+    const res = await fetch(`${normalized}v1/models`);
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const providerList: Model[] = Array.isArray(json?.data)
+      ? json.data.map((m: Model) => ({
+          ...m,
+          id: m.id.split('/').pop() || m.id
+        }))
+      : [];
+
+    // Cache provider models for this base
+    upsertCachedProviderModels(normalized, providerList);
+
+    // Return matched model (using short id)
+    return providerList.find((m: Model) => m.id === modelId) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Extract image resolution (width, height) from a base64 data URL without DOM.
@@ -172,6 +211,7 @@ export function calculateImageTokens(
 }
 
 
+
 // Determine required minimum sats to run a request for a model
 export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): number => {
   try {
@@ -225,8 +265,8 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
         })
       : undefined;
 
-    const approximateTokens = apiMessagesNoImages
-      ? Math.ceil(JSON.stringify(apiMessagesNoImages, null, 2).length / 2.84)
+    const approximateTokens = apiMessages // SWITCH AFTER NODE UPDAATES
+      ? Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84)
       : 10000; // Assumed tokens for minimum balance calculation
 
     const totalInputTokens = approximateTokens + imageTokens;
@@ -247,8 +287,8 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
     // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
     const promptCosts = (sp.prompt || 0) * totalInputTokens;
     const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.55;
-    // return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in some image input calculations, this cost balloons up. Now includes image tokens via 32px patches.
-    return totalEstimatedCosts; // Backend has a bug here.it's calculating image tokens wrong. gotta switch to different logic once its fixed
+    return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in some image input calculations, this cost balloons up. Now includes image tokens via 32px patches.
+    // return totalEstimatedCosts; // Backend has a bug here.it's calculating image tokens wrong. gotta switch to different logic once its fixed
   } catch (e) {
     console.error(e);
     return 0;
