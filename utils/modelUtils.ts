@@ -123,6 +123,55 @@ function getImageResolutionFromDataUrl(dataUrl: string): { width: number; height
   }
 }
 
+/**
+ * Calculate image tokens based on OpenAI's vision pricing.
+ *
+ * For low detail: 85 tokens
+ * For high detail/auto: 85 base tokens + 170 tokens per 512px tile
+ */
+export function calculateImageTokens(
+  width: number,
+  height: number,
+  detail: 'low' | 'high' | 'auto' = 'auto'
+): number {
+  if (detail === 'low') return 85;
+
+  let w = width;
+  let h = height;
+
+  // Clamp longest side to 2048 while preserving aspect ratio
+  if (w > 2048 || h > 2048) {
+    const aspectRatio = w / h;
+    if (w > h) {
+      w = 2048;
+      h = Math.floor(w / aspectRatio);
+    } else {
+      h = 2048;
+      w = Math.floor(h * aspectRatio);
+    }
+  }
+
+  // Then clamp longest side to 768 while preserving aspect ratio
+  if (w > 768 || h > 768) {
+    const aspectRatio = w / h;
+    if (w > h) {
+      w = 768;
+      h = Math.floor(w / aspectRatio);
+    } else {
+      h = 768;
+      w = Math.floor(h * aspectRatio);
+    }
+  }
+
+  // Number of 512px tiles, ceil division using (x + 511) // 512
+  const tilesWidth = Math.floor((w + 511) / 512);
+  const tilesHeight = Math.floor((h + 511) / 512);
+  const numTiles = tilesWidth * tilesHeight;
+
+  return 85 + 170 * numTiles;
+}
+
+
 // Determine required minimum sats to run a request for a model
 export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): number => {
   try {
@@ -144,10 +193,11 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
             if (url && typeof url === 'string' && url.startsWith('data:')) {
               const res = getImageResolutionFromDataUrl(url);
               if (res) {
-                const patchSize = 32;
-                const patchesW = Math.floor((res.width + patchSize - 1) / patchSize);
-                const patchesH = Math.floor((res.height + patchSize - 1) / patchSize);
-                const tokensFromImage = patchesW * patchesH;
+                const tokensFromImage = calculateImageTokens(res.width, res.height)
+                // const patchSize = 32;
+                // const patchesW = Math.floor((res.width + patchSize - 1) / patchSize);
+                // const patchesH = Math.floor((res.height + patchSize - 1) / patchSize);
+                // const tokensFromImage = patchesW * patchesH;
                 imageTokens += tokensFromImage;
                 console.log('IMAGE INPUT RESOLUTION', {
                   width: res.width,
@@ -175,8 +225,8 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
         })
       : undefined;
 
-    const approximateTokens = apiMessages
-      ? Math.ceil(JSON.stringify(apiMessages, null, 2).length / 2.84)
+    const approximateTokens = apiMessagesNoImages
+      ? Math.ceil(JSON.stringify(apiMessagesNoImages, null, 2).length / 2.84)
       : 10000; // Assumed tokens for minimum balance calculation
 
     const totalInputTokens = approximateTokens + imageTokens;
@@ -196,7 +246,7 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
     
     // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
     const promptCosts = (sp.prompt || 0) * totalInputTokens;
-    const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.05;
+    const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.55;
     // return totalEstimatedCosts > sp.max_cost ? sp.max_cost : totalEstimatedCosts; // in some image input calculations, this cost balloons up. Now includes image tokens via 32px patches.
     return totalEstimatedCosts; // Backend has a bug here.it's calculating image tokens wrong. gotta switch to different logic once its fixed
   } catch (e) {
