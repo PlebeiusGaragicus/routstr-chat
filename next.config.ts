@@ -46,6 +46,20 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Add HMR configuration to prevent ping errors
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
+  },
+  // Add experimental features to improve HMR
+  experimental: {
+    serverComponentsExternalPackages: [],
+  },
   // Silence Next 16 Turbopack + webpack plugin warning (next-pwa injects webpack config)
   // See: https://nextjs.org/docs/app/api-reference/next-config-js/turbopack
   turbopack: {},

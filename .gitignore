@@ -49,3 +49,15 @@ yarn-error.log*
 /test/temp/
 *.test.local
 .aider*
+
+# PWA/Service Worker generated files
+public/sw.js
+public/workbox-*.js
+public/fallback-*.js
+
+# TypeScript build outputs
+*.tsbuildinfo
+
+# Development cleanup files
+scripts/clean-sw.js
+public/dev-cleanup.js

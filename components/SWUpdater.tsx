@@ -7,6 +7,9 @@ export default function SWUpdater() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!('serviceWorker' in navigator)) return;
+    
+    // Don't register service worker in development to avoid HMR conflicts
+    if (process.env.NODE_ENV === 'development') return;
 
     const wb = new Workbox('/sw.js');
     let prompted = false;
