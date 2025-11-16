@@ -1,9 +1,9 @@
 export const recommendedModels = [
   'kimi-k2-thinking',
-  'gpt-5',
+  'gpt-5.1',
   'gemini-2.5-flash-image',
+  'gpt-5.1-codex',
   'claude-sonnet-4.5',
-  'minimax-m2',
   'grok-4-fast',
   'gpt-5-image',
   'gemini-2.5-pro',
@@ -18,6 +18,7 @@ export const recommendedModels = [
   'grok-code-fast-1',
   'kimi-linear-48b-a3b-instruct',
   'gpt-5-nano',
+  'minimax-m2',
   'gpt-5-image-mini',
   'qwen3-coder-plus',
   'gemma-3n-e4b-it'

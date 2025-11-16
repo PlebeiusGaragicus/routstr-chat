@@ -82,6 +82,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
     if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount) return;
     try {
       const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, currentMeltQuoteId, pendingAmount);
+      console.log(proofs);
       if (proofs.length > 0) {
         await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
         await updateInvoice(currentMeltQuoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
@@ -157,6 +158,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       try { unsubConnecting && unsubConnecting(); } catch {}
     };
   }, []);
+
   const payWithConnectedWallet = async () => {
     if (!invoice) return;
     setIsPayingWithWallet(true);

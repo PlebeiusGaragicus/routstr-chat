@@ -907,7 +907,8 @@ async function processStreamingResponse(
           }
         }
         else {
-          onStreamingUpdate("Generating...")
+          if (accumulatedContent === '')
+            onStreamingUpdate("Generating...")
         }
       }
     } catch {

@@ -99,6 +99,8 @@ const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isM
   const { spendCashu } = useCashuWithXYZ();
 
   const [localMintBalance, setLocalMintBalance] = useState(0);
+  const [maxMintBalance, setMaxMintBalance] = useState(0);
+  const [maxMintBalanceUrl, setMaxMintBalanceUrl] = useState('');
 
   const { balances: mintBalances, units: mintUnits } = useMemo(() => {
     if (!cashuStore.proofs) return { balances: {}, units: {} };
@@ -120,6 +122,31 @@ const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isM
       setLocalMintBalance(0);
     }
   }, [mintBalances, mintUnits, cashuStore.activeMintUrl, usingNip60]);
+  
+  useEffect(() => {
+    if (!usingNip60 || !cashuStore.proofs || Object.keys(mintBalances).length <= 1) {
+      setMaxMintBalance(0);
+      setMaxMintBalanceUrl('');
+      return;
+    }
+  
+    let nextMaxBalance = 0;
+    let nextMaxBalanceUrl = '';
+  
+    for (const mintUrl in mintBalances) {
+      const balance = mintBalances[mintUrl];
+      const unit = mintUnits[mintUrl];
+      const normalizedBalance = unit === 'msat' ? balance / 1000 : balance;
+  
+      if (normalizedBalance > nextMaxBalance) {
+        nextMaxBalance = normalizedBalance;
+        nextMaxBalanceUrl = mintUrl;
+      }
+    }
+  
+    setMaxMintBalance(nextMaxBalance);
+    setMaxMintBalanceUrl(nextMaxBalanceUrl);
+  }, [usingNip60, cashuStore.proofs, mintBalances, mintUnits]);
 
   const [showTooltip, setShowTooltip] = useState(false); // New state for tooltip visibility
   const [showMaxBalanceTooltip, setShowMaxBalanceTooltip] = useState(false); // Tooltip for max balance info
@@ -741,35 +768,16 @@ const ApiKeysTab = ({ baseUrl, baseUrls: _ignoredBaseUrlsProp, setActiveTab, isM
               </div>
             </div>
             <div className="text-lg font-semibold text-white">
-              {usingNip60 && cashuStore.proofs && Object.keys(mintBalances).length > 1 && (() => {
-                let maxBalance = 0;
-                let maxBalanceMintUrl = '';
-                for (const mintUrl in mintBalances) {
-                  const balance = mintBalances[mintUrl];
-                  const unit = mintUnits[mintUrl];
-                  if (unit === 'msat') {
-                    if (balance / 1000 > maxBalance) {
-                      maxBalance = balance / 1000;
-                      maxBalanceMintUrl = mintUrl;
-                    }
-                  } else {
-                    if (balance > maxBalance) {
-                      maxBalance = balance;
-                      maxBalanceMintUrl = mintUrl;
-                    }
-                  }
-                }
-                return maxBalance !== localMintBalance && (
-                  <>
-                    {maxBalance} sats
-                    {usingNip60 && maxBalanceMintUrl && (
-                      <span className="text-xs text-white/50 ml-2">
-                        ({maxBalanceMintUrl.replace(/^https?:\/\//, '')})
-                      </span>
-                    )}
-                  </>
-                );
-              })()}
+              {usingNip60 && cashuStore.proofs && Object.keys(mintBalances).length > 1 && maxMintBalance > 0 && (
+                <>
+                  {maxMintBalance} sats
+                  {usingNip60 && maxMintBalanceUrl && (
+                    <span className="text-xs text-white/50 ml-2">
+                      ({maxMintBalanceUrl.replace(/^https?:\/\//, '')})
+                    </span>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
