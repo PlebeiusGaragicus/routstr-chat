@@ -907,7 +907,7 @@ async function processStreamingResponse(
           }
         }
         else {
-          if (accumulatedContent === '')
+          if (accumulatedContent === '' && accumulatedThinking === '')
             onStreamingUpdate("Generating...")
         }
       }
