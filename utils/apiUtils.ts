@@ -809,7 +809,6 @@ async function processStreamingResponse(
 
           try {
             const parsedData = JSON.parse(jsonData);
-            console.log(parsedData);
 
             // Handle reasoning delta. OpenRouter does this. 
             if (parsedData.choices &&
@@ -907,7 +906,9 @@ async function processStreamingResponse(
           }
         }
         else {
-          if (accumulatedContent === '' && accumulatedThinking === '')
+          console.log(accumulatedContent, accumulatedThinking)
+          console.log(line)
+          if (accumulatedContent === '' && accumulatedThinking === '' && !line.includes('OPENROUTER PROCESSING'))
             onStreamingUpdate("Generating...")
         }
       }

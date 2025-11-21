@@ -314,6 +314,7 @@ export const useChatActions = (): UseChatActionsReturn => {
           }
         },
         onThinkingUpdate: (content) => {
+          // console.log(content, originConversationId, streamingConversationIdRef.current)
           if (streamingConversationIdRef.current !== (originConversationId ?? null)) return;
           if (originConversationId) {
             setThinkingContentByConversation(prev => ({ ...prev, [originConversationId]: content }));

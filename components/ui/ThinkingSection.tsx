@@ -71,7 +71,7 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
   const [visibleLineCount, setVisibleLineCount] = useState(0);
   const contentRef = useRef<string>('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const previewMaxPx = 96; // ~ a few lines
+  const previewMaxPx = 300; // ~ a few lines
   const lines = useMemo(() => content.split('\n'), [content]);
 
   useEffect(() => {
@@ -203,9 +203,9 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0 }}
+            animate={{ height: 'auto' }}
+            exit={{ height: 0 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
           >

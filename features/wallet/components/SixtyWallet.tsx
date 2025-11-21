@@ -1021,11 +1021,11 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       </div>
                     </div>
 
-                    {/* Pay with connected wallet */}
+                    {/* Pay with connected wallet DISABLED BECAUSE IT DOENS"T WORK */}
                     <div className="bg-white/5 border border-white/20 rounded-md p-3">
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-white/70">Pay with connected wallet</span>
-                        <button onClick={() => { void payWithConnectedWallet(); }} disabled={isPayingWithWallet} className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" type="button">
+                        <button onClick={() => { void payWithConnectedWallet(); }} disabled={true || isPayingWithWallet} className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" type="button">
                           {isPayingWithWallet ? (
                             <>
                               <Loader2 className="h-3 w-3 mr-2 animate-spin inline" />
