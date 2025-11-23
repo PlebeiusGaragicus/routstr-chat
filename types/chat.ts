@@ -1,16 +1,18 @@
-export type MessageContentType = 'text' | 'image_url' | 'file';
+export type MessageContentType = "text" | "image_url" | "file";
 
 export interface MessageContent {
   type: MessageContentType;
   text?: string;
   image_url?: {
     url: string;
+    storageId?: string;
   };
   file?: {
     url: string;
     name?: string;
     mimeType?: string;
     size?: number;
+    storageId?: string;
   };
   hidden?: boolean;
 }
@@ -25,7 +27,7 @@ export interface Message {
   _modelId?: string;
 }
 
-export type AttachmentType = 'image' | 'file';
+export type AttachmentType = "image" | "file";
 
 export interface MessageAttachment {
   id: string;
@@ -35,6 +37,7 @@ export interface MessageAttachment {
   dataUrl: string;
   type: AttachmentType;
   textContent?: string;
+  storageId?: string;
 }
 
 export interface Conversation {
@@ -51,13 +54,13 @@ export interface Model {
     completion: number;
     max_cost: number;
   };
-} 
+}
 
 export interface TransactionHistory {
-  type: 'spent' | 'mint' | 'send' | 'import' | 'refund';
+  type: "spent" | "mint" | "send" | "import" | "refund";
   amount: number;
   timestamp: number;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   model?: string;
   message?: string;
   balance?: number;

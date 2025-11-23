@@ -1,14 +1,18 @@
-import { Message, MessageAttachment, MessageContent } from '@/types/chat';
+import { Message, MessageAttachment, MessageContent } from "@/types/chat";
 
 /**
  * Extracts text content from a message that can be either string or multimodal content
  * @param content The message content (string or MessageContent array)
  * @returns The text content as a string
  */
-export const getTextFromContent = (content: string | MessageContent[]): string => {
-  if (typeof content === 'string') return content;
-  const textContent = content.find(item => item.type === 'text' && !item.hidden);
-  return textContent?.text || '';
+export const getTextFromContent = (
+  content: string | MessageContent[]
+): string => {
+  if (typeof content === "string") return content;
+  const textContent = content.find(
+    (item) => item.type === "text" && !item.hidden
+  );
+  return textContent?.text || "";
 };
 
 /**
@@ -16,10 +20,12 @@ export const getTextFromContent = (content: string | MessageContent[]): string =
  * @param message The message to convert
  * @returns Object with role and content for API consumption
  */
-export const convertMessageForAPI = (message: Message): { role: string; content: string | MessageContent[] } => {
+export const convertMessageForAPI = (
+  message: Message
+): { role: string; content: string | MessageContent[] } => {
   return {
     role: message.role,
-    content: message.content
+    content: message.content,
   };
 };
 
@@ -32,7 +38,7 @@ export const convertMessageForAPI = (message: Message): { role: string; content:
 export const createTextMessage = (role: string, text: string, prevId?: string): Message => {
   return {
     role,
-    content: text
+    content: text,
   };
 };
 
@@ -43,36 +49,44 @@ export const createTextMessage = (role: string, text: string, prevId?: string): 
  * @param attachments Array of attachments (images, files, etc.)
  * @returns A Message object with multimodal content
  */
-export const createMultimodalMessage = (role: string, text: string, attachments: MessageAttachment[], prevId?: string): Message => {
+export const createMultimodalMessage = (
+  role: string,
+  text: string,
+  attachments: MessageAttachment[]
+): Message => {
   const content: MessageContent[] = [];
 
   if (text.trim().length > 0) {
-    content.push({ type: 'text', text });
+    content.push({ type: "text", text });
   }
 
-  attachments.forEach(attachment => {
-    if (attachment.type === 'image') {
+  attachments.forEach((attachment) => {
+    if (attachment.type === "image") {
       content.push({
-        type: 'image_url',
-        image_url: { url: attachment.dataUrl }
+        type: "image_url",
+        image_url: {
+          url: attachment.dataUrl,
+          storageId: attachment.storageId,
+        },
       });
     } else {
       content.push({
-        type: 'file',
+        type: "file",
         file: {
           url: attachment.dataUrl,
           name: attachment.name,
           mimeType: attachment.mimeType,
-          size: attachment.size
-        }
+          size: attachment.size,
+          storageId: attachment.storageId,
+        },
       });
 
       if (attachment.textContent && attachment.textContent.trim().length > 0) {
         const header = `PDF attachment (${attachment.name}):`;
         content.push({
-          type: 'text',
+          type: "text",
           text: `${header}\n\n${attachment.textContent}`,
-          hidden: true
+          hidden: true,
         });
       }
     }
@@ -82,31 +96,79 @@ export const createMultimodalMessage = (role: string, text: string, attachments:
     // Fallback to an empty string message to avoid invalid payloads
     return {
       role,
-      content: ''
+      content: "",
     };
   }
 
   return {
     role,
-    content
+    content,
   };
 };
 
 /**
- * Strips image data from messages for storage optimization
+ * Strips image and file data from messages for storage optimization.
+ * Removes base64 data URLs while preserving storageIds for later retrieval.
+ * If no storageId exists, replaces media content with placeholder text.
  * @param messages Array of messages to process
- * @returns Array of messages with image data removed
+ * @returns Array of messages with image/file data removed but structure preserved
  */
 export const stripImageDataFromMessages = (messages: Message[]): Message[] => {
-  return messages.map(msg => {
+  return messages.map((msg) => {
     if (Array.isArray(msg.content)) {
-      const textContent = msg.content.filter(item => item.type === 'text' && !item.hidden);
+      // Check if we have storageIds for all media
+      const mediaItems = msg.content.filter(
+        (item) => item.type === "image_url" || item.type === "file"
+      );
+      const allHaveStorage = mediaItems.every(
+        (item) =>
+          (item.type === "image_url" && item.image_url?.storageId) ||
+          (item.type === "file" && item.file?.storageId)
+      );
+
+      if (allHaveStorage) {
+        // If we have storage IDs, we can safely remove the base64 dataUrl to save space
+        // but keep the message structure with storageId
+        return {
+          ...msg,
+          content: msg.content.map((item) => {
+            if (item.type === "image_url" && item.image_url?.storageId) {
+              return {
+                ...item,
+                image_url: {
+                  ...item.image_url,
+                  url: "", // Clear base64, keep storageId
+                },
+              };
+            }
+            if (item.type === "file" && item.file?.storageId) {
+              return {
+                ...item,
+                file: {
+                  ...item.file,
+                  url: "", // Clear base64, keep storageId
+                },
+              };
+            }
+            return item;
+          }),
+        };
+      }
+
+      const textContent = msg.content.filter(
+        (item) => item.type === "text" && !item.hidden
+      );
       if (textContent.length === 0) {
-        const hasMedia = msg.content.some(item => item.type === 'image_url' || item.type === 'file');
+        const hasMedia = msg.content.some(
+          (item) => item.type === "image_url" || item.type === "file"
+        );
         if (hasMedia) {
-          return { ...msg, content: '[Attachment(s) not saved to local storage]' };
+          return {
+            ...msg,
+            content: "[Attachment(s) not saved to local storage]",
+          };
         }
-        return { ...msg, content: '[Content removed]' };
+        return { ...msg, content: "[Content removed]" };
       }
       return { ...msg, content: textContent };
     }
@@ -114,18 +176,30 @@ export const stripImageDataFromMessages = (messages: Message[]): Message[] => {
   });
 };
 
-export const extractThinkingFromStream = (chunk: string, accumulatedThinking: string = ''): {
+/**
+ * Extracts thinking tags from streaming AI response chunks.
+ * Handles both <thinking> and <thinking> tag formats.
+ * @param chunk The current chunk of streaming content
+ * @param accumulatedThinking Previously accumulated thinking content
+ * @returns Object containing separated thinking and content, plus thinking state
+ */
+export const extractThinkingFromStream = (
+  chunk: string,
+  accumulatedThinking: string = ""
+): {
   thinking: string;
   content: string;
   isInThinking: boolean;
 } => {
   const thinkingStart = /<(?:antml:)?thinking>/;
   const thinkingEnd = /<\/(?:antml:)?thinking>/;
-  
+
   let thinking = accumulatedThinking;
-  let content = '';
-  let isInThinking = accumulatedThinking.length > 0 && !accumulatedThinking.includes('</thinking>');
-  
+  let content = "";
+  let isInThinking =
+    accumulatedThinking.length > 0 &&
+    !accumulatedThinking.includes("</thinking>");
+
   if (isInThinking) {
     const endMatch = chunk.match(thinkingEnd);
     if (endMatch) {
@@ -141,10 +215,10 @@ export const extractThinkingFromStream = (chunk: string, accumulatedThinking: st
     if (startMatch) {
       const startIndex = chunk.indexOf(startMatch[0]);
       content = chunk.slice(0, startIndex);
-      
+
       const remainingChunk = chunk.slice(startIndex + startMatch[0].length);
       const endMatch = remainingChunk.match(thinkingEnd);
-      
+
       if (endMatch) {
         const endIndex = remainingChunk.indexOf(endMatch[0]);
         thinking = remainingChunk.slice(0, endIndex);
@@ -158,6 +232,6 @@ export const extractThinkingFromStream = (chunk: string, accumulatedThinking: st
       content = chunk;
     }
   }
-  
+
   return { thinking, content, isInThinking };
 };
