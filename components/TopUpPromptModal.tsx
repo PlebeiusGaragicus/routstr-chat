@@ -10,6 +10,11 @@ import { PendingTransaction } from '@/features/wallet/state/transactionHistorySt
 import { createLightningInvoice, mintTokensFromPaidInvoice } from '@/lib/cashuLightning';
 import { MintQuoteState, getDecodedToken } from '@cashu/cashu-ts';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useNostrLogin } from '@nostrify/react/login';
+import { useLoginActions } from '@/hooks/useLoginActions';
+import { generateSecretKey, nip19 } from 'nostr-tools';
+import { useAuth } from '@/context/AuthProvider';
+import { markEphemeralNsecCreated } from '@/utils/storageUtils';
 
 interface TopUpPromptModalProps {
   isOpen: boolean;
@@ -43,6 +48,11 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
   const [activeTab, setActiveTab] = useState<'lightning' | 'token' | 'wallet'>('lightning');
   const [nwcCustomAmount, setNwcCustomAmount] = useState('');
   const [isPayingWithNWC, setIsPayingWithNWC] = useState(false);
+
+
+  const { logins } = useNostrLogin();
+  const loginActions = useLoginActions();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     let unsubConnect: undefined | (() => void);
@@ -113,6 +123,14 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
 
   const quickAmounts = [500, 1000, 5000];
 
+  const createNsecForLogin = () => {
+    const sk = generateSecretKey();
+    const nsec = nip19.nsecEncode(sk);
+    console.log("RTRUE nsse", nsec)
+    loginActions.nsec(nsec);
+    markEphemeralNsecCreated()
+  }
+
   const copyInvoiceToClipboard = async () => {
     if (!invoice) return;
     try {
@@ -141,6 +159,8 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
       setTimeout(() => setError(null), 2000);
       return;
     }
+    
+    createNsecForLogin()
 
     try {
       setIsReceivingToken(true);
@@ -182,6 +202,8 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
       setError('No active mint selected.');
       return;
     }
+
+    createNsecForLogin()
 
     const amt = amount !== undefined ? amount : parseInt(customAmount);
     if (isNaN(amt) || amt <= 0) {
@@ -412,7 +434,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
       </div>
 
       {/* Tab Content Container */}
-      <div className="min-h-[400px]">
+      <div className="">
       {/* Lightning Tab */}
       {activeTab === 'lightning' && (
         <div className="space-y-4">
@@ -558,6 +580,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
                 <button
                   onClick={async () => {
                     try {
+                      createNsecForLogin();
                       const mod = await import('@getalby/bitcoin-connect-react');
                       mod.launchModal();
                     } catch {}
@@ -644,9 +667,18 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
         <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-3 rounded-lg text-sm">{successMessage}</div>
       )}
 
+      {/* OR separator */}
+      <div className="relative py-1">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/20"></div>
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-[#181818] px-1 text-lg font-bold text-white/90">OR</span>
+        </div>
+      </div>
+
       {/* Login button */}
       <div className="pt-2">
-        <div className="text-center text-base font-bold text-white/70 mb-2">OR</div>
         <button
           onClick={() => { onClose(); setIsLoginModalOpen(true); }}
           className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors cursor-pointer"

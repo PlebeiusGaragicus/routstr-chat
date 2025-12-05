@@ -1,5 +1,7 @@
 import { Conversation, Message } from '@/types/chat';
 import { getTextFromContent, stripImageDataFromMessages } from './messageUtils';
+import { loadActiveConversationId } from './storageUtils';
+import { createConversation } from './eventProcessing';
 
 const CONVERSATIONS_STORAGE_KEY = 'saved_conversations';
 const CONVERSATIONS_UPDATED_AT_KEY = 'saved_conversations_updated_at';
@@ -31,6 +33,7 @@ export const persistConversationsSnapshot = (
   } catch (error) {
     console.error('Error persisting conversations to storage:', error);
   }
+  console.log('persis', conversations)
 
   return timestamp;
 };
@@ -93,8 +96,12 @@ export const saveConversationToStorage = (
     return conversation;
   });
 
-  persistConversationsSnapshot(updatedConversations);
-  return updatedConversations;
+  // Sort by most recent activity
+  const sortedConversations = sortConversationsByRecentActivity(updatedConversations);
+  console.log(sortedConversations);
+
+  persistConversationsSnapshot(sortedConversations);
+  return sortedConversations;
 };
 
 /**
@@ -132,6 +139,18 @@ export const createAndStoreNewConversation = (
   newConversation: Conversation;
   updatedConversations: Conversation[];
 } => {
+  // First check if there's an existing conversation with no messages
+  const emptyConversation = existingConversations.find(conv => conv.messages.length === 0);
+  
+  if (emptyConversation) {
+    // Return the existing empty conversation
+    return {
+      newConversation: emptyConversation,
+      updatedConversations: existingConversations
+    };
+  }
+
+  // If no empty conversation found, create a new one
   const newId = timestamp ?? Date.now().toString();
   const messagesToStore = stripImageDataFromMessages(initialMessages);
   const newConversation: Conversation = {
@@ -141,7 +160,55 @@ export const createAndStoreNewConversation = (
   };
 
   const updatedConversations = [...existingConversations, newConversation];
+  console.log('insdie', updatedConversations);
   persistConversationsSnapshot(updatedConversations);
+
+  return {
+    newConversation,
+    updatedConversations
+  };
+};
+
+/**
+ * Creates a new conversation using a Map of conversations
+ * @param conversationsMap Current conversations Map
+ * @param initialMessages Optional initial messages for the conversation
+ * @param timestamp Optional timestamp for the conversation ID
+ * @returns Object with new conversation and updated conversations array
+ */
+export const createNewConversationWithMap = (
+  conversationsMap: Map<string, Conversation>,
+  initialMessages: Message[] = [],
+  timestamp?: string
+): {
+  newConversation: Conversation;
+  updatedConversations: Conversation[];
+} => {
+  // Convert Map to array to check for empty conversations
+  const existingConversations = Array.from(conversationsMap.values());
+  
+  // First check if there's an existing conversation with no messages
+  const emptyConversation = existingConversations.find(conv => conv.messages.length === 0);
+  
+  if (emptyConversation) {
+    // Return the existing empty conversation
+    return {
+      newConversation: emptyConversation,
+      updatedConversations: existingConversations
+    };
+  }
+
+  // If no empty conversation found, create a new one
+  const newId = timestamp ?? Date.now().toString();
+  const messagesToStore = stripImageDataFromMessages(initialMessages);
+  const newConversation: Conversation = createConversation(newId, messagesToStore[0])
+
+  // Add the new conversation to the map
+  conversationsMap.set(newId, newConversation);
+  
+  // Convert the updated map back to an array
+  const updatedConversations = sortConversationsByRecentActivity(Array.from(conversationsMap.values()));
+  console.log('inside createNewConversationWithMap', updatedConversations);
 
   return {
     newConversation,
@@ -160,6 +227,7 @@ export const deleteConversationFromStorage = (
   conversationId: string
 ): Conversation[] => {
   const updatedConversations = conversations.filter(c => c.id !== conversationId);
+  console.log('insdie', updatedConversations);
   persistConversationsSnapshot(updatedConversations);
   return updatedConversations;
 };
@@ -174,7 +242,9 @@ export const findConversationById = (
   conversations: Conversation[],
   conversationId: string
 ): Conversation | undefined => {
-  return conversations.find(c => c.id === conversationId);
+  return conversations.find(c => {
+    if (c.id === conversationId) return c
+  });
 };
 
 /**
@@ -205,6 +275,105 @@ export const updateConversation = (
     return conversation;
   });
 
+  console.log('insdie', updatedConversations);
   persistConversationsSnapshot(updatedConversations);
   return updatedConversations;
 };
+
+/**
+ * Sorts conversations by most recent activity based on message creation timestamps
+ * @param conversations Array of conversations to sort
+ * @returns Sorted conversations array (most recent first)
+ */
+export const sortConversationsByRecentActivity = (
+  conversations: Conversation[]
+): Conversation[] => {
+  return conversations.sort((a, b) => {
+    // Check if conversations have empty messages
+    const aIsEmpty = a.messages.length === 0;
+    const bIsEmpty = b.messages.length === 0;
+    
+    // If both are empty or both have messages, sort by timestamp
+    if (aIsEmpty === bIsEmpty) {
+      const aTime = Math.max(...a.messages.map(m => m._createdAt || 0));
+      const bTime = Math.max(...b.messages.map(m => m._createdAt || 0));
+      return bTime - aTime; // Sort in descending order (most recent first)
+    }
+    
+    // If one is empty and the other is not, empty comes first
+    return aIsEmpty ? -1 : 1;
+  });
+};
+
+/**
+ * Saves an event ID to a message in storage by matching the prevId
+ * @param conversationId ID of the conversation
+ * @param prevId The previous event ID to match against the message's _prevId
+ * @param eventId The event ID to add to the matched message
+ * @returns Updated conversations array or null if not found
+ */
+export const saveEventIdInStorage = (
+  conversationId: string,
+  message: Message,
+  eventId: string
+): Conversation[] | null => {
+  // Load conversations from storage
+  const conversations = loadConversationsFromStorage();
+  
+  // Find the target conversation
+  const targetConversation = findConversationById(conversations, conversationId);
+  if (!targetConversation) {
+    console.error(`Conversation with ID ${conversationId} not found`);
+    return null;
+  }
+  
+  // Append the message to the end of the target conversation
+  const updatedConversations = conversations.map(conversation => {
+    if (conversation.id === conversationId) {
+      return {
+        ...conversation,
+        messages: [...conversation.messages, { ...message, _eventId: eventId }]
+      };
+    }
+    return conversation;
+  });
+  
+  console.log('insdie EVNETS', updatedConversations);
+  
+  // Persist the updated conversations
+  persistConversationsSnapshot(updatedConversations);
+  return updatedConversations;
+};
+
+
+// Find the last non-system message and get its _eventId from the active conversation in storage
+export const getLastNonSystemMessageEventId = (originConversationId: string): string => {
+  // Create a string of 64 zeros (empty Nostr event ID)
+  const emptyEventId = '0'.repeat(64);
+  
+  // Load the active conversation ID from storage
+  const activeConversationId = loadActiveConversationId();
+  if (!activeConversationId) {
+    return emptyEventId;
+  }
+  
+  // Load all conversations from storage
+  const conversations = loadConversationsFromStorage();
+  
+  // Find the active conversation
+  const currentConversation = findConversationById(conversations, originConversationId);
+  if (!currentConversation || currentConversation.messages.length === 0) {
+    return emptyEventId;
+  }
+  
+  // Iterate backwards to find the last non-system message
+  for (let i = currentConversation.messages.length - 1; i >= 0; i--) {
+    if (currentConversation.messages[i].role !== 'system') {
+      return currentConversation.messages[i]._eventId || emptyEventId;
+    }
+  }
+  
+  // If no non-system messages found, return empty Nostr event
+  return emptyEventId;
+};
+    

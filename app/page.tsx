@@ -71,23 +71,20 @@ function ChatPageContent() {
   useEffect(() => {
     let topUpTimer: NodeJS.Timeout | null = null;
 
-    if (!isBalanceLoading && balance === 0 && isAuthenticated && !isSettingsOpen) {
+    if (!isBalanceLoading && balance === 0 && !isSettingsOpen) {
       if (!hasSeenTopUpPrompt() && !topUpPromptDismissed) {
         setIsTopUpPromptOpen(false);
         topUpTimer = setTimeout(() => {
+          markTopUpPromptSeen();
           setIsTopUpPromptOpen(true);
         }, 500);
-      } else {
-        setIsTopUpPromptOpen(false);
       }
-    } else {
-      setIsTopUpPromptOpen(false);
-    }
+    } 
 
     return () => {
       if (topUpTimer) clearTimeout(topUpTimer);
     };
-  }, [balance, isBalanceLoading, isAuthenticated, isSettingsOpen, topUpPromptDismissed]);
+  }, [balance, isBalanceLoading, isSettingsOpen, topUpPromptDismissed]);
 
   const handleTopUp = (_amount?: number) => {};
 
@@ -194,6 +191,7 @@ function ChatPageContent() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         onLogin={() => setIsLoginModalOpen(false)}
+        logout={logout}
       />
 
       {/* Top-up Prompt */}

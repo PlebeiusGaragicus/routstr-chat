@@ -22,10 +22,10 @@ import { AppConfig } from '@/context/AppContext';
 
 const presetRelays = [
   { url: 'wss://relay.routstr.com', name: 'Routstr Relay' },
-  { url: 'wss://relay.damus.io', name: 'Damus' },
   { url: 'wss://nos.lol', name: 'nos.lol' },
-  { url: 'wss://relay.nostr.band', name: 'Nostr.Band' },
   { url: 'wss://relay.primal.net', name: 'Primal' },
+  { url: 'wss://relay.damus.io', name: 'Damus' },
+  { url: 'wss://relay.nostr.band', name: 'Nostr.Band' },
   { url: 'wss://relay.chorus.community', name: 'Chorus Relay' },
 ];
 
@@ -76,9 +76,10 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
     useReactEffect(() => {
       if (logins.length === 0) {
         try {
-          const sk = generateSecretKey();
-          const nsec = nip19.nsecEncode(sk);
-          loginActions.nsec(nsec);
+          // const sk = generateSecretKey();
+          // const nsec = nip19.nsecEncode(sk);
+          // console.log("RTRUE nsse", nsec)
+          // loginActions.nsec(nsec);
         } catch (err) {
           // no-op
         }

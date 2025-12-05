@@ -29,7 +29,7 @@ export const convertMessageForAPI = (message: Message): { role: string; content:
  * @param text The text content
  * @returns A Message object with text content
  */
-export const createTextMessage = (role: string, text: string): Message => {
+export const createTextMessage = (role: string, text: string, prevId?: string): Message => {
   return {
     role,
     content: text
@@ -43,7 +43,7 @@ export const createTextMessage = (role: string, text: string): Message => {
  * @param attachments Array of attachments (images, files, etc.)
  * @returns A Message object with multimodal content
  */
-export const createMultimodalMessage = (role: string, text: string, attachments: MessageAttachment[]): Message => {
+export const createMultimodalMessage = (role: string, text: string, attachments: MessageAttachment[], prevId?: string): Message => {
   const content: MessageContent[] = [];
 
   if (text.trim().length > 0) {

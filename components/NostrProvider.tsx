@@ -1,7 +1,6 @@
 import { NostrEvent, NPool, NRelay1 } from '@nostrify/nostrify';
 import { NostrContext } from '@nostrify/react';
 import React, { useRef, useEffect } from 'react'; // Import useEffect
-import { storeEventTimestamp } from '@/lib/nostrTimestamps';
 import { useAppContext } from '@/hooks/useAppContext';
 
 interface NostrProviderProps {
@@ -19,16 +18,13 @@ class TimestampTrackingNPool extends NPool {
   ): Promise<void> {
     // Call the original event method
     await super.event(event, opts);
-
-    // Store the timestamp after successful publishing
-    storeEventTimestamp(event.pubkey, event.kind);
   }
 }
 
 const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const { children } = props;
 
-  const { config, presetRelays } = useAppContext(); // Keep presetRelays even if not used directly here
+  const { config } = useAppContext(); // Keep presetRelays even if not used directly here
   
   // NPool instance created once
   const pool = useRef<NPool | undefined>(undefined);

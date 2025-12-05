@@ -5,6 +5,10 @@ import { fetchAIResponse } from '@/utils/apiUtils';
 import { getPendingCashuTokenAmount } from '@/utils/cashuUtils';
 import { useCashuWithXYZ } from './useCashuWithXYZ';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
+import { getLastNonSystemMessageEventId } from '@/utils/conversationUtils';
+import { useChatSync } from './useChatSync';
+import { useAppContext } from './useAppContext';
+import { useConversationState } from './useConversationState';
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -39,7 +43,6 @@ export interface UseChatActionsReturn {
     baseUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => Promise<void>;
   saveInlineEdit: (
@@ -52,7 +55,6 @@ export interface UseChatActionsReturn {
     selectedModel: any,
     baseUrl: string,
     activeConversationId: string | null,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => Promise<void>;
   retryMessage: (
@@ -62,7 +64,6 @@ export interface UseChatActionsReturn {
     selectedModel: any,
     baseUrl: string,
     activeConversationId: string | null,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => void;
 }
@@ -113,6 +114,8 @@ export const useChatActions = (): UseChatActionsReturn => {
 
   // Autoscroll moved to ChatMessages to honor user scroll position
 
+  const { createAndStoreChatEvent } = useConversationState();
+
   const sendMessage = useCallback(async (
     messages: Message[],
     setMessages: (messages: Message[]) => void,
@@ -122,7 +125,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     baseUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     if (!isAuthenticated) {
@@ -132,19 +134,26 @@ export const useChatActions = (): UseChatActionsReturn => {
 
     if (!inputMessage.trim() && uploadedAttachments.length === 0) return;
 
+    const prevId = activeConversationId ? getLastNonSystemMessageEventId(activeConversationId) : '0'.repeat(64);
+
     // Create user message with text and images
     const userMessage = uploadedAttachments.length > 0
       ? createMultimodalMessage('user', inputMessage, uploadedAttachments)
       : createTextMessage('user', inputMessage);
-
-    const updatedMessages = [...messages, userMessage];
     
-    // Determine origin conversation id and update UI optimistically
-    const timestamp = Date.now().toString();
-    const originConversationId = activeConversationId ?? createNewConversationHandler(updatedMessages, timestamp);
+    const timestamp = Date.now();
+    
+    const updatedMessage = { ...userMessage, _prevId: prevId, _createdAt: timestamp};
+
+    const updatedMessages = [...messages, updatedMessage];
+    
+    const originConversationId = activeConversationId ?? createNewConversationHandler(updatedMessages, timestamp.toString());
     if (activeConversationId) {
       setMessages(updatedMessages);
     }
+
+    // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
+    createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
 
     setInputMessage('');
     setUploadedAttachments([]);
@@ -155,7 +164,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       selectedModel,
       baseUrl,
       originConversationId,
-      saveConversationById,
       getActiveConversationId
     );
   }, [inputMessage, uploadedAttachments]);
@@ -170,7 +178,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     selectedModel: any,
     baseUrl: string,
     activeConversationId: string | null,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     if (editingMessageIndex !== null && editingContent.trim()) {
@@ -220,13 +227,14 @@ export const useChatActions = (): UseChatActionsReturn => {
       if (!originConversationId) {
         throw new Error('No active conversation ID found');
       }
+      console.log(truncatedMessages[truncatedMessages.length-1], truncatedMessages)
+      createAndStoreChatEvent(originConversationId, truncatedMessages[truncatedMessages.length-1]).catch(console.error);
       await performAIRequest(
         truncatedMessages,
         setMessages,
         selectedModel,
         baseUrl,
         originConversationId,
-        saveConversationById,
         getActiveConversationId
       );
     }
@@ -239,7 +247,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     selectedModel: any,
     baseUrl: string,
     activeConversationId: string | null,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     const newMessages = messages.slice(0, index);
@@ -254,7 +261,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       selectedModel,
       baseUrl,
       originConversationId,
-      saveConversationById,
       getActiveConversationId
     );
   }, []);
@@ -265,7 +271,6 @@ export const useChatActions = (): UseChatActionsReturn => {
     selectedModel: any,
     baseUrl: string,
     originConversationId: string,
-    saveConversationById: (conversationId: string, newMessages: Message[]) => void,
     getActiveConversationId: () => string | null
   ) => {
     setIsLoading(true);
@@ -286,11 +291,11 @@ export const useChatActions = (): UseChatActionsReturn => {
       if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
         console.log('rdlogs: ONE messages: ', currentMessages, originConversationId, currentlyActive);
         // Persist to the origin conversation without disrupting the UI of the current one
-        saveConversationById(originConversationId, newMessages);
+        // saveConversationById(originConversationId, newMessages);
       } else {
         console.log('rdlogs: TWO messages: ', currentMessages, originConversationId);
         setMessages(newMessages);
-        saveConversationById(originConversationId, newMessages);
+        // saveConversationById(originConversationId, newMessages);
       }
     };
 
@@ -321,9 +326,17 @@ export const useChatActions = (): UseChatActionsReturn => {
           }
         },
         onMessageAppend: (message) => {
+          const prevId = getLastNonSystemMessageEventId(originConversationId);
+          // Update message object with prevId
+          const updatedMessage = { ...message, _prevId: prevId, _createdAt: Date.now(), _modelId: selectedModel.id};
           // Append to current messages state
-          const updatedMessages = [...currentMessages, message];
+          const updatedMessages = [...currentMessages, updatedMessage];
           updateMessages(updatedMessages);
+
+          // Publish AI response to Nostr
+          if (originConversationId) {
+              createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+          }
         },
         onBalanceUpdate: setBalance,
         onTransactionUpdate: (transaction) => {
