@@ -64,6 +64,7 @@ export const useConversationState = (): UseConversationStateReturn => {
   const activeConversationIdRef = useRef<string | null>(null);
   const conversationsMapRef = useRef<Map<string, Conversation>>(new Map());
   const processedEventIdsRef = useRef<Set<string>>(new Set());
+  const migrationAttemptedRef = useRef(false);
 
   const { isSyncing: isPublishing, publishMessage, chatSyncEnabled, migrateConversations } = useChatSync();
   const { derivedPnsEvents: syncedEvents, loading1081, loadingDerivedPns, currentPnsKeys, triggerProcessStored1081Events, triggerDerivedPnsSync } = useChatSync1081()
@@ -91,23 +92,24 @@ export const useConversationState = (): UseConversationStateReturn => {
   // Migrate existing conversations when PNS keys are available
   useEffect(() => {
     const performMigration = async () => {
-      if (currentPnsKeys && conversationsLoaded) {
+      if (currentPnsKeys && conversationsLoaded && !migrationAttemptedRef.current) {
         const storedConversations = loadConversationsFromStorage();
         const hasUnsyncedMessages = storedConversations.some(c =>
           c.messages.some(m => !m._eventId)
         );
 
         if (hasUnsyncedMessages) {
+          migrationAttemptedRef.current = true;
           console.log('Found unsynced messages, starting migration...');
           const updatedConversations = await migrateConversations(storedConversations, currentPnsKeys);
           
           if (updatedConversations) {
-            // Update map, state and storage with migrated conversations (containing event IDs)
+            // Update map and state with migrated conversations (containing event IDs)
             updatedConversations.forEach(c => {
               conversationsMapRef.current.set(c.id, c);
             });
             setConversations(updatedConversations);
-            persistConversationsSnapshot(updatedConversations);
+            clearAllConversations();
           }
         }
       }
