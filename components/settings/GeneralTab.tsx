@@ -26,8 +26,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
   // Model configuration moved to Models tab
 }) => {
   // Model configuration moved to Models tab
-  const [showNsec, setShowNsec] = useState<boolean>(false);
-  const [nsecValue, setNsecValue] = useState<string>('');
   const [showNsecWarning, setShowNsecWarning] = useState<boolean>(false);
   const [newNsec, setNewNsec] = useState<string>('');
 
@@ -185,12 +183,17 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
               onClick={() => {
                 const nsecData = logins[0]?.data;
                 const nsec = nsecData && 'nsec' in nsecData && typeof nsecData.nsec === 'string' && nsecData.nsec.startsWith('nsec1') ? nsecData.nsec : '';
-                setNsecValue(nsec);
-                setShowNsec(!showNsec);
+                if (nsec) {
+                  navigator.clipboard.writeText(nsec);
+                  toast('nsec copied to clipboard!');
+                } else {
+                  toast('Unable to export nsec');
+                }
               }}
               type="button"
             >
-              <span>{showNsec ? 'Hide nsec' : 'Export nsec'}</span>
+              <Copy className="h-4 w-4" />
+              <span>Copy nsec</span>
             </button>
           )}
           {logout && router && (
@@ -210,24 +213,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
             </button>
           )}
         </div>
-        {showNsec && (
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-md text-sm text-white break-all mt-2">
-            <span className="grow">
-              {nsecValue ? `${nsecValue.slice(0, 4)}${'•'.repeat(Math.max(0, nsecValue.length - 4))}` : ''}
-            </span>
-            <button
-              className="p-1 rounded-md hover:bg-white/10"
-              onClick={() => {
-                navigator.clipboard.writeText(nsecValue);
-                toast('nsec copied to clipboard!');
-              }}
-              type="button"
-              title="Copy nsec"
-            >
-              <Copy className="h-4 w-4 text-white/70" />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Version Information */}

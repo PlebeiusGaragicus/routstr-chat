@@ -5,7 +5,8 @@ import { nip44, getPublicKey, finalizeEvent, Event } from 'nostr-tools';
 
 // Constants
 export const KIND_PNS = 1080;
-export const SALT_PNS = process.env.NODE_ENV === 'development' ? 'routstr-chat-sync-test3' : 'routstr-chat-sync-v1';
+export const SALT_PNS = 'routstr-chat-sync-v1';
+// export const SALT_PNS = process.env.NODE_ENV === 'development' ? 'routstr-chat-sync-test3' : 'routstr-chat-sync-v1';
 
 // Types
 export interface PnsKeys {

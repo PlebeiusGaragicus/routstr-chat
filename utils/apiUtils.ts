@@ -159,7 +159,10 @@ async function routstrRequest(params: {
       body: JSON.stringify({
         model: modelIdForRequest,
         messages: apiMessages,
-        stream: true
+        stream: true,
+        tools: [
+          { type: "web_search" },
+        ]
       })
     });
   } catch (error: any) {
