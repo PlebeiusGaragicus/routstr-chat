@@ -72,6 +72,7 @@ export const useConversationState = (): UseConversationStateReturn => {
   const isSyncing = isPublishing || loading1081 || loadingDerivedPns;
 
   const syncWithNostr = useCallback(async () => {
+    console.log('[useConversationState] syncWithNostr triggered')
     triggerDerivedPnsSync();
     triggerProcessStored1081Events();
   }, [triggerDerivedPnsSync, triggerProcessStored1081Events]);

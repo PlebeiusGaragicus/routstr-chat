@@ -352,10 +352,14 @@ export function useCashuWallet() {
       
       const newDeletedEvents = Array.from(deletedEventsTemp);
       
-      let allDeletedEvents = newDeletedEvents;
+      let allDeletedEvents = [...existingDeletedEvents, ...newDeletedEvents];
+
+      // Remove deleted events older than 30 days
+      const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+      allDeletedEvents = allDeletedEvents.filter(e => e.timestamp > thirtyDaysAgo);
+
       // Update local storage with combined events (existing + new)
-      if (newDeletedEvents.length > 0) {
-        allDeletedEvents = [...existingDeletedEvents, ...newDeletedEvents];
+      if (newDeletedEvents.length > 0 || allDeletedEvents.length !== existingDeletedEvents.length) {
         setDeletedEvents(allDeletedEvents);
       }
 
