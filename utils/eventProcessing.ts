@@ -43,7 +43,17 @@ export function decryptPnsEventToInner(
     // Decrypt PNS Event -> Inner Event
     const inner = decryptPnsEvent(pnsEvent, pnsKeys);
     
-    if (!inner || inner.kind !== KIND_CHAT_INNER) {
+    if (!inner) {
+      // Log when decryption returns null (already logged in decryptPnsEvent)
+      return null;
+    }
+    
+    if (inner.kind !== KIND_CHAT_INNER) {
+      console.warn('PNS event decrypted but not a chat inner event:', {
+        eventId: pnsEvent.id,
+        actualKind: inner.kind,
+        expectedKind: KIND_CHAT_INNER
+      });
       return null;
     }
     
@@ -53,7 +63,10 @@ export function decryptPnsEventToInner(
       id: pnsEvent.id,
     };
   } catch (error) {
-    console.warn('Failed to decrypt PNS event:', error);
+    console.warn('Unexpected error in decryptPnsEventToInner:', {
+      eventId: pnsEvent.id,
+      error: error instanceof Error ? error.message : error
+    });
     return null;
   }
 }

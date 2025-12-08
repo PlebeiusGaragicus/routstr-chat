@@ -130,6 +130,8 @@ export const useConversationState = (): UseConversationStateReturn => {
     }
 
     let hasNewEvents = false;
+    let failedDecryptions = 0;
+    let successfulDecryptions = 0;
 
     const eventsToLoad = eventStore.getByFilters({ kinds: [1080] });
     eventsToLoad.forEach((event) => {
@@ -141,6 +143,9 @@ export const useConversationState = (): UseConversationStateReturn => {
       // Decrypt and process the event
       const innerEvent = decryptPnsEventToInner(event, currentPnsKeys);
       if (!innerEvent) {
+        failedDecryptions++;
+        // Still mark as processed to avoid repeated decryption attempts
+        processedEventIdsRef.current.add(event.id);
         return;
       }
 
@@ -148,7 +153,13 @@ export const useConversationState = (): UseConversationStateReturn => {
       processInnerEvent(conversationsMapRef.current, innerEvent);
       processedEventIdsRef.current.add(event.id);
       hasNewEvents = true;
+      successfulDecryptions++;
     });
+
+    // Log decryption statistics for debugging
+    if (failedDecryptions > 0 || successfulDecryptions > 0) {
+      console.log(`[useConversationState] PNS event decryption stats: ${successfulDecryptions} successful, ${failedDecryptions} failed`);
+    }
 
     // Update state with new conversations array if we processed any new events
     if (hasNewEvents) {

@@ -81,6 +81,32 @@ export function decryptPnsEvent(
     // Parse the decrypted contents as JSON
     return JSON.parse(plaintext);
   } catch (error) {
+    if (error instanceof Error) {
+      // Handle specific "invalid MAC" error which indicates decryption failure
+      if (error.message === 'invalid MAC') {
+        console.warn('PNS event decryption failed: invalid MAC - likely encrypted with different keys', {
+          eventId: pnsEvent.id,
+          pubkey: pnsEvent.pubkey
+        });
+        return null;
+      }
+      
+      // Handle JSON parse errors separately
+      if (error.message.includes('Unexpected token') || error.message.includes('JSON')) {
+        console.warn('Failed to parse decrypted PNS event content as JSON:', {
+          eventId: pnsEvent.id,
+          error: error.message
+        });
+        return null;
+      }
+      
+      console.error('PNS event decryption error:', error.message, {
+        eventId: pnsEvent.id,
+        pubkey: pnsEvent.pubkey
+      });
+      return null;
+    }
+    
     console.error('Failed to decrypt PNS event:', error);
     return null;
   }

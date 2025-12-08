@@ -41,16 +41,12 @@ export const relayUrls$ = new BehaviorSubject<string[]>([])
 export const syncDerivedPnsTrigger$ = new Subject<void>()
 
 // Function to trigger derived PNS sync manually
+// This now works reliably because it uses an imperative approach that creates fresh subscriptions
 export function triggerDerivedPnsSync() {
-  const observers = syncDerivedPnsTrigger$.observers.length
   const relays = relayUrls$.getValue()
   const signer = userSigner$.getValue()
   
-  console.log('[useChatSync1081] Manual derived PNS sync triggered. Observers:', observers)
-  
-  if (observers === 0) {
-    console.warn('[useChatSync1081] No observers for syncDerivedPnsTrigger$. Sync stream may be dead or not initialized.')
-  }
+  console.log('[useChatSync1081] Manual derived PNS sync triggered.')
   
   if (relays.length === 0) {
     console.warn('[useChatSync1081] Triggered sync but relayUrls is empty! Sync will not proceed to network.')
@@ -60,6 +56,7 @@ export function triggerDerivedPnsSync() {
     console.warn('[useChatSync1081] Triggered sync but userSigner is null! Decryption will fail.')
   }
 
+  // Emit trigger - the subscription at module level handles this imperatively
   syncDerivedPnsTrigger$.next()
 }
 const relayUrlsDefined$ = relayUrls$.pipe(
@@ -406,88 +403,103 @@ const syncStatsDerivedPns = {
   lastSyncTime: null as Date | null,
 }
 
-// Combined stream for derived PNS sync - emits when pubkeys/relays are ready OR when manually triggered
-const syncDerivedPnsInputs$ = merge(
-  // Initial emission when pubkeys and relays are defined
-  combineLatest([derivedPnsPubkeys$, relayUrlsDefined$]).pipe(
-    tap(([pubkeys, relays]) => console.log('[useChatSync1081] Auto-sync input emitted', pubkeys.length, relays.length))
-  ),
-  // Re-emit current values when sync is manually triggered
-  syncDerivedPnsTrigger$.pipe(
-    tap(() => console.log('[useChatSync1081] syncDerivedPnsTrigger$ processing started')),
-    withLatestFrom(relayUrls$),
-    switchMap(([_, relayUrls]) => {
-      console.log('[useChatSync1081] Manual trigger processing with relays:', relayUrls.length)
-      return derivedPnsPubkeys$.pipe(
-        take(1),
-        tap(pubkeys => console.log('[useChatSync1081] Current derived PNS pubkeys:', pubkeys.length)),
-        switchMap(pubkeys => {
-          if (pubkeys.length === 0) {
-            console.log('[useChatSync1081] No derived PNS keys found during manual trigger, attempting to process stored 1081 events')
-            triggerProcessStored1081Events()
-            
-            // Wait for keys to be derived
-            return derivedPnsPubkeys$.pipe(
-              filter(keys => keys.length > 0),
-              take(1),
-              timeout(5000), // Wait up to 5 seconds
-              catchError(err => {
-                console.warn('[useChatSync1081] Timed out waiting for derived PNS keys:', err)
-                return of([])
-              })
-            )
-          }
-          return of(pubkeys)
-        }),
-        map(pubkeys => [pubkeys, relayUrls] as [string[], string[]])
-      )
+// Subject to emit sync results - allows imperative triggering of new sync subscriptions
+const syncDerivedPnsResults$ = new Subject<NostrEvent>()
+
+// Imperative function to perform derived PNS sync - creates a fresh subscription each time
+function performDerivedPnsSync(pubkeys: string[], relayUrls: string[]): void {
+  if (pubkeys.length === 0 || relayUrls.length === 0) {
+    console.log('[useChatSync1081] performDerivedPnsSync: skipping, no pubkeys or relays')
+    return
+  }
+
+  // Reset sync stats for new sync
+  syncStatsDerivedPns.eventsReceived = 0
+  syncStatsDerivedPns.lastSyncTime = new Date()
+
+  // Create filter for all derived PNS pubkeys
+  const kind1080Filter = {
+    kinds: [KIND_PNS],
+    authors: pubkeys,
+  }
+
+  console.log('[useChatSync1081] Syncing derived PNS events for pubkeys:', pubkeys)
+
+  // Create fresh subscription for each sync - this won't be affected by previous completions
+  relayPool.sync(relayUrls, eventStore, kind1080Filter, SyncDirection.BOTH).pipe(
+    tap((event: NostrEvent) => {
+      syncStatsDerivedPns.eventsReceived++
+      console.log('[useChatSync1081] Synced derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
+      eventStore.add(event)
     }),
-    tap(([pubkeys, relayUrls]) => {
-      console.log('[useChatSync1081] Manual derived PNS trigger payload ready:', {
-        pubkeysCount: pubkeys.length,
-        relayUrlsCount: relayUrls.length,
-      })
+    catchError((err: any) => {
+      // Handle EmptyError which can happen when sync completes with no events
+      if (err?.name === 'EmptyError' || err?.message === 'no elements in sequence') {
+        console.log('[useChatSync1081] Derived PNS sync complete - no events to sync')
+        return EMPTY
+      }
+      console.error('[useChatSync1081] Derived PNS sync error:', err)
+      return EMPTY
     }),
-    filter(([_, relayUrls]) => relayUrls.length > 0)
-  )
-).pipe(
-  share() // Share the merged stream to prevent multiple subscriptions to source observables
+  ).subscribe({
+    next: (event) => syncDerivedPnsResults$.next(event),
+    error: (err) => console.error('[useChatSync1081] performDerivedPnsSync error:', err),
+    complete: () => console.log('[useChatSync1081] performDerivedPnsSync complete'),
+  })
+}
+
+// Auto-sync when pubkeys/relays become available (initial sync)
+const autoSyncDerivedPns$ = combineLatest([derivedPnsPubkeys$, relayUrlsDefined$]).pipe(
+  filter(([pubkeys, _]) => pubkeys.length > 0),
+  take(1), // Only auto-sync once on initial load
+  tap(([pubkeys, relayUrls]) => {
+    console.log('[useChatSync1081] Auto-triggering initial derived PNS sync')
+    performDerivedPnsSync(pubkeys, relayUrls)
+  }),
 )
 
-// Sync kind 1080 events for all derived PNS pubkeys
-const syncDerivedPnsEvents$ = syncDerivedPnsInputs$.pipe(
-  filter(([pubkeys, _]) => pubkeys.length > 0),
-  switchMap(([pubkeys, relayUrls]) => {
-    // Reset sync stats for new sync
-    syncStatsDerivedPns.eventsReceived = 0
-    syncStatsDerivedPns.lastSyncTime = new Date()
-
-    // Create filter for all derived PNS pubkeys
-    const kind1080Filter = {
-      kinds: [KIND_PNS],
-      authors: pubkeys,
-    }
-
-    console.log('[useChatSync1081] Syncing derived PNS events for pubkeys:', pubkeys)
-
-    return relayPool.sync(relayUrls, eventStore, kind1080Filter, SyncDirection.BOTH).pipe(
-      tap((event: NostrEvent) => {
-        syncStatsDerivedPns.eventsReceived++
-        console.log('[useChatSync1081] Synced derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
-        eventStore.add(event)
+// Handle manual sync triggers - creates fresh sync each time
+syncDerivedPnsTrigger$.pipe(
+  tap(() => console.log('[useChatSync1081] Manual sync trigger received')),
+  withLatestFrom(relayUrls$),
+  switchMap(([_, relayUrls]) => {
+    return derivedPnsPubkeys$.pipe(
+      take(1),
+      tap(pubkeys => {
+        if (pubkeys.length === 0) {
+          console.log('[useChatSync1081] No derived PNS keys, triggering stored events processing')
+          triggerProcessStored1081Events()
+        }
       }),
-      catchError((err) => {
-        console.error('[useChatSync1081] Derived PNS sync error:', err)
-        return EMPTY
+      switchMap(pubkeys => {
+        if (pubkeys.length === 0) {
+          // Wait for keys to be derived
+          return derivedPnsPubkeys$.pipe(
+            filter(keys => keys.length > 0),
+            take(1),
+            timeout({ first: 5000 }),
+            catchError(err => {
+              console.warn('[useChatSync1081] Timed out waiting for derived PNS keys:', err)
+              return of([])
+            })
+          )
+        }
+        return of(pubkeys)
       }),
+      tap(pubkeys => {
+        if (pubkeys.length > 0 && relayUrls.length > 0) {
+          performDerivedPnsSync(pubkeys, relayUrls)
+        } else {
+          console.warn('[useChatSync1081] Cannot sync: pubkeys or relays missing', { pubkeys: pubkeys.length, relays: relayUrls.length })
+        }
+      })
     )
-  }),
-  tap({
-    error: (err) => console.error('[useChatSync1081] syncDerivedPnsEvents$ stream error:', err),
-    complete: () => console.log('[useChatSync1081] syncDerivedPnsEvents$ stream completed'),
-  }),
-  retry(1),
-  shareReplay(1),
+  })
+).subscribe() // This subscription never completes since syncDerivedPnsTrigger$ is a Subject
+
+// Expose results stream for components to subscribe to
+const syncDerivedPnsEvents$ = syncDerivedPnsResults$.pipe(
+  share() // Use share() instead of shareReplay(1) to avoid caching completed state
 )
 
 // Sync kind 1080 events for all derived PNS pubkeys
@@ -503,13 +515,13 @@ const liveDerivedPnsEvents$ = combineLatest([derivedPnsPubkeys$, relayUrlsDefine
       authors: pubkeys
     }
 
-    console.log('[useChatSync1081] Live derived PNS events for pubkeys:', pubkeys)
+    // console.log('[useChatSync1081] Live derived PNS events for pubkeys:', pubkeys)
 
     return relayPool.subscription(relayUrls, kind1080Filter).pipe(
       onlyEvents(),
       tap((event: NostrEvent) => {
         syncStatsDerivedPns.eventsReceived++
-        console.log('[useChatSync1081] Live derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
+        // console.log('[useChatSync1081] Live derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
         eventStore.add(event)
       }),
       defaultIfEmpty(null),
@@ -551,8 +563,14 @@ export function useChatSync1081() {
     return () => sub.unsubscribe()
   }, [])
 
+  // Subscribe to auto-sync on initial load
   useEffect(() => {
-    console.log("CURRNET ", currentDerivedPnsKeys);
+    const sub = autoSyncDerivedPns$.subscribe()
+    return () => sub.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    console.log("CURRENT ", currentDerivedPnsKeys);
     // Find the first PNS keys with SALT_PNS from currentDerivedPnsKeys
     const firstPnsKeysWithSalt = Array.from(currentDerivedPnsKeys.values()).find(
       pnsKeys => pnsKeys.salt === SALT_PNS
@@ -626,14 +644,8 @@ export function useChatSync1081() {
       },
     })
 
-    // Also subscribe to the trigger to ensure the stream stays alive if it's hot
-    const triggerSub = syncDerivedPnsTrigger$.subscribe(() => {
-       console.log('[useChatSync1081] syncDerivedPnsTrigger$ fired in component')
-    })
-
     return () => {
       sub.unsubscribe()
-      triggerSub.unsubscribe()
     }
   }, [])
 
