@@ -16,7 +16,9 @@ import { useChatSync } from './useChatSync';
 import { processInnerEvent, decryptPnsEventToInner } from '@/utils/eventProcessing';
 import { eventStore } from '@/lib/applesauce-core';
 import { useChatSync1081, derivedPnsKeys$ } from './useChatSync1081';
-import { PnsKeys, SALT_PNS } from '@/lib/pns';
+import { PnsKeys, SALT_PNS, createPnsDeletionEvent } from '@/lib/pns';
+import { SyncDirection } from 'applesauce-relay';
+import { useDeletionSync } from './useDeletionSync';
 
 export interface UseConversationStateReturn {
   conversations: Conversation[];
@@ -32,7 +34,7 @@ export interface UseConversationStateReturn {
   setEditingContent: (content: string) => void;
   createNewConversationHandler: (initialMessages?: Message[], timestamp?: string) => string;
   loadConversation: (conversationId: string) => void;
-  deleteConversation: (conversationId: string, e: React.MouseEvent) => void;
+  deleteConversation: (conversationId: string, e: React.MouseEvent) => Promise<void>;
   clearConversations: () => void;
   startEditingMessage: (index: number) => void;
   cancelEditing: () => void;
@@ -68,6 +70,7 @@ export const useConversationState = (): UseConversationStateReturn => {
 
   const { isSyncing: isPublishing, publishMessage, chatSyncEnabled, migrateConversations } = useChatSync();
   const { derivedPnsEvents: syncedEvents, loading1081, loadingDerivedPns, currentPnsKeys, triggerProcessStored1081Events, triggerDerivedPnsSync } = useChatSync1081()
+  const { performDeletionSync } = useDeletionSync();
 
   const isSyncing = isPublishing || loading1081 || loadingDerivedPns;
 
@@ -223,26 +226,67 @@ export const useConversationState = (): UseConversationStateReturn => {
     });
   }, [setActiveConversationIdWithStorage]);
 
-  const deleteConversation = useCallback((conversationId: string, e: React.MouseEvent) => {
+  const deleteConversation = useCallback(async (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
     setConversations(prevConversations => {
       const updatedConversations = deleteConversationFromStorage(prevConversations, conversationId);
       
+      
+      // Get the conversation to access its messages and their event IDs
+      const conversation = conversationsMapRef.current.get(conversationId);
+      if (conversation && currentPnsKeys) {
+        // Collect all event IDs from messages that have _eventId
+        const eventIds: string[] = [];
+        conversation.messages.forEach(message => {
+          if (message._eventId) {
+            eventIds.push(message._eventId);
+          }
+        });
+        
+        // If we have events to delete, create deletion events and remove them
+        if (eventIds.length > 0) {
+          try {
+            // Create PNS deletion event
+            const deletionEvent = createPnsDeletionEvent(eventIds, currentPnsKeys, 'Conversation deleted');
+            
+            // Add the deletion event to the store
+            eventStore.add(deletionEvent);
+            
+            // Remove all the events by their IDs
+            for (const eventId of eventIds) {
+              eventStore.remove(eventId);
+            }
+            
+            // Sync the deletion event to relays
+            performDeletionSync(deletionEvent);
+            
+            console.log(`[useConversationState] Deleted ${eventIds.length} events for conversation ${conversationId}`);
+          } catch (error) {
+            console.error('[useConversationState] Failed to create deletion event:', error);
+          }
+        }
+      }
+     
+      // Also delete from conversationsMapRef
+      conversationsMapRef.current.delete(conversationId);
+      
       if (conversationId === activeConversationId) {
         setActiveConversationIdWithStorage(null);
         setMessages([]);
-      }
+      } 
       
       return updatedConversations;
     });
-  }, [activeConversationId, setActiveConversationIdWithStorage]);
+  }, [activeConversationId, setActiveConversationIdWithStorage, currentPnsKeys, performDeletionSync]);
 
   const clearConversations = useCallback(() => {
     setConversations([]);
     setActiveConversationIdWithStorage(null);
     setMessages([]);
     clearAllConversations();
+    // Also clear the conversationsMapRef
+    conversationsMapRef.current.clear();
   }, [setActiveConversationIdWithStorage]);
 
   const startEditingMessage = useCallback((index: number) => {

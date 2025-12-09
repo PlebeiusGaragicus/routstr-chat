@@ -160,9 +160,6 @@ async function routstrRequest(params: {
         model: modelIdForRequest,
         messages: apiMessages,
         stream: true,
-        tools: [
-          { type: "web_search" },
-        ]
       })
     });
   } catch (error: any) {

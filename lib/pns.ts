@@ -111,3 +111,38 @@ export function decryptPnsEvent(
     return null;
   }
 }
+
+/**
+ * Creates a deletion request event for one or multiple PNS events
+ */
+export function createPnsDeletionEvent(
+  eventIds: string[],
+  pnsKeys: PnsKeys,
+  reason?: string
+): Event {
+  // Validate input
+  if (!eventIds || eventIds.length === 0) {
+    throw new Error('At least one event ID must be provided for deletion');
+  }
+
+  // Create tags for the deletion event
+  const tags: string[][] = [];
+  
+  // Add 'e' tags for each event ID to be deleted
+  eventIds.forEach(eventId => {
+    tags.push(['e', eventId]);
+  });
+  
+  // Add 'k' tag for the kind of events being deleted (PNS events are kind 1080)
+  tags.push(['k', KIND_PNS.toString()]);
+  
+  const deletionEvent = {
+    kind: 5, // Deletion request event kind
+    pubkey: pnsKeys.pnsKeypair.pubKey,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: reason || 'PNS events deletion request',
+  };
+
+  return finalizeEvent(deletionEvent, pnsKeys.pnsKeypair.privKey);
+}

@@ -12,7 +12,7 @@ interface SidebarProps {
   activeConversationId: string | null;
   createNewConversation: () => void;
   loadConversation: (id: string) => void;
-  deleteConversation: (id: string, e: React.MouseEvent) => void;
+  deleteConversation: (id: string, e: React.MouseEvent) => Promise<void>;
   setIsSettingsOpen: (isOpen: boolean) => void;
   setInitialSettingsTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void;
   balance: number;
@@ -118,7 +118,7 @@ export default function Sidebar({
                   <span className="truncate">{conversation.title}</span>
                 </div>
                 <button
-                  onClick={(e) => deleteConversation(conversation.id, e)}
+                  onClick={async (e) => await deleteConversation(conversation.id, e)}
                   className="text-white/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-4 h-4" />
