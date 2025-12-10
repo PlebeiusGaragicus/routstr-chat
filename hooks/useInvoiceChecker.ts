@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useInvoiceSync, StoredInvoice } from './useInvoiceSync';
-import { CashuMint, CashuWallet, MintQuoteState, MeltQuoteState } from '@cashu/cashu-ts';
+import { Mint, Wallet, MintQuoteState, MeltQuoteState } from '@cashu/cashu-ts';
 import { useCashuStore } from '@/features/wallet';
 import { useCashuToken } from '@/features/wallet';
 import { toast } from 'sonner';
@@ -19,8 +19,8 @@ export function useInvoiceChecker() {
   // Check a single mint invoice
   const checkMintInvoice = useCallback(async (invoice: StoredInvoice) => {
     try {
-      const mint = new CashuMint(invoice.mintUrl);
-      const wallet = new CashuWallet(mint);
+      const mint = new Mint(invoice.mintUrl);
+      const wallet = new Wallet(mint);
       await wallet.loadMint();
 
       const quoteStatus = await wallet.checkMintQuote(invoice.quoteId);
@@ -161,8 +161,8 @@ export function useInvoiceChecker() {
   // Check a single melt invoice
   const checkMeltInvoice = useCallback(async (invoice: StoredInvoice) => {
     try {
-      const mint = new CashuMint(invoice.mintUrl);
-      const wallet = new CashuWallet(mint);
+      const mint = new Mint(invoice.mintUrl);
+      const wallet = new Wallet(mint);
       await wallet.loadMint();
 
       const quoteStatus = await wallet.checkMeltQuote(invoice.quoteId);

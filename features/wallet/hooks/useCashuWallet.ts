@@ -117,11 +117,10 @@ export function useCashuWallet() {
               console.log('mint already activated', mint);
               return;
             } else {
-              const { mintInfo, keysets } = await mintService.activateMint(mint);
+              const { mintInfo, keysets, keys } = await mintService.activateMint(mint);
               cashuStore.addMint(mint);
               cashuStore.setMintInfo(mint, mintInfo);
               cashuStore.setKeysets(mint, keysets);
-              const { keys } = await mintService.updateMintKeys(mint, keysets);
               cashuStore.setKeys(mint, keys);
               cashuStore.setLastUpdate(mint, Date.now());
             }

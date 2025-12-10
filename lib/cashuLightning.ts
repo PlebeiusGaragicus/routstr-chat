@@ -1,5 +1,5 @@
 import { useCashuStore } from '@/features/wallet';
-import { CashuMint, CashuWallet, MeltQuoteResponse, MeltQuoteState, MintQuoteResponse, MintQuoteState, Proof } from '@cashu/cashu-ts';
+import { Mint, Wallet, MeltQuoteResponse, MeltQuoteState, MintQuoteResponse, MintQuoteState, Proof } from '@cashu/cashu-ts';
 import { calculateFees, canMakeExactChange } from '@/features/wallet';
 import { CashuToken } from '@/features/wallet/core/domain/Token';
 
@@ -29,7 +29,7 @@ export interface MeltQuote {
  */
 export async function createLightningInvoice(mintUrl: string, amount: number): Promise<MintQuote> {
   try {
-    const mint = new CashuMint(mintUrl);
+    const mint = new Mint(mintUrl);
     const keysets = await mint.getKeySets();
     
     // Get preferred unit: msat over sat if both are active
@@ -37,7 +37,7 @@ export async function createLightningInvoice(mintUrl: string, amount: number): P
     const units = [...new Set(activeKeysets.map(k => k.unit))];
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
     
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
 
     // Load mint keysets
     await wallet.loadMint();
@@ -73,7 +73,7 @@ export async function createLightningInvoice(mintUrl: string, amount: number): P
  */
 export async function mintTokensFromPaidInvoice(mintUrl: string, quoteId: string, amount: number, maxAttempts: number = 40): Promise<Proof[]> {
   try {
-    const mint = new CashuMint(mintUrl);
+    const mint = new Mint(mintUrl);
     const keysets = await mint.getKeySets();
     
     // Get preferred unit: msat over sat if both are active
@@ -81,7 +81,7 @@ export async function mintTokensFromPaidInvoice(mintUrl: string, quoteId: string
     const units = [...new Set(activeKeysets.map(k => k.unit))];
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
     
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
 
     // Load mint keysets
     await wallet.loadMint();
@@ -140,7 +140,7 @@ export async function mintTokensFromPaidInvoice(mintUrl: string, quoteId: string
  */
 export async function createMeltQuote(mintUrl: string, paymentRequest: string): Promise<MeltQuoteResponse> {
   try {
-    const mint = new CashuMint(mintUrl);
+    const mint = new Mint(mintUrl);
     const keysets = await mint.getKeySets();
     
     // Get preferred unit: msat over sat if both are active
@@ -148,7 +148,7 @@ export async function createMeltQuote(mintUrl: string, paymentRequest: string): 
     const units = [...new Set(activeKeysets.map(k => k.unit))];
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
     
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
 
     // Load mint keysets
     await wallet.loadMint();
@@ -173,7 +173,7 @@ export async function createMeltQuote(mintUrl: string, paymentRequest: string): 
  */
 export async function payMeltQuote(mintUrl: string, quoteId: string, proofs: Proof[], cleanSpentProofs: (mintUrl: string) => Promise<Proof[]>) {
   try {
-    const mint = new CashuMint(mintUrl);
+    const mint = new Mint(mintUrl);
     const keysets = await mint.getKeySets();
     
     // Get preferred unit: msat over sat if both are active
@@ -183,7 +183,7 @@ export async function payMeltQuote(mintUrl: string, quoteId: string, proofs: Pro
     console.log('rdlogs: lfees', fees)
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
     
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
 
     // Load mint keysets
     await wallet.loadMint();

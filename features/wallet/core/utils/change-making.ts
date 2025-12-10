@@ -1,5 +1,5 @@
 import { Proof } from '../domain/Proof';
-import { CashuWallet, MintKeyset } from '@cashu/cashu-ts';
+import { Wallet, MintKeyset } from '@cashu/cashu-ts';
 import { calculateFees } from './fees';
 
 /**

@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { CashuMint, CashuWallet, MintQuoteState } from '@cashu/cashu-ts';
+import { Mint, Wallet, MintQuoteState } from '@cashu/cashu-ts';
 import { TransactionHistory } from '@/types/chat';
 import { fetchBalances } from '@/utils/cashuUtils';
 import { useInvoiceSync } from '@/hooks/useInvoiceSync';
@@ -35,7 +35,7 @@ export function useWalletOperations({
   setTransactionHistory,
   transactionHistory
 }: UseWalletOperationsProps) {
-  const cashuWalletRef = useRef<CashuWallet | null>(null);
+  const cashuWalletRef = useRef<Wallet | null>(null);
   const mintQuoteRef = useRef<MintQuoteResponse | null>(null);
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -44,7 +44,7 @@ export function useWalletOperations({
   // Initialize wallet
   const initWallet = useCallback(async () => {
     try {
-      const mint = new CashuMint(mintUrl);
+      const mint = new Mint(mintUrl);
       const keysets = await mint.getKeySets();
       
       // Get preferred unit: msat over sat if both are active
@@ -52,7 +52,7 @@ export function useWalletOperations({
       const units = [...new Set(activeKeysets.map(k => k.unit))];
       const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
       
-      const wallet = new CashuWallet(mint, { unit: preferredUnit });
+      const wallet = new Wallet(mint, { unit: preferredUnit });
       await wallet.loadMint();
       cashuWalletRef.current = wallet;
       return wallet;

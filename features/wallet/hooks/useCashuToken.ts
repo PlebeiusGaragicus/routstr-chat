@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useCashuStore } from '../state/cashuStore';
 import { useCashuWallet } from './useCashuWallet';
 import { useCashuHistory } from './useCashuHistory';
-import { CashuMint, CashuWallet, Proof, getDecodedToken, CheckStateEnum, getEncodedTokenV4 } from '@cashu/cashu-ts';
+import { Mint, Wallet, Proof, getDecodedToken, CheckStateEnum, getEncodedTokenV4 } from '@cashu/cashu-ts';
 import { selectProofsAdvanced } from '../core/utils/change-making';
 import { calculateFees } from '../core/utils/fees';
 import { MintService } from '../core/services/MintService';
 import { hashToCurve } from "@cashu/crypto/modules/common";
+import { hexToBytes } from '@noble/hashes/utils';
 
 // Global flag to track if recovery has been initiated in this session
 let recoveryInitiated = false;
@@ -107,7 +108,7 @@ export function useCashuToken() {
     setIsLoading(true);
     setError(null);
     try {
-      const mint = new CashuMint(mintUrl);
+      const mint = new Mint(mintUrl);
       const keysets = await mint.getKeySets();
       
       // Get preferred unit: msat over sat if both are active
@@ -121,7 +122,7 @@ export function useCashuToken() {
         preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported') as 'sat' | 'msat';
       }
       
-      const wallet = new CashuWallet(mint, { unit: preferredUnit });
+      const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined });
 
       // Load mint keysets
       await wallet.loadMint();
@@ -144,7 +145,7 @@ export function useCashuToken() {
       let proofsToKeep: Proof[], proofsToSend: Proof[];
 
       try {
-        const result = await wallet.send(amount, proofs, { pubkey: p2pkPubkey, privkey: cashuStore.privkey});
+        const result = await wallet.send(amount, proofs);
         proofsToKeep = result.keep;
         proofsToSend = result.send;
       } catch (error) {
@@ -173,7 +174,7 @@ export function useCashuToken() {
             console.log('rdlogs: proofsToSend', proofsToSend);
           } catch (error) {
             try {
-              const result = await wallet.send(amount, proofs, { pubkey: p2pkPubkey, privkey: cashuStore.privkey});
+              const result = await wallet.send(amount, proofs);
               proofsToKeep = result.keep;
               proofsToSend = result.send;
             } catch (error2) {
@@ -249,17 +250,18 @@ export function useCashuToken() {
     const existingMint = cashuStore.mints.find((mint) => mint.url === normalizedMintUrl);
     const needsActivation = !existingMint || !existingMint.mintInfo || !existingMint.keysets?.length || !existingMint.keys?.length;
 
+
     if (!existingMint) {
       cashuStore.addMint(normalizedMintUrl);
     }
 
-      if (needsActivation) {
+    if (needsActivation) {
+      console.log("INITI", existingMint, needsActivation);
       try {
         const mintService = new MintService();
-        const { mintInfo, keysets } = await mintService.activateMint(normalizedMintUrl);
+        const { mintInfo, keysets, keys } = await mintService.activateMint(normalizedMintUrl);
         cashuStore.setMintInfo(normalizedMintUrl, mintInfo);
         cashuStore.setKeysets(normalizedMintUrl, keysets);
-        const { keys } = await mintService.updateMintKeys(normalizedMintUrl, keysets);
         cashuStore.setKeys(normalizedMintUrl, keys);
       } catch (err) {
         console.error('Failed to initialize mint data:', err);
@@ -336,7 +338,7 @@ export function useCashuToken() {
       const normalizedMintUrl = await addMintIfNotExists(mintUrl);
 
       // Setup wallet for receiving
-      const mint = new CashuMint(normalizedMintUrl);
+      const mint = new Mint(normalizedMintUrl);
       const keysets = await mint.getKeySets();
       
       // Get preferred unit: msat over sat if both are active
@@ -344,7 +346,7 @@ export function useCashuToken() {
       const units = [...new Set(activeKeysets.map(k => k.unit))];
       const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
       
-      const wallet = new CashuWallet(mint, { unit: preferredUnit });
+      const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined });
 
       // Load mint keysets
       await wallet.loadMint();
@@ -396,24 +398,25 @@ export function useCashuToken() {
     setError(null);
 
     try {
-      const mintDetails = cashuStore.getMint(mintUrl);
-      const mint = new CashuMint(mintUrl);
+      const normalizedMintUrl = await addMintIfNotExists(mintUrl);
+      const mintDetails = cashuStore.getMint(normalizedMintUrl);
+      const mint = new Mint(normalizedMintUrl);
       
       // Get preferred unit: msat over sat if both are active
       let keysets = mintDetails?.keysets;
       if (!keysets) {
-        console.log('rdlogs: clean spengn= FETCHING', mintUrl); 
+        console.log('rdlogs: clean spengn= FETCHING', normalizedMintUrl); 
         keysets = (await mint.getKeySets()).keysets;
       }
       const activeKeysets = keysets?.filter(k => k.active);
       const units = [...new Set(activeKeysets?.map(k => k.unit))];
       const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
       
-      const wallet = new CashuWallet(mint, { unit: preferredUnit, keysets: keysets });
+      const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined, keysets: keysets, mintInfo: mintDetails?.mintInfo });
 
       await wallet.loadMint();
 
-      const proofs = await cashuStore.getMintProofs(mintUrl);
+      const proofs = await cashuStore.getMintProofs(normalizedMintUrl);
 
       const proofStates = await wallet.checkProofsStates(proofs);
       const spentProofsStates = proofStates.filter(
@@ -427,7 +430,7 @@ export function useCashuToken() {
       );
       // console.log('rdlogs pd', spentProofs)
 
-      await updateProofs({ mintUrl, proofsToAdd: [], proofsToRemove: spentProofs });
+      await updateProofs({ mintUrl: normalizedMintUrl, proofsToAdd: [], proofsToRemove: spentProofs });
 
       return spentProofs;
     } catch (error) {

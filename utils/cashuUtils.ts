@@ -1,5 +1,5 @@
 import { Event } from "nostr-tools";
-import { CashuMint, CashuWallet, getEncodedTokenV4, getDecodedToken } from "@cashu/cashu-ts";
+import { Mint, Wallet, getEncodedTokenV4, getDecodedToken } from "@cashu/cashu-ts";
 import { getLocalCashuToken, setLocalCashuToken, removeLocalCashuToken, getLocalCashuTokens, CashuTokenEntry } from '@/utils/storageUtils';
 
 
@@ -186,7 +186,7 @@ export const fetchRefundToken = async (baseUrl: string, storedToken: string): Pr
 };
 
 export const storeCashuToken = async (mintUrl: string, token: string): Promise<void> => {
-  const mint = new CashuMint(mintUrl);
+  const mint = new Mint(mintUrl);
   const keysets = await mint.getKeySets();
   
   // Get preferred unit: msat over sat if both are active
@@ -194,7 +194,7 @@ export const storeCashuToken = async (mintUrl: string, token: string): Promise<v
   const units = [...new Set(activeKeysets.map(k => k.unit))];
   const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
   
-  const wallet = new CashuWallet(mint, { unit: preferredUnit });
+  const wallet = new Wallet(mint, { unit: preferredUnit });
   await wallet.loadMint();
 
   const result = await wallet.receive(token);

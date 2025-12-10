@@ -1,4 +1,4 @@
-import { CashuMint, CashuWallet, MintQuoteState, MeltQuoteState, MeltQuoteResponse, Proof } from '@cashu/cashu-ts';
+import { Mint, Wallet, MintQuoteState, MeltQuoteState, MeltQuoteResponse, Proof } from '@cashu/cashu-ts';
 import { MintQuote, MeltQuote } from '../domain/Mint';
 import { normalizeMintUrl } from '../utils/formatting';
 
@@ -12,7 +12,7 @@ export class LightningService {
    */
   async createMintQuote(mintUrl: string, amount: number): Promise<MintQuote> {
     const normalizedUrl = normalizeMintUrl(mintUrl);
-    const mint = new CashuMint(normalizedUrl);
+    const mint = new Mint(normalizedUrl);
     const keysets = await mint.getKeySets();
 
     // Get preferred unit: msat over sat if both are active
@@ -20,7 +20,7 @@ export class LightningService {
     const units = [...new Set(activeKeysets.map(k => k.unit))];
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
 
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
     await wallet.loadMint();
 
     const mintQuote = await wallet.createMintQuote(amount);
@@ -45,14 +45,14 @@ export class LightningService {
     maxAttempts: number = 40
   ): Promise<Proof[]> {
     const normalizedUrl = normalizeMintUrl(mintUrl);
-    const mint = new CashuMint(normalizedUrl);
+    const mint = new Mint(normalizedUrl);
     const keysets = await mint.getKeySets();
 
     const activeKeysets = keysets.keysets.filter(k => k.active);
     const units = [...new Set(activeKeysets.map(k => k.unit))];
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
 
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
     await wallet.loadMint();
 
     let attempts = 0;
@@ -94,14 +94,14 @@ export class LightningService {
    */
   async createMeltQuote(mintUrl: string, paymentRequest: string): Promise<MeltQuoteResponse> {
     const normalizedUrl = normalizeMintUrl(mintUrl);
-    const mint = new CashuMint(normalizedUrl);
+    const mint = new Mint(normalizedUrl);
     const keysets = await mint.getKeySets();
 
     const activeKeysets = keysets.keysets.filter(k => k.active);
     const units = [...new Set(activeKeysets.map(k => k.unit))];
     const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
 
-    const wallet = new CashuWallet(mint, { unit: preferredUnit });
+    const wallet = new Wallet(mint, { unit: preferredUnit });
     await wallet.loadMint();
 
     const meltQuote = await wallet.createMeltQuote(paymentRequest);

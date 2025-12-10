@@ -1,7 +1,7 @@
 // Types and utilities for Cashu wallet (NIP-60)
 
 import { useCashuStore } from "@/features/wallet/state/cashuStore";
-import { CashuMint, Proof, CashuWallet, GetInfoResponse, MintKeyset, MintKeys, getDecodedToken } from "@cashu/cashu-ts";
+import { Mint, Proof, Wallet, GetInfoResponse, MintKeyset, MintKeys, getDecodedToken } from "@cashu/cashu-ts";
 
 export interface CashuProof {
   id: string;
@@ -79,55 +79,6 @@ export function formatBalance(balance: number, unit: string): string {
     return `${(balance / 1000).toFixed(1)}k ${unit}`;
   } else {
     return `${addThousandsSeparator(balance)} ${unit}`;
-  }
-}
-
-export async function activateMint(mintUrl: string): Promise<{ mintInfo: GetInfoResponse, keysets: MintKeyset[] }> {
-  console.log('rdlogs: activateMint2', mintUrl)
-  const mint = new CashuMint(mintUrl);
-  const wallet = new CashuWallet(mint);
-  const msatWallet = new CashuWallet(mint, {'unit': 'msat'});
-  const mintInfo = await wallet.getMintInfo();
-  const walletKeysets = await wallet.getKeySets();
-  const msatKeysets = await msatWallet.getKeySets();
-  const allKeysets = Array.from(new Set([...walletKeysets, ...msatKeysets]));
-  // Some mints or clients may return malformed keyset ids. Filter to valid hex ids to avoid downstream fromHex errors.
-  const isValidHexId = (id: string) => typeof id === 'string' && /^[0-9a-fA-F]+$/.test(id) && id.length % 2 === 0;
-  const filteredKeysets = allKeysets.filter(ks => isValidHexId(ks.id));
-  return { mintInfo, keysets: filteredKeysets };
-}
-
-export async function updateMintKeys(mintUrl: string, keysets: MintKeyset[]): Promise<{ keys: Record<string, MintKeys>[] }> {
-  console.log('rdlogs: updateMintKeys', mintUrl)
-  const mint = new CashuMint(mintUrl);
-  const wallet = new CashuWallet(mint);
-  const msatWallet = new CashuWallet(mint, {'unit': 'msat'});
-  const walletKeysets = await wallet.getKeySets();
-  const msatKeysets = await msatWallet.getKeySets();
-
-  // const wallet = new CashuWallet(mint, { unit: preferredUnit });
-
-  // get keysets from store
-  const keysetsLocal = useCashuStore.getState().mints.find((m) => m.url === mintUrl)?.keysets;
-  let keysLocal = useCashuStore.getState().mints.find((m) => m.url === mintUrl)?.keys;
-
-  if (!keysetsLocal || !keysLocal || keysetsLocal !== keysets) {
-    if (!keysLocal) {
-      keysLocal = []
-    }
-    // get all keys for each keyset where keysetLocal != keyset and add them to the keysLocal
-    const isValidHexId = (id: string) => typeof id === 'string' && /^[0-9a-fA-F]+$/.test(id) && id.length % 2 === 0;
-    const safeKeysets = keysets.filter(ks => isValidHexId(ks.id));
-    const keys = await Promise.all(safeKeysets.map(async (keyset) => {
-      // Use the appropriate wallet based on which keyset list contains this keyset.id
-      const isInWalletKeysets = walletKeysets.some(k => k.id === keyset.id);
-      const walletToUse = isInWalletKeysets ? wallet : msatWallet;
-      return { [keyset.id]: await walletToUse.getKeys(keyset.id) };
-    }));
-    keysLocal = keysLocal.concat(keys);
-    return { keys: keysLocal };
-  } else {
-    return { keys: keysLocal };
   }
 }
 

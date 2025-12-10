@@ -1,4 +1,4 @@
-import { CashuMint, CashuWallet, GetInfoResponse, MintKeyset, MintKeys } from '@cashu/cashu-ts';
+import { Mint as CashuMint, Wallet, GetInfoResponse, MintKeyset, MintKeys } from '@cashu/cashu-ts';
 import { Mint } from '../domain/Mint';
 import { normalizeMintUrl } from '../utils/formatting';
 
@@ -10,52 +10,44 @@ export class MintService {
   /**
    * Activate a mint by fetching its info and keysets
    */
-  async activateMint(mintUrl: string): Promise<{ mintInfo: GetInfoResponse; keysets: MintKeyset[] }> {
+  async activateMint(mintUrl: string): Promise<{ mintInfo: GetInfoResponse; keysets: MintKeyset[]; keys: Record<string, MintKeys>[]  }> {
     const normalizedUrl = normalizeMintUrl(mintUrl);
     const mint = new CashuMint(normalizedUrl);
-    const wallet = new CashuWallet(mint);
-    const msatWallet = new CashuWallet(mint, { unit: 'msat' });
+    const keysets = await mint.getKeySets();
+    const activeKeysets = keysets.keysets.filter(k => k.active);
+    const units = [...new Set(activeKeysets.map(k => k.unit))];
+
+    // Create wallets for all unique units
+    const wallets = await Promise.all(
+      units.map(async (unit) => {
+        const wallet = new Wallet(mint, unit === 'sat' ? {} : { unit });
+        await wallet.loadMint();
+        return { unit, wallet };
+      })
+    );
     
-    const mintInfo = await wallet.getMintInfo();
-    const walletKeysets = await wallet.getKeySets();
-    const msatKeysets = await msatWallet.getKeySets();
-    const allKeysets = Array.from(new Set([...walletKeysets, ...msatKeysets]));
+    // Get mint info from the first wallet
+    const mintInfo = wallets[0].wallet.getMintInfo();
+    
+    // Collect all keysets from all wallets
+    const allKeysets = wallets.map(({ wallet }) => wallet.keyChain.getKeyset());
     
     // Some mints or clients may return malformed keyset ids. Filter to valid hex ids to avoid downstream fromHex errors.
     const isValidHexId = (id: string) => typeof id === 'string' && /^[0-9a-fA-F]+$/.test(id) && id.length % 2 === 0;
-    const filteredKeysets = allKeysets.filter(ks => isValidHexId(ks.id));
-    
-    return { mintInfo, keysets: filteredKeysets };
-  }
+    const filteredKeysets = allKeysets.filter(ks => isValidHexId(ks.id) && ks.active);
 
-  /**
-   * Update mint keys for given keysets
-   */
-  async updateMintKeys(
-    mintUrl: string,
-    keysets: MintKeyset[]
-  ): Promise<{ keys: Record<string, MintKeys>[] }> {
-    const normalizedUrl = normalizeMintUrl(mintUrl);
-    const mint = new CashuMint(normalizedUrl);
-    const wallet = new CashuWallet(mint);
-    const msatWallet = new CashuWallet(mint, { unit: 'msat' });
-    
-    const walletKeysets = await wallet.getKeySets();
-    const msatKeysets = await msatWallet.getKeySets();
-
-    const isValidHexId = (id: string) => typeof id === 'string' && /^[0-9a-fA-F]+$/.test(id) && id.length % 2 === 0;
-    const safeKeysets = keysets.filter(ks => isValidHexId(ks.id));
-    
+    // Use wallets to fetch keys for each keyset
     const keys = await Promise.all(
-      safeKeysets.map(async (keyset) => {
-        // Use the appropriate wallet based on which keyset list contains this keyset.id
-        const isInWalletKeysets = walletKeysets.some(k => k.id === keyset.id);
-        const walletToUse = isInWalletKeysets ? wallet : msatWallet;
-        return { [keyset.id]: await walletToUse.getKeys(keyset.id) };
+      filteredKeysets.map(async (keyset) => {
+        // Find the wallet that matches this keyset's unit
+        const walletEntry = wallets.find(({ wallet }) => wallet.keyChain.getKeyset().id === keyset.id);
+        const walletToUse = walletEntry?.wallet || wallets[0].wallet;
+        return { [keyset.id]: walletToUse.keyChain.getKeyset(keyset.id) };
       })
     );
-
-    return { keys };
+    
+    return { mintInfo, keysets: filteredKeysets, keys: keys
+     };
   }
 
   /**
