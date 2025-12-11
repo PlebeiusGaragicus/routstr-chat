@@ -255,7 +255,7 @@ export function useCashuToken() {
   const ensureMintInitialized = async (mintUrl: string) => {
     const normalizedMintUrl = normalizeMintUrl(mintUrl);
     const existingMint = cashuStore.mints.find((mint) => mint.url === normalizedMintUrl);
-    const needsActivation = !existingMint || !existingMint.mintInfo || !existingMint.keysets?.length || !existingMint.keys?.length;
+    const needsActivation = !existingMint || !existingMint.mintInfo || !existingMint.keysets?.length || !existingMint.keys?.length || !existingMint.keysets[0].id;
 
 
     if (!existingMint) {
