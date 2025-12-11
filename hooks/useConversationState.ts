@@ -41,6 +41,7 @@ export interface UseConversationStateReturn {
   saveConversationById: (conversationId: string, newMessages: Message[]) => void;
   appendMessageToConversation: (conversationId: string, message: Message) => void;
   getActiveConversationId: () => string | null;
+  getLastNonSystemMessageEventId: (conversationId: string) => string;
   isSyncing: boolean;
   currentPns: PnsKeys | null;
   createAndStoreChatEvent: (
@@ -312,7 +313,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       // Create new conversation if it doesn't exist
       conversation = {
         id: conversationId,
-        title: 'New Chat',
+        title: 'New Conversation',
         messages: [],
       };
       conversationsMapRef.current.set(conversationId, conversation);
@@ -330,9 +331,6 @@ export const useConversationState = (): UseConversationStateReturn => {
     if (activeConversationIdRef.current === conversationId) {
       setMessages(conversation.messages);
     }
-    
-    // Save to storage
-    saveConversationToStorage(sortedConversations, conversationId, conversation.messages);
   }, []);
 
   const createAndStoreChatEvent = useCallback(async (
@@ -370,6 +368,27 @@ export const useConversationState = (): UseConversationStateReturn => {
     return null;
   }, [publishMessage, currentPnsKeys, appendMessageToConversation, triggerProcessStored1081Events]);
 
+  const getLastNonSystemMessageEventId = useCallback((conversationId: string): string => {
+    // Create a string of 64 zeros (empty Nostr event ID)
+    const emptyEventId = '0'.repeat(64);
+    
+    // Get the conversation from the ref map
+    const conversation = conversationsMapRef.current.get(conversationId);
+    if (!conversation || conversation.messages.length === 0) {
+      return emptyEventId;
+    }
+    
+    // Iterate backwards to find the last non-system message
+    for (let i = conversation.messages.length - 1; i >= 0; i--) {
+      if (conversation.messages[i].role !== 'system') {
+        return conversation.messages[i]._eventId || emptyEventId;
+      }
+    }
+    
+    // If no non-system messages found, return empty Nostr event
+    return emptyEventId;
+  }, []);
+
   return {
     conversations,
     activeConversationId,
@@ -394,6 +413,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     },
     appendMessageToConversation,
     getActiveConversationId: () => loadActiveConversationId(),
+    getLastNonSystemMessageEventId,
     conversationsLoaded,
     isSyncing,
     currentPns: currentPnsKeys,

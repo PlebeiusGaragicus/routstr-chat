@@ -5,9 +5,6 @@ import { fetchAIResponse } from '@/utils/apiUtils';
 import { getPendingCashuTokenAmount } from '@/utils/cashuUtils';
 import { useCashuWithXYZ } from './useCashuWithXYZ';
 import { DEFAULT_MINT_URL } from '@/lib/utils';
-import { getLastNonSystemMessageEventId } from '@/utils/conversationUtils';
-import { useChatSync } from './useChatSync';
-import { useAppContext } from './useAppContext';
 import { useConversationState } from './useConversationState';
 
 export interface UseChatActionsReturn {
@@ -114,7 +111,7 @@ export const useChatActions = (): UseChatActionsReturn => {
 
   // Autoscroll moved to ChatMessages to honor user scroll position
 
-  const { createAndStoreChatEvent } = useConversationState();
+  const { createAndStoreChatEvent, getLastNonSystemMessageEventId } = useConversationState();
 
   const sendMessage = useCallback(async (
     messages: Message[],
@@ -166,7 +163,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       originConversationId,
       getActiveConversationId
     );
-  }, [inputMessage, uploadedAttachments]);
+  }, [inputMessage, uploadedAttachments, getLastNonSystemMessageEventId, createAndStoreChatEvent]);
 
   const saveInlineEdit = useCallback(async (
     editingMessageIndex: number | null,
@@ -360,7 +357,7 @@ export const useChatActions = (): UseChatActionsReturn => {
         setThinkingContentByConversation(prev => ({ ...prev, [originConversationId]: '' }));
       }
     }
-  }, [usingNip60, balance, spendCashu, storeCashu, transactionHistory, setPendingCashuAmountState]);
+  }, [usingNip60, balance, spendCashu, storeCashu, transactionHistory, setPendingCashuAmountState, getLastNonSystemMessageEventId, createAndStoreChatEvent, cashuStore.activeMintUrl, setBalance, setTransactionHistory]);
 
   return {
     inputMessage,

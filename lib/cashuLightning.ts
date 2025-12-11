@@ -207,7 +207,7 @@ export async function payMeltQuote(mintUrl: string, quoteId: string, proofs: Pro
       // First, try wallet.send()
       console.log('Attempting wallet.send() for melt quote');
       const result = await wallet.send(amountToSend, proofs, {
-        includeFees: true, privkey: useCashuStore.getState().privkey
+        includeFees: true, 
       });
       keep = result.keep;
       send = result.send;
@@ -249,7 +249,7 @@ export async function payMeltQuote(mintUrl: string, quoteId: string, proofs: Pro
           keep = proofs.filter(p => !keep.includes(p));
         } else {
           console.log('rdlogs: Cannot make exact change on retry, using wallet.send()');
-          const result = await wallet.send(amountToSend, proofs, { includeFees: true, privkey: useCashuStore.getState().privkey });
+          const result = await wallet.send(amountToSend, proofs, { includeFees: true });
           keep = result.keep;
           send = result.send;
         }

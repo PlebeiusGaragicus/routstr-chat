@@ -112,13 +112,13 @@ export function useCashuToken() {
       const keysets = await mint.getKeySets();
       
       // Get preferred unit: msat over sat if both are active
-      const activeKeysets = keysets.keysets.filter(k => k.active);
+      const activeKeysets = keysets.keysets.filter(k => (k as any)._active);
       let preferredUnit = 'not supported';
       if (unit) {
         preferredUnit = unit as 'sat' | 'msat';
       }
       else {
-        const units = [...new Set(activeKeysets.map(k => k.unit))];
+        const units = [...new Set(activeKeysets.map(k => (k as any)._unit))];
         preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported') as 'sat' | 'msat';
       }
       
@@ -336,15 +336,17 @@ export function useCashuToken() {
 
       // if we don't have the mintUrl yet, add it
       const normalizedMintUrl = await addMintIfNotExists(mintUrl);
+      const mintDetails = cashuStore.getMint(normalizedMintUrl);
 
       // Setup wallet for receiving
       const mint = new Mint(normalizedMintUrl);
-      const keysets = await mint.getKeySets();
-      
-      // Get preferred unit: msat over sat if both are active
-      const activeKeysets = keysets.keysets.filter(k => k.active);
-      const units = [...new Set(activeKeysets.map(k => k.unit))];
-      const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
+      const keysets = mintDetails?.keysets;
+
+      const activeKeysets = keysets?.filter(k => (k as any)._active);
+      const units = [...new Set(activeKeysets?.map(k => (k as any)._unit))];
+      const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
+
+      console.log(activeKeysets, units, preferredUnit)
       
       const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined });
 
@@ -404,17 +406,21 @@ export function useCashuToken() {
       
       // Get preferred unit: msat over sat if both are active
       let keysets = mintDetails?.keysets;
-      if (!keysets) {
-        console.log('rdlogs: clean spengn= FETCHING', normalizedMintUrl); 
-        keysets = (await mint.getKeySets()).keysets;
-      }
-      const activeKeysets = keysets?.filter(k => k.active);
-      const units = [...new Set(activeKeysets?.map(k => k.unit))];
+
+      const activeKeysets = keysets?.filter(k => (k as any)._active);
+      const units = [...new Set(activeKeysets?.map(k => (k as any)._unit))];
       const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
-      
+
       const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined, keysets: keysets, mintInfo: mintDetails?.mintInfo });
 
+      try {
+
       await wallet.loadMint();
+      }
+      catch(err) {
+        console.log(activeKeysets, units)
+        console.log(mintUrl, keysets, preferredUnit);
+      }
 
       const proofs = await cashuStore.getMintProofs(normalizedMintUrl);
 

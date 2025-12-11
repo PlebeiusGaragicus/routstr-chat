@@ -91,6 +91,7 @@ export default function ChatMessages({
       currentDepth++;
       currentLevel = nextLevel;
     }
+    // console.log(groups);
 
     return groups;
   }, [messages]);

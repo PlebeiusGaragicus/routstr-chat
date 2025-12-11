@@ -346,34 +346,3 @@ export const saveEventIdInStorage = (
 };
 
 
-// Find the last non-system message and get its _eventId from the active conversation in storage
-export const getLastNonSystemMessageEventId = (originConversationId: string): string => {
-  // Create a string of 64 zeros (empty Nostr event ID)
-  const emptyEventId = '0'.repeat(64);
-  
-  // Load the active conversation ID from storage
-  const activeConversationId = loadActiveConversationId();
-  if (!activeConversationId) {
-    return emptyEventId;
-  }
-  
-  // Load all conversations from storage
-  const conversations = loadConversationsFromStorage();
-  
-  // Find the active conversation
-  const currentConversation = findConversationById(conversations, originConversationId);
-  if (!currentConversation || currentConversation.messages.length === 0) {
-    return emptyEventId;
-  }
-  
-  // Iterate backwards to find the last non-system message
-  for (let i = currentConversation.messages.length - 1; i >= 0; i--) {
-    if (currentConversation.messages[i].role !== 'system') {
-      return currentConversation.messages[i]._eventId || emptyEventId;
-    }
-  }
-  
-  // If no non-system messages found, return empty Nostr event
-  return emptyEventId;
-};
-    
