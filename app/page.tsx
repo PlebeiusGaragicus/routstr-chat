@@ -121,7 +121,7 @@ function ChatPageContent() {
       return;
     }
 
-    const fallbackConversation = conversations[conversations.length - 1];
+    const fallbackConversation = conversations[0];
     if (fallbackConversation) {
       loadConversation(fallbackConversation.id);
     }

@@ -199,7 +199,6 @@ export function addMessageToConversation(
     // Add new message
     updatedMessages = [...conversation.messages, message];
   }
-
   // Sort messages by _prevId chain if requested
   if (options.sortMessages) {
     updatedMessages = sortMessagesByPrevIdChain(updatedMessages);
@@ -209,35 +208,6 @@ export function addMessageToConversation(
     ...conversation,
     messages: updatedMessages,
   };
-}
-
-/**
- * Determines if a message should trigger a title update
- * @param message The message to check
- * @param conversation The conversation it belongs to
- * @returns True if title should be updated
- */
-export function shouldUpdateTitle(
-  message: Message,
-  conversation: Conversation
-): boolean {
-  // Don't update if there are no messages yet
-  if (conversation.messages.length === 0) {
-    return false;
-  }
-
-  // Find the earliest message timestamp
-  const earliestMessage = conversation.messages.reduce((earliest, msg) => {
-    const msgTime = msg._createdAt || Infinity;
-    const earlyTime = earliest._createdAt || Infinity;
-    return msgTime < earlyTime ? msg : earliest;
-  }, conversation.messages[0]);
-
-  const earliestTime = earliestMessage._createdAt || Infinity;
-  const messageTime = message._createdAt || Infinity;
-
-  // Update title if this message is earlier than the current earliest
-  return messageTime <= earliestTime;
 }
 
 /**
@@ -269,22 +239,21 @@ export function generateTitleFromMessage(
 }
 
 /**
- * Updates conversation title if the message is the earliest
- * @param conversation The conversation to potentially update
- * @param message The new message
- * @returns Conversation with updated title if applicable
+ * Updates conversation title from the first message
+ * @param conversation The conversation to update
+ * @returns Conversation with updated title
  */
 export function updateConversationTitle(
-  conversation: Conversation,
-  message: Message
+  conversation: Conversation
 ): Conversation {
-  // Only update if this is the earliest message
-  if (!shouldUpdateTitle(message, conversation)) {
+  // Messages are already sorted, use the first one
+  if (conversation.messages.length === 0) {
     return conversation;
   }
 
-  const newTitle = generateTitleFromMessage(message);
-
+  const firstMessage = conversation.messages[0];
+  const newTitle = generateTitleFromMessage(firstMessage);
+  
   return {
     ...conversation,
     title: newTitle,
@@ -337,8 +306,8 @@ export function processInnerEvent(
     // Add message to existing conversation
     conversation = addMessageToConversation(conversation, message);
     
-    // Update title if this is the earliest message
-    conversation = updateConversationTitle(conversation, message);
+    // Update title from the first message
+    conversation = updateConversationTitle(conversation);
   }
 
   conversationsMap.set(metadata.conversationId, conversation);

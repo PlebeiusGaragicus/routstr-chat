@@ -81,19 +81,6 @@ export const useConversationState = (): UseConversationStateReturn => {
     triggerProcessStored1081Events();
   }, [triggerDerivedPnsSync, triggerProcessStored1081Events]);
 
-  // Load conversations and active conversation ID from storage on mount
-  useEffect(() => {
-    const loadedConversations = loadConversationsFromStorage();
-    setConversations(loadedConversations);
-    
-    // Initialize map with loaded conversations
-    loadedConversations.forEach(c => {
-      conversationsMapRef.current.set(c.id, c);
-    });
-    
-    setConversationsLoaded(true);
-  }, []);
-
   // Migrate existing conversations when PNS keys are available
   useEffect(() => {
     const performMigration = async () => {
@@ -169,6 +156,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     if (hasNewEvents) {
       const updatedConversations = Array.from(conversationsMapRef.current.values());
       const sortedConversations = sortConversationsByRecentActivity(updatedConversations);
+      console.log('gm', sortedConversations);
       setConversations(sortedConversations);
 
       // Update messages for active conversation
@@ -180,6 +168,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         }
       }
     }
+    setConversationsLoaded(true);
   }, [syncedEvents, currentPnsKeys, loading1081]);
 
   // Set editing content when editing message index changes

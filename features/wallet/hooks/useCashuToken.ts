@@ -13,6 +13,9 @@ import { hexToBytes } from '@noble/hashes/utils';
 let recoveryInitiated = false;
 let recoveryPromise: Promise<void> | null = null;
 
+// Global map to track active cleanSpentProofs operations per mint
+const activeCleanupPromises = new Map<string, Promise<Proof[]>>();
+
 export function useCashuToken() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -396,56 +399,74 @@ export function useCashuToken() {
   };
 
   const cleanSpentProofs = async (mintUrl: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const normalizedMintUrl = await addMintIfNotExists(mintUrl);
-      const mintDetails = cashuStore.getMint(normalizedMintUrl);
-      const mint = new Mint(normalizedMintUrl);
-      
-      // Get preferred unit: msat over sat if both are active
-      let keysets = mintDetails?.keysets;
-
-      const activeKeysets = keysets?.filter(k => (k as any)._active);
-      const units = [...new Set(activeKeysets?.map(k => (k as any)._unit))];
-      const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
-
-      const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined, keysets: keysets, mintInfo: mintDetails?.mintInfo });
+    // Normalize the mint URL first to ensure consistent cache keys
+    const normalizedMintUrl = mintUrl.replace(/\/+$/, '');
+    
+    // If there's already an active cleanup for this mint, return that promise
+    const existingPromise = activeCleanupPromises.get(normalizedMintUrl);
+    if (existingPromise) {
+      return existingPromise;
+    }
+    
+    // Create a new cleanup promise
+    const cleanupPromise = (async () => {
+      setIsLoading(true);
+      setError(null);
 
       try {
+        const finalMintUrl = await addMintIfNotExists(normalizedMintUrl);
+        const mintDetails = cashuStore.getMint(finalMintUrl);
+        const mint = new Mint(finalMintUrl);
+        
+        // Get preferred unit: msat over sat if both are active
+        let keysets = mintDetails?.keysets;
 
-      await wallet.loadMint();
+        const activeKeysets = keysets?.filter(k => (k as any)._active);
+        const units = [...new Set(activeKeysets?.map(k => (k as any)._unit))];
+        const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
+
+        const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined, keysets: keysets, mintInfo: mintDetails?.mintInfo });
+
+        try {
+          await wallet.loadMint();
+        }
+        catch(err) {
+          console.log(activeKeysets, units)
+          console.log(finalMintUrl, keysets, preferredUnit);
+        }
+
+        const proofs = await cashuStore.getMintProofs(finalMintUrl);
+
+        const proofStates = await wallet.checkProofsStates(proofs);
+        const spentProofsStates = proofStates.filter(
+          (p) => p.state == CheckStateEnum.SPENT
+        );
+        const enc = new TextEncoder();
+        const spentProofs = proofs.filter((p) =>
+          spentProofsStates.find(
+            (s) => s.Y == hashToCurve(enc.encode(p.secret)).toHex(true)
+          )
+        );
+        // console.log('rdlogs pd', spentProofs)
+
+        await updateProofs({ mintUrl: finalMintUrl, proofsToAdd: [], proofsToRemove: spentProofs });
+
+        return spentProofs;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setError(`Failed to clean spent proofs: ${message}`);
+        throw error;
+      } finally {
+        setIsLoading(false);
+        // Remove from active cleanups when done
+        activeCleanupPromises.delete(normalizedMintUrl);
       }
-      catch(err) {
-        console.log(activeKeysets, units)
-        console.log(mintUrl, keysets, preferredUnit);
-      }
-
-      const proofs = await cashuStore.getMintProofs(normalizedMintUrl);
-
-      const proofStates = await wallet.checkProofsStates(proofs);
-      const spentProofsStates = proofStates.filter(
-        (p) => p.state == CheckStateEnum.SPENT
-      );
-      const enc = new TextEncoder();
-      const spentProofs = proofs.filter((p) =>
-        spentProofsStates.find(
-          (s) => s.Y == hashToCurve(enc.encode(p.secret)).toHex(true)
-        )
-      );
-      // console.log('rdlogs pd', spentProofs)
-
-      await updateProofs({ mintUrl: normalizedMintUrl, proofsToAdd: [], proofsToRemove: spentProofs });
-
-      return spentProofs;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setError(`Failed to clean spent proofs: ${message}`);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    })();
+    
+    // Store the promise in the map
+    activeCleanupPromises.set(normalizedMintUrl, cleanupPromise);
+    
+    return cleanupPromise;
   }
 
   /**
