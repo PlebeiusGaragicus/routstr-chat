@@ -156,6 +156,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     if (hasNewEvents) {
       const updatedConversations = Array.from(conversationsMapRef.current.values());
       const sortedConversations = sortConversationsByRecentActivity(updatedConversations);
+      console.log('gm', sortedConversations);
       setConversations(sortedConversations);
 
       // Update messages for active conversation

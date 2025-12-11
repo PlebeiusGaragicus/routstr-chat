@@ -175,6 +175,7 @@ export async function payMeltQuote(mintUrl: string, quoteId: string, proofs: Pro
   try {
     const mint = new Mint(mintUrl);
     const keysets = await mint.getKeySets();
+    const mintDetails = useCashuStore.getState().getMint(mintUrl);
     
     // Get preferred unit: msat over sat if both are active
     const activeKeysets = keysets.keysets.filter(k => k.active);

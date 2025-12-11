@@ -107,6 +107,74 @@ export const createMultimodalMessage = (
 };
 
 /**
+ * Strips image and file data from a single message for storage optimization.
+ * Removes base64 data URLs while preserving storageIds for later retrieval.
+ * If no storageId exists, replaces media content with placeholder text.
+ * @param msg The message to process
+ * @returns Message with image/file data removed but structure preserved
+ */
+export const stripImageDataFromSingleMessage = (msg: Message): Message => {
+  if (Array.isArray(msg.content)) {
+    // Check if we have storageIds for all media
+    const mediaItems = msg.content.filter(
+      (item) => item.type === "image_url" || item.type === "file"
+    );
+    const allHaveStorage = mediaItems.every(
+      (item) =>
+        (item.type === "image_url" && item.image_url?.storageId) ||
+        (item.type === "file" && item.file?.storageId)
+    );
+
+    if (allHaveStorage) {
+      // If we have storage IDs, we can safely remove the base64 dataUrl to save space
+      // but keep the message structure with storageId
+      return {
+        ...msg,
+        content: msg.content.map((item) => {
+          if (item.type === "image_url" && item.image_url?.storageId) {
+            return {
+              ...item,
+              image_url: {
+                ...item.image_url,
+                url: "", // Clear base64, keep storageId
+              },
+            };
+          }
+          if (item.type === "file" && item.file?.storageId) {
+            return {
+              ...item,
+              file: {
+                ...item.file,
+                url: "", // Clear base64, keep storageId
+              },
+            };
+          }
+          return item;
+        }),
+      };
+    }
+
+    const textContent = msg.content.filter(
+      (item) => item.type === "text" && !item.hidden
+    );
+    if (textContent.length === 0) {
+      const hasMedia = msg.content.some(
+        (item) => item.type === "image_url" || item.type === "file"
+      );
+      if (hasMedia) {
+        return {
+          ...msg,
+          content: "[Attachment(s) not saved to local storage]",
+        };
+      }
+      return { ...msg, content: "[Content removed]" };
+    }
+    return { ...msg, content: textContent };
+  }
+  return msg;
+};
+
+/**
  * Strips image and file data from messages for storage optimization.
  * Removes base64 data URLs while preserving storageIds for later retrieval.
  * If no storageId exists, replaces media content with placeholder text.
@@ -114,66 +182,7 @@ export const createMultimodalMessage = (
  * @returns Array of messages with image/file data removed but structure preserved
  */
 export const stripImageDataFromMessages = (messages: Message[]): Message[] => {
-  return messages.map((msg) => {
-    if (Array.isArray(msg.content)) {
-      // Check if we have storageIds for all media
-      const mediaItems = msg.content.filter(
-        (item) => item.type === "image_url" || item.type === "file"
-      );
-      const allHaveStorage = mediaItems.every(
-        (item) =>
-          (item.type === "image_url" && item.image_url?.storageId) ||
-          (item.type === "file" && item.file?.storageId)
-      );
-
-      if (allHaveStorage) {
-        // If we have storage IDs, we can safely remove the base64 dataUrl to save space
-        // but keep the message structure with storageId
-        return {
-          ...msg,
-          content: msg.content.map((item) => {
-            if (item.type === "image_url" && item.image_url?.storageId) {
-              return {
-                ...item,
-                image_url: {
-                  ...item.image_url,
-                  url: "", // Clear base64, keep storageId
-                },
-              };
-            }
-            if (item.type === "file" && item.file?.storageId) {
-              return {
-                ...item,
-                file: {
-                  ...item.file,
-                  url: "", // Clear base64, keep storageId
-                },
-              };
-            }
-            return item;
-          }),
-        };
-      }
-
-      const textContent = msg.content.filter(
-        (item) => item.type === "text" && !item.hidden
-      );
-      if (textContent.length === 0) {
-        const hasMedia = msg.content.some(
-          (item) => item.type === "image_url" || item.type === "file"
-        );
-        if (hasMedia) {
-          return {
-            ...msg,
-            content: "[Attachment(s) not saved to local storage]",
-          };
-        }
-        return { ...msg, content: "[Content removed]" };
-      }
-      return { ...msg, content: textContent };
-    }
-    return msg;
-  });
+  return messages.map(stripImageDataFromSingleMessage);
 };
 
 /**

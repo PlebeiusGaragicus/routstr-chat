@@ -183,8 +183,8 @@ export const useChatActions = (): UseChatActionsReturn => {
     // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
     createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
 
-      setInputMessage("");
-      setUploadedAttachments([]);
+    setInputMessage("");
+    setUploadedAttachments([]);
 
     await performAIRequest(
       updatedMessages,

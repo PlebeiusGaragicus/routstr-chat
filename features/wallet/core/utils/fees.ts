@@ -1,5 +1,5 @@
 import { Proof } from '../domain/Proof';
-import { Keyset } from '@cashu/cashu-ts';
+import { Keyset, MintKeyset } from '@cashu/cashu-ts';
 
 /**
  * Calculate fees for proofs using the Python reference implementation
@@ -7,7 +7,7 @@ import { Keyset } from '@cashu/cashu-ts';
  * @param activeKeysets The active keysets from the mint
  * @returns The calculated fees in satoshis
  */
-export function calculateFees(inputProofs: Proof[], activeKeysets: Keyset[]): number {
+export function calculateFees(inputProofs: Proof[], activeKeysets: MintKeyset[]): number {
   let sumFees = 0;
   
   for (const proof of inputProofs) {
@@ -25,7 +25,7 @@ export function calculateFees(inputProofs: Proof[], activeKeysets: Keyset[]): nu
  */
 export function calculateAverageFeePerProof(
   proofs: Proof[],
-  activeKeysets: Keyset[]
+  activeKeysets: MintKeyset[]
 ): number {
   const totalFee = calculateFees(proofs, activeKeysets);
   return proofs.length > 0 ? totalFee / proofs.length : 0;
