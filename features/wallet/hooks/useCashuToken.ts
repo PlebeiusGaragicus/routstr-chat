@@ -112,16 +112,20 @@ export function useCashuToken() {
     setError(null);
     try {
       const mint = new Mint(mintUrl);
-      const keysets = await mint.getKeySets();
+      const normalizedMintUrl = await addMintIfNotExists(mintUrl);
+      const mintDetails = cashuStore.getMint(normalizedMintUrl)
+      const keysets = mintDetails?.keysets;
       
       // Get preferred unit: msat over sat if both are active
-      const activeKeysets = keysets.keysets.filter(k => (k as any)._active);
+      const activeKeysets = keysets?.filter(k => k.active);
+      if (!activeKeysets)
+        throw new Error('No active keysets found for mint: ' + mintUrl)
       let preferredUnit = 'not supported';
       if (unit) {
         preferredUnit = unit as 'sat' | 'msat';
       }
       else {
-        const units = [...new Set(activeKeysets.map(k => (k as any)._unit))];
+        const units = [...new Set(activeKeysets.map(k => k.unit))];
         preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported') as 'sat' | 'msat';
       }
       
@@ -131,7 +135,7 @@ export function useCashuToken() {
       await wallet.loadMint();
 
       // Get all proofs from store
-      let proofs = await cashuStore.getMintProofs(mintUrl);
+      let proofs = await cashuStore.getMintProofs(normalizedMintUrl);
       
       const proofsAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
       const denominationCounts = proofs.reduce((acc, p) => {
@@ -142,7 +146,7 @@ export function useCashuToken() {
       amount = preferredUnit == 'msat' ? amount * 1000 : amount;
       console.log('amount being sent', amount);
       if (proofsAmount < amount) {
-        throw new Error(`Not enough funds on mint ${mintUrl}`);
+        throw new Error(`Not enough funds on mint ${normalizedMintUrl}`);
       }
 
       let proofsToKeep: Proof[], proofsToSend: Proof[];
@@ -158,19 +162,19 @@ export function useCashuToken() {
           console.log('rdlogs: wallet.send() failed with insufficient funds, trying exact change with tolerance');
           
           // Clean spent proofs
-          await cleanSpentProofs(mintUrl);
+          await cleanSpentProofs(normalizedMintUrl);
 
           // Get fresh proofs after cleanup
-          proofs = await cashuStore.getMintProofs(mintUrl);
+          proofs = await cashuStore.getMintProofs(normalizedMintUrl);
           
           // Check if we still have enough funds after cleanup
           const newProofsAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
           if (newProofsAmount < amount) {
-            throw new Error(`Not enough funds on mint ${mintUrl} after cleaning spent proofs`);
+            throw new Error(`Not enough funds on mint ${normalizedMintUrl} after cleaning spent proofs`);
           }
 
           try {          
-            const result = selectProofsAdvanced(amount, proofs, activeKeysets, mintUrl);
+            const result = selectProofsAdvanced(amount, proofs, activeKeysets, normalizedMintUrl);
             // Use advanced proof selection with tolerance fallback
             proofsToKeep = result.proofsToKeep;
             proofsToSend = result.proofsToSend;
@@ -182,7 +186,7 @@ export function useCashuToken() {
               proofsToSend = result.send;
             } catch (error2) {
               const message = error2 instanceof Error ? error2.message : String(error2);
-              throw new Error(`Having issues with the mint ${mintUrl}, please refresh your app try again. `);
+              throw new Error(`Having issues with the mint ${normalizedMintUrl}, please refresh your app try again. `);
             }
           }
         } else {
@@ -194,7 +198,7 @@ export function useCashuToken() {
       // Store proofs temporarily before updating wallet state
       const pendingProofsKey = `pending_send_proofs_${Date.now()}`;
       localStorage.setItem(pendingProofsKey, JSON.stringify({
-        mintUrl,
+        normalizedMintUrl,
         proofsToSend: proofsToSend.map(p => ({
           id: p.id || '',
           amount: p.amount,
@@ -210,7 +214,7 @@ export function useCashuToken() {
       // Create new token for the proofs we're keeping
       if (proofsToKeep.length > 0) {
         // update proofs
-        await updateProofs({ mintUrl, proofsToAdd: proofsToKeep, proofsToRemove: [...proofsToSend, ...proofs] });
+        await updateProofs({ mintUrl: normalizedMintUrl, proofsToAdd: proofsToKeep, proofsToRemove: [...proofsToSend, ...proofs] });
 
         // Create history event
         await createHistory({
@@ -221,7 +225,7 @@ export function useCashuToken() {
       
       // Create encoded token from proofs
       const token = getEncodedTokenV4({
-        mint: mintUrl,
+        mint: normalizedMintUrl,
         proofs: proofsToSend.map((p) => ({
           id: p.id || "",
           amount: p.amount,
@@ -421,8 +425,8 @@ export function useCashuToken() {
         // Get preferred unit: msat over sat if both are active
         let keysets = mintDetails?.keysets;
 
-        const activeKeysets = keysets?.filter(k => (k as any)._active);
-        const units = [...new Set(activeKeysets?.map(k => (k as any)._unit))];
+        const activeKeysets = keysets?.filter(k => k.active);
+        const units = [...new Set(activeKeysets?.map(k => k.unit))];
         const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
 
         const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined, keysets: keysets, mintInfo: mintDetails?.mintInfo });
@@ -432,7 +436,7 @@ export function useCashuToken() {
         }
         catch(err) {
           console.log(activeKeysets, units)
-          console.log(finalMintUrl, keysets, preferredUnit);
+          console.log(err, finalMintUrl, keysets, preferredUnit);
         }
 
         const proofs = await cashuStore.getMintProofs(finalMintUrl);

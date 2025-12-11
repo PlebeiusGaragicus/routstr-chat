@@ -1,7 +1,7 @@
 // Types and utilities for Cashu wallet (NIP-60)
 
 import { useCashuStore } from "@/features/wallet/state/cashuStore";
-import { Mint, Proof, Wallet, GetInfoResponse, MintKeyset, MintKeys, getDecodedToken } from "@cashu/cashu-ts";
+import { Mint, Proof, Wallet, GetInfoResponse, Keyset, MintKeys, getDecodedToken, Keyset } from "@cashu/cashu-ts";
 
 export interface CashuProof {
   id: string;
@@ -281,7 +281,7 @@ function findExactCombination(
  * @param activeKeysets The active keysets from the mint
  * @returns The calculated fees in satoshis
  */
-export function calculateFees(inputProofs: Proof[], activeKeysets: MintKeyset[]): number {
+export function calculateFees(inputProofs: Proof[], activeKeysets: Keyset[]): number {
   let sumFees = 0;
   for (const proof of inputProofs) {
     const keyset = activeKeysets.find(k => k.id === proof.id);

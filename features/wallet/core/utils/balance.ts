@@ -1,5 +1,5 @@
 import { Proof } from '../domain/Proof';
-import { MintKeyset } from '@cashu/cashu-ts';
+import { Keyset } from '@cashu/cashu-ts';
 
 /**
  * Calculate total balance from an array of proofs
@@ -14,7 +14,7 @@ export function calculateProofsBalance(proofs: Proof[]): number {
  */
 export function calculateBalanceByMint(
   proofs: Proof[],
-  mints: Array<{ url: string; keysets?: MintKeyset[] }>
+  mints: Array<{ url: string; keysets?: Keyset[] }>
 ): { balances: Record<string, number>; units: Record<string, string> } {
   const balances: Record<string, number> = {};
   const units: Record<string, string> = {};

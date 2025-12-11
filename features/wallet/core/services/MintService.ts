@@ -1,4 +1,4 @@
-import { Mint as CashuMint, Wallet, GetInfoResponse, MintKeyset, MintKeys } from '@cashu/cashu-ts';
+import { Mint as CashuMint, Wallet, GetInfoResponse, Keyset, MintKeys } from '@cashu/cashu-ts';
 import { Mint } from '../domain/Mint';
 import { normalizeMintUrl } from '../utils/formatting';
 
@@ -10,7 +10,7 @@ export class MintService {
   /**
    * Activate a mint by fetching its info and keysets
    */
-  async activateMint(mintUrl: string): Promise<{ mintInfo: GetInfoResponse; keysets: MintKeyset[]; keys: Record<string, MintKeys>[]  }> {
+  async activateMint(mintUrl: string): Promise<{ mintInfo: GetInfoResponse; keysets: Keyset[]; keys: Record<string, MintKeys>[]  }> {
     try {
       const normalizedUrl = normalizeMintUrl(mintUrl);
       const mint = new CashuMint(normalizedUrl);
@@ -36,6 +36,7 @@ export class MintService {
       // Some mints or clients may return malformed keyset ids. Filter to valid hex ids to avoid downstream fromHex errors.
       const isValidHexId = (id: string) => typeof id === 'string' && /^[0-9a-fA-F]+$/.test(id) && id.length % 2 === 0;
       const filteredKeysets = allKeysets.filter(ks => isValidHexId(ks.id) && ks.active);
+      console.log(filteredKeysets, filteredKeysets[0].id);
 
       // Use wallets to fetch keys for each keyset
       const keys = await Promise.all(

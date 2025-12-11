@@ -1,4 +1,4 @@
-import { GetInfoResponse, MintKeyset, MintKeys, MintQuoteState as CashuMintQuoteState, MeltQuoteState as CashuMeltQuoteState } from '@cashu/cashu-ts';
+import { GetInfoResponse, MintKeys, MintQuoteState as CashuMintQuoteState, MeltQuoteState as CashuMeltQuoteState, Keyset } from '@cashu/cashu-ts';
 
 /**
  * Mint Domain Model
@@ -10,7 +10,7 @@ export interface Mint {
   /** Mint information from /info endpoint */
   info?: GetInfoResponse;
   /** Active keysets for this mint */
-  keysets?: MintKeyset[];
+  keysets?: Keyset[];
   /** Keys for each keyset */
   keys?: Record<string, MintKeys>[];
   /** Whether this mint is currently active/selected */

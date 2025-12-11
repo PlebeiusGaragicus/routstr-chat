@@ -185,6 +185,8 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
           for (const m of list) {
             const existing = bestById.get(m.id);
             if (!existing) {
+              if (!m.sats_pricing) // filtering all models without sats pricing
+                continue
               bestById.set(m.id, { model: m, base });
               continue;
             }

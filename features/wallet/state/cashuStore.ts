@@ -1,7 +1,7 @@
 import { Keys, MeltQuoteResponse, MintQuoteResponse, type Proof } from '@cashu/cashu-ts'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { GetInfoResponse, MintKeyset, MintKeys } from '@cashu/cashu-ts'
+import { GetInfoResponse, Keyset, MintKeys } from '@cashu/cashu-ts'
 import { CashuToken } from '../core/domain/Token';
 
 interface ProofWithEventId extends Proof {
@@ -15,7 +15,7 @@ export interface Nip60TokenEvent {
 }
 
 interface CashuStore {
-  mints: { url: string, mintInfo?: GetInfoResponse, keysets?: MintKeyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number}[];
+  mints: { url: string, mintInfo?: GetInfoResponse, keysets?: Keyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number}[];
   proofs: ProofWithEventId[];
   privkey?: string;
   activeMintUrl?: string;
@@ -26,9 +26,9 @@ interface CashuStore {
   setUsingNip60: (usingNip60: boolean) => void;
   getUsingNip60: () => boolean;
   addMint: (url: string) => void;
-  getMint: (url: string) => { url: string, mintInfo?: GetInfoResponse, keysets?: MintKeyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number } | undefined;
+  getMint: (url: string) => { url: string, mintInfo?: GetInfoResponse, keysets?: Keyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number } | undefined;
   setMintInfo: (url: string, mintInfo: GetInfoResponse) => void;
-  setKeysets: (url: string, keysets: MintKeyset[]) => void;
+  setKeysets: (url: string, keysets: Keyset[]) => void;
   setKeys: (url: string, keys: Record<string, MintKeys>[]) => void;
   setLastUpdate: (url: string, lastUpdate: number) => void;
   getLastUpdate: (url: string) => number | undefined;

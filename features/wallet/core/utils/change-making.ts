@@ -1,5 +1,5 @@
 import { Proof } from '../domain/Proof';
-import { Wallet, MintKeyset } from '@cashu/cashu-ts';
+import { Wallet, Keyset } from '@cashu/cashu-ts';
 import { calculateFees } from './fees';
 
 /**
@@ -204,7 +204,7 @@ function findExactCombination(
 export function selectProofsAdvanced(
   amount: number,
   proofs: Proof[],
-  activeKeysets: MintKeyset[],
+  activeKeysets: Keyset[],
   mintUrl: string
 ): { proofsToSend: Proof[]; proofsToKeep: Proof[]; actualAmount?: number; overpayment?: number; overpaymentPercent?: number } {
   // Check if we have enough funds
