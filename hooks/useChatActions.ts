@@ -55,10 +55,6 @@ export interface UseChatActionsReturn {
     baseUrl: string,
     isAuthenticated: boolean,
     setIsLoginModalOpen: (open: boolean) => void,
-    saveConversationById: (
-      conversationId: string,
-      newMessages: Message[]
-    ) => void,
     getActiveConversationId: () => string | null
   ) => Promise<void>;
   saveInlineEdit: (
@@ -71,10 +67,6 @@ export interface UseChatActionsReturn {
     selectedModel: any,
     baseUrl: string,
     activeConversationId: string | null,
-    saveConversationById: (
-      conversationId: string,
-      newMessages: Message[]
-    ) => void,
     getActiveConversationId: () => string | null
   ) => Promise<void>;
   retryMessage: (
@@ -84,10 +76,6 @@ export interface UseChatActionsReturn {
     selectedModel: any,
     baseUrl: string,
     activeConversationId: string | null,
-    saveConversationById: (
-      conversationId: string,
-      newMessages: Message[]
-    ) => void,
     getActiveConversationId: () => string | null
   ) => void;
 }
@@ -165,10 +153,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       baseUrl: string,
       isAuthenticated: boolean,
       setIsLoginModalOpen: (open: boolean) => void,
-      saveConversationById: (
-        conversationId: string,
-        newMessages: Message[]
-      ) => void,
       getActiveConversationId: () => string | null
     ) => {
       if (!isAuthenticated) {
@@ -223,10 +207,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       selectedModel: any,
       baseUrl: string,
       activeConversationId: string | null,
-      saveConversationById: (
-        conversationId: string,
-        newMessages: Message[]
-      ) => void,
       getActiveConversationId: () => string | null
     ) => {
       if (editingMessageIndex !== null && editingContent.trim()) {
@@ -288,7 +268,7 @@ export const useChatActions = (): UseChatActionsReturn => {
           selectedModel,
           baseUrl,
           originConversationId,
-            getActiveConversationId
+          getActiveConversationId
         );
       }
     },
@@ -303,10 +283,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       selectedModel: any,
       baseUrl: string,
       activeConversationId: string | null,
-      saveConversationById: (
-        conversationId: string,
-        newMessages: Message[]
-      ) => void,
       getActiveConversationId: () => string | null
     ) => {
       const newMessages = messages.slice(0, index);
@@ -322,7 +298,6 @@ export const useChatActions = (): UseChatActionsReturn => {
         selectedModel,
         baseUrl,
         originConversationId,
-        saveConversationById,
         getActiveConversationId
       );
     },
@@ -336,10 +311,6 @@ export const useChatActions = (): UseChatActionsReturn => {
       selectedModel: any,
       baseUrl: string,
       originConversationId: string,
-      saveConversationById: (
-        conversationId: string,
-        newMessages: Message[]
-      ) => void,
       getActiveConversationId: () => string | null
     ) => {
       setIsLoading(true);
