@@ -14,10 +14,7 @@ import { getPendingCashuTokenAmount } from "@/utils/cashuUtils";
 import { useCashuWithXYZ } from "./useCashuWithXYZ";
 import { DEFAULT_MINT_URL } from "@/lib/utils";
 import { useConversationState } from "./useConversationState";
-import {
-  saveConversationToStorage,
-  loadConversationsFromStorage,
-} from "@/utils/conversationUtils";
+import { saveSatsSpent } from "@/utils/storageUtils";
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -458,27 +455,24 @@ export const useChatActions = (): UseChatActionsReturn => {
           onTokenCreated: setPendingCashuAmountState,
           onLastMessageSatsUpdate: (satsSpent) => {
             // Update the last message with sats spent
+            console.log(
+              "onLastMessageSatsUpdate called with satsSpent:",
+              satsSpent
+            );
             const lastMessage = currentMessages[currentMessages.length - 1];
+            console.log("lastMessage:", lastMessage);
             if (lastMessage && lastMessage.role === "assistant") {
               const updatedMessage = { ...lastMessage, satsSpent };
               const updatedMessages = [
                 ...currentMessages.slice(0, -1),
                 updatedMessage,
               ];
+              console.log("Updated messages with satsSpent:", updatedMessages);
               updateMessages(updatedMessages);
 
-              // Persist to local storage to ensure stats aren't lost on reload
-              if (originConversationId) {
-                try {
-                  const conversations = loadConversationsFromStorage();
-                  saveConversationToStorage(
-                    conversations,
-                    originConversationId,
-                    updatedMessages
-                  );
-                } catch (err) {
-                  console.error("Failed to persist sats spent:", err);
-                }
+              // Save to localStorage so it persists across syncs
+              if (lastMessage._eventId) {
+                saveSatsSpent(lastMessage._eventId, satsSpent);
               }
             }
           },

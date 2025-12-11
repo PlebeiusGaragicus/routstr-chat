@@ -554,7 +554,9 @@ export const fetchAIResponse = async (
       });
 
       // Update the last message with sats spent if callback is provided
+      console.log("handlePostResponseRefund returned satsSpent:", satsSpent);
       if (onLastMessageSatsUpdate && satsSpent !== undefined) {
+        console.log("Calling onLastMessageSatsUpdate with:", satsSpent);
         onLastMessageSatsUpdate(satsSpent);
       }
     } else {

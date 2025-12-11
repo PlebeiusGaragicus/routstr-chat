@@ -871,3 +871,38 @@ export const updateAPILastTopupTime = (
   const settings = loadAutoTopupAPISettings();
   saveAutoTopupAPISettings({ ...settings, lastTopupAt: timestamp });
 };
+
+// ============================================
+// Sats Spent Storage (per message)
+// ============================================
+
+const SATS_SPENT_STORAGE_KEY = "sats_spent_by_event";
+
+/**
+ * Load sats spent map from localStorage
+ * @returns Map of eventId -> satsSpent
+ */
+export const loadSatsSpentMap = (): Record<string, number> => {
+  return getStorageItem<Record<string, number>>(SATS_SPENT_STORAGE_KEY, {});
+};
+
+/**
+ * Save sats spent for a specific event
+ * @param eventId The event ID of the message
+ * @param satsSpent The amount of sats spent
+ */
+export const saveSatsSpent = (eventId: string, satsSpent: number): void => {
+  const map = loadSatsSpentMap();
+  map[eventId] = satsSpent;
+  setStorageItem(SATS_SPENT_STORAGE_KEY, map);
+};
+
+/**
+ * Get sats spent for a specific event
+ * @param eventId The event ID of the message
+ * @returns The sats spent or undefined if not found
+ */
+export const getSatsSpent = (eventId: string): number | undefined => {
+  const map = loadSatsSpentMap();
+  return map[eventId];
+};
