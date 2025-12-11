@@ -25,6 +25,7 @@ export interface Message {
   _prevId?: string;
   _createdAt?: number;
   _modelId?: string;
+  satsSpent?: number;
 }
 
 export type AttachmentType = "image" | "file";

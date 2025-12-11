@@ -13,7 +13,11 @@ import { fetchAIResponse } from "@/utils/apiUtils";
 import { getPendingCashuTokenAmount } from "@/utils/cashuUtils";
 import { useCashuWithXYZ } from "./useCashuWithXYZ";
 import { DEFAULT_MINT_URL } from "@/lib/utils";
-import { useConversationState } from './useConversationState';
+import { useConversationState } from "./useConversationState";
+import {
+  saveConversationToStorage,
+  loadConversationsFromStorage,
+} from "@/utils/conversationUtils";
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -138,7 +142,8 @@ export const useChatActions = (): UseChatActionsReturn => {
 
   // Autoscroll moved to ChatMessages to honor user scroll position
 
-  const { createAndStoreChatEvent, getLastNonSystemMessageEventId } = useConversationState();
+  const { createAndStoreChatEvent, getLastNonSystemMessageEventId } =
+    useConversationState();
 
   const sendMessage = useCallback(
     async (
@@ -160,43 +165,60 @@ export const useChatActions = (): UseChatActionsReturn => {
         return;
       }
 
-    if (!inputMessage.trim() && uploadedAttachments.length === 0) return;
+      if (!inputMessage.trim() && uploadedAttachments.length === 0) return;
 
-    const prevId = activeConversationId ? getLastNonSystemMessageEventId(activeConversationId) : '0'.repeat(64);
+      const prevId = activeConversationId
+        ? getLastNonSystemMessageEventId(activeConversationId)
+        : "0".repeat(64);
 
-    console.log('updload', uploadedAttachments);
-    // Create user message with text and images
-    const userMessage = uploadedAttachments.length > 0
-      ? createMultimodalMessage('user', inputMessage, uploadedAttachments)
-      : createTextMessage('user', inputMessage);
-    
-    const timestamp = Date.now();
-    
-    const updatedMessage = { ...userMessage, _prevId: prevId, _createdAt: timestamp};
+      console.log("updload", uploadedAttachments);
+      // Create user message with text and images
+      const userMessage =
+        uploadedAttachments.length > 0
+          ? createMultimodalMessage("user", inputMessage, uploadedAttachments)
+          : createTextMessage("user", inputMessage);
 
-    const updatedMessages = [...messages, updatedMessage];
-    
-    const originConversationId = activeConversationId ?? createNewConversationHandler(updatedMessages, timestamp.toString());
-    if (activeConversationId) {
-      setMessages(updatedMessages);
-    }
-    console.log(updatedMessage);
+      const timestamp = Date.now();
 
-    // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
-    createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+      const updatedMessage = {
+        ...userMessage,
+        _prevId: prevId,
+        _createdAt: timestamp,
+      };
 
-    setInputMessage("");
-    setUploadedAttachments([]);
+      const updatedMessages = [...messages, updatedMessage];
 
-    await performAIRequest(
-      updatedMessages,
-      setMessages,
-      selectedModel,
-      baseUrl,
-      originConversationId,
-      getActiveConversationId
-    );
-  }, [inputMessage, uploadedAttachments, getLastNonSystemMessageEventId, createAndStoreChatEvent]);
+      const originConversationId =
+        activeConversationId ??
+        createNewConversationHandler(updatedMessages, timestamp.toString());
+      if (activeConversationId) {
+        setMessages(updatedMessages);
+      }
+
+      // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
+      createAndStoreChatEvent(originConversationId, updatedMessage).catch(
+        console.error
+      );
+
+      setInputMessage("");
+      setUploadedAttachments([]);
+
+      await performAIRequest(
+        updatedMessages,
+        setMessages,
+        selectedModel,
+        baseUrl,
+        originConversationId,
+        getActiveConversationId
+      );
+    },
+    [
+      inputMessage,
+      uploadedAttachments,
+      getLastNonSystemMessageEventId,
+      createAndStoreChatEvent,
+    ]
+  );
 
   const saveInlineEdit = useCallback(
     async (
@@ -262,8 +284,14 @@ export const useChatActions = (): UseChatActionsReturn => {
         if (!originConversationId) {
           throw new Error("No active conversation ID found");
         }
-      console.log(truncatedMessages[truncatedMessages.length-1], truncatedMessages)
-      createAndStoreChatEvent(originConversationId, truncatedMessages[truncatedMessages.length-1]).catch(console.error);
+        console.log(
+          truncatedMessages[truncatedMessages.length - 1],
+          truncatedMessages
+        );
+        createAndStoreChatEvent(
+          originConversationId,
+          truncatedMessages[truncatedMessages.length - 1]
+        ).catch(console.error);
         await performAIRequest(
           truncatedMessages,
           setMessages,
@@ -331,21 +359,34 @@ export const useChatActions = (): UseChatActionsReturn => {
         }));
       }
 
-    // Create a ref to track current messages during the API call
-    let currentMessages = messageHistory;
-    const updateMessages = (newMessages: Message[]) => {
-      currentMessages = newMessages;
-      const currentlyActive = getActiveConversationId();
-      if (originConversationId && currentlyActive && currentlyActive !== originConversationId) {
-        console.log('rdlogs: ONE messages: ', currentMessages, originConversationId, currentlyActive);
-        // Persist to the origin conversation without disrupting the UI of the current one
-        // saveConversationById(originConversationId, newMessages);
-      } else {
-        console.log('rdlogs: TWO messages: ', currentMessages, originConversationId);
-        setMessages(newMessages);
-        // saveConversationById(originConversationId, newMessages);
-      }
-    };
+      // Create a ref to track current messages during the API call
+      let currentMessages = messageHistory;
+      const updateMessages = (newMessages: Message[]) => {
+        currentMessages = newMessages;
+        const currentlyActive = getActiveConversationId();
+        if (
+          originConversationId &&
+          currentlyActive &&
+          currentlyActive !== originConversationId
+        ) {
+          console.log(
+            "rdlogs: ONE messages: ",
+            currentMessages,
+            originConversationId,
+            currentlyActive
+          );
+          // Persist to the origin conversation without disrupting the UI of the current one
+          // saveConversationById(originConversationId, newMessages);
+        } else {
+          console.log(
+            "rdlogs: TWO messages: ",
+            currentMessages,
+            originConversationId
+          );
+          setMessages(newMessages);
+          // saveConversationById(originConversationId, newMessages);
+        }
+      };
 
       try {
         const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
@@ -389,14 +430,22 @@ export const useChatActions = (): UseChatActionsReturn => {
           onMessageAppend: (message) => {
             const prevId = getLastNonSystemMessageEventId(originConversationId);
             // Update message object with prevId
-            const updatedMessage = { ...message, _prevId: prevId, _createdAt: Date.now(), _modelId: selectedModel.id};
+            const updatedMessage = {
+              ...message,
+              _prevId: prevId,
+              _createdAt: Date.now(),
+              _modelId: selectedModel.id,
+            };
             // Append to current messages state
             const updatedMessages = [...currentMessages, updatedMessage];
             updateMessages(updatedMessages);
 
             // Publish AI response to Nostr
             if (originConversationId) {
-                createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+              createAndStoreChatEvent(
+                originConversationId,
+                updatedMessage
+              ).catch(console.error);
             }
           },
           onBalanceUpdate: setBalance,
@@ -407,6 +456,32 @@ export const useChatActions = (): UseChatActionsReturn => {
           },
           transactionHistory,
           onTokenCreated: setPendingCashuAmountState,
+          onLastMessageSatsUpdate: (satsSpent) => {
+            // Update the last message with sats spent
+            const lastMessage = currentMessages[currentMessages.length - 1];
+            if (lastMessage && lastMessage.role === "assistant") {
+              const updatedMessage = { ...lastMessage, satsSpent };
+              const updatedMessages = [
+                ...currentMessages.slice(0, -1),
+                updatedMessage,
+              ];
+              updateMessages(updatedMessages);
+
+              // Persist to local storage to ensure stats aren't lost on reload
+              if (originConversationId) {
+                try {
+                  const conversations = loadConversationsFromStorage();
+                  saveConversationToStorage(
+                    conversations,
+                    originConversationId,
+                    updatedMessages
+                  );
+                } catch (err) {
+                  console.error("Failed to persist sats spent:", err);
+                }
+              }
+            }
+          },
         });
         setPendingCashuAmountState(getPendingCashuTokenAmount());
       } finally {

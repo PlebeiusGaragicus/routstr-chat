@@ -1,9 +1,19 @@
-import { Message, MessageContent } from '@/types/chat';
-import { Edit, MessageSquare, Copy, Check, Eye, EyeOff, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
-import MessageContentRenderer from '@/components/MessageContent';
-import MarkdownRenderer from '@/components/MarkdownRenderer';
-import ThinkingSection from '@/components/ui/ThinkingSection';
-import { RefObject, useState, useRef, useEffect, useMemo } from 'react';
+import { Message, MessageContent } from "@/types/chat";
+import {
+  Edit,
+  MessageSquare,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import MessageContentRenderer from "@/components/MessageContent";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
+import ThinkingSection from "@/components/ui/ThinkingSection";
+import { RefObject, useState, useRef, useEffect, useMemo } from "react";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -38,32 +48,39 @@ export default function ChatMessages({
   messagesEndRef,
   isMobile,
   textareaHeight,
-  isLoading
+  isLoading,
 }: ChatMessagesProps) {
-  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
-  const [expandedSystemGroups, setExpandedSystemGroups] = useState<Set<number>>(new Set());
-  const [selectedVersions, setSelectedVersions] = useState<Map<number, string>>(new Map());
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(
+    null
+  );
+  const [expandedSystemGroups, setExpandedSystemGroups] = useState<Set<number>>(
+    new Set()
+  );
+  const [selectedVersions, setSelectedVersions] = useState<Map<number, string>>(
+    new Map()
+  );
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  
 
   // Helper function to check if a system message should always be shown
-  const shouldAlwaysShowSystemMessage = (content: string | MessageContent[]): boolean => {
+  const shouldAlwaysShowSystemMessage = (
+    content: string | MessageContent[]
+  ): boolean => {
     const textContent = getTextFromContent(content);
-    return textContent.trim().startsWith('ATTENTION');
+    return textContent.trim().startsWith("ATTENTION");
   };
 
   // Group messages by their depth in the conversation tree
   const messageVersions = useMemo(() => {
     const groups = new Map<number, Message[]>();
     const allMessages = [...messages];
-    console.log(allMessages)
-    
+    console.log(allMessages);
+
     // Build adjacency list
     const childrenMap = new Map<string, Message[]>();
     const roots: Message[] = [];
-    
-    allMessages.forEach(msg => {
-      if (!msg._prevId || msg._prevId === '0'.repeat(64)) {
+
+    allMessages.forEach((msg) => {
+      if (!msg._prevId || msg._prevId === "0".repeat(64)) {
         roots.push(msg);
       } else {
         if (!childrenMap.has(msg._prevId)) {
@@ -76,19 +93,19 @@ export default function ChatMessages({
     // Traverse BFS to assign depths
     let currentDepth = 0;
     let currentLevel = roots;
-    
+
     while (currentLevel.length > 0) {
       // Sort by creation time
       currentLevel.sort((a, b) => (a._createdAt || 0) - (b._createdAt || 0));
       groups.set(currentDepth, currentLevel);
-      
+
       const nextLevel: Message[] = [];
-      currentLevel.forEach(msg => {
+      currentLevel.forEach((msg) => {
         if (msg._eventId && childrenMap.has(msg._eventId)) {
           nextLevel.push(...childrenMap.get(msg._eventId)!);
         }
       });
-      
+
       currentDepth++;
       currentLevel = nextLevel;
     }
@@ -99,54 +116,76 @@ export default function ChatMessages({
 
   const getMessageToDisplay = (message: Message, index: number) => {
     const versions = messageVersions.get(index);
-    
+
     if (!versions || versions.length <= 1) {
       return { msg: message, currentVersion: 1, totalVersions: 1 };
     }
-    
+
     // Check if a specific version is selected for this "slot" (identified by index)
     const selectedId = selectedVersions.get(index);
-    
+
     if (selectedId) {
-      const selectedMsg = versions.find(v => v._eventId === selectedId);
+      const selectedMsg = versions.find((v) => v._eventId === selectedId);
       if (selectedMsg) {
-        const versionIndex = versions.findIndex(v => v._eventId === selectedId);
-        return { msg: selectedMsg, currentVersion: versionIndex + 1, totalVersions: versions.length };
+        const versionIndex = versions.findIndex(
+          (v) => v._eventId === selectedId
+        );
+        return {
+          msg: selectedMsg,
+          currentVersion: versionIndex + 1,
+          totalVersions: versions.length,
+        };
       }
     }
-    
+
     // Default to the message passed in (which comes from the main thread)
     // We need to find its index in the sorted versions array
-    const currentIndex = versions.findIndex(v => v._eventId === message._eventId);
-    
+    const currentIndex = versions.findIndex(
+      (v) => v._eventId === message._eventId
+    );
+
     // If for some reason the message isn't in the group (shouldn't happen), default to last
     if (currentIndex === -1) {
-      return { msg: versions[versions.length - 1], currentVersion: versions.length, totalVersions: versions.length };
+      return {
+        msg: versions[versions.length - 1],
+        currentVersion: versions.length,
+        totalVersions: versions.length,
+      };
     }
 
-    return { msg: message, currentVersion: currentIndex + 1, totalVersions: versions.length };
+    return {
+      msg: message,
+      currentVersion: currentIndex + 1,
+      totalVersions: versions.length,
+    };
   };
 
-  const handleVersionChange = (index: number, direction: 'prev' | 'next', currentMessageId: string) => {
+  const handleVersionChange = (
+    index: number,
+    direction: "prev" | "next",
+    currentMessageId: string
+  ) => {
     const versions = messageVersions.get(index);
-    console.log('ed', versions, index, messageVersions);
+    console.log("ed", versions, index, messageVersions);
     if (!versions) return;
-    
+
     const currentSelectedId = selectedVersions.get(index) || currentMessageId;
-    const currentIndex = versions.findIndex(v => v._eventId === currentSelectedId);
+    const currentIndex = versions.findIndex(
+      (v) => v._eventId === currentSelectedId
+    );
     console.log(currentIndex, selectedVersions, currentSelectedId);
-    
+
     if (currentIndex === -1) return;
-    
-    let newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
-    
+
+    let newIndex = direction === "prev" ? currentIndex - 1 : currentIndex + 1;
+
     // Clamp index
     if (newIndex < 0) newIndex = 0;
     if (newIndex >= versions.length) newIndex = versions.length - 1;
-    
+
     const newVersionId = versions[newIndex]._eventId;
     if (newVersionId) {
-      setSelectedVersions(prev => new Map(prev).set(index, newVersionId));
+      setSelectedVersions((prev) => new Map(prev).set(index, newVersionId));
     }
   };
 
@@ -157,7 +196,10 @@ export default function ChatMessages({
     let currentGroupCount = 0;
 
     messages.forEach((message, index) => {
-      if (message.role === 'system' && !shouldAlwaysShowSystemMessage(message.content)) {
+      if (
+        message.role === "system" &&
+        !shouldAlwaysShowSystemMessage(message.content)
+      ) {
         if (currentGroupStart === null) {
           currentGroupStart = index;
           currentGroupCount = 1;
@@ -166,7 +208,10 @@ export default function ChatMessages({
         }
       } else {
         if (currentGroupStart !== null) {
-          groups.push({ startIndex: currentGroupStart, count: currentGroupCount });
+          groups.push({
+            startIndex: currentGroupStart,
+            count: currentGroupCount,
+          });
           currentGroupStart = null;
           currentGroupCount = 0;
         }
@@ -185,7 +230,7 @@ export default function ChatMessages({
 
   // Toggle a specific system message group
   const toggleSystemGroup = (groupStartIndex: number) => {
-    setExpandedSystemGroups(prev => {
+    setExpandedSystemGroups((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(groupStartIndex)) {
         newSet.delete(groupStartIndex);
@@ -198,44 +243,48 @@ export default function ChatMessages({
 
   // Check if a message belongs to an expanded group
   const isInExpandedGroup = (messageIndex: number): boolean => {
-    const group = systemGroups.find(g =>
-      messageIndex >= g.startIndex && messageIndex < g.startIndex + g.count
+    const group = systemGroups.find(
+      (g) =>
+        messageIndex >= g.startIndex && messageIndex < g.startIndex + g.count
     );
     return group ? expandedSystemGroups.has(group.startIndex) : false;
   };
 
   // Check if the last message in a system group contains "Pls retry"
   const shouldShowGroupRetryButton = (groupStartIndex: number): boolean => {
-    const group = systemGroups.find(g => g.startIndex === groupStartIndex);
+    const group = systemGroups.find((g) => g.startIndex === groupStartIndex);
     if (!group) return false;
 
     const lastMessageIndex = group.startIndex + group.count - 1;
     const lastMessage = messages[lastMessageIndex];
 
-    if (lastMessage && lastMessage.role === 'system') {
+    if (lastMessage && lastMessage.role === "system") {
       const textContent = getTextFromContent(lastMessage.content);
-      return textContent.includes('Pls retry');
+      return textContent.includes("Pls retry");
     }
 
     return false;
   };
 
-  const copyMessageContent = async (messageIndex: number, content: string | MessageContent[]) => {
+  const copyMessageContent = async (
+    messageIndex: number,
+    content: string | MessageContent[]
+  ) => {
     try {
       const textContent = getTextFromContent(content);
       await navigator.clipboard.writeText(textContent);
       setCopiedMessageIndex(messageIndex);
       setTimeout(() => setCopiedMessageIndex(null), 2000);
     } catch (error) {
-      console.error('Failed to copy message:', error);
+      console.error("Failed to copy message:", error);
     }
   };
 
   const handleSaveInlineEdit = () => {
     if (editingMessageIndex !== null) {
-      setSelectedVersions(prev => {
+      setSelectedVersions((prev) => {
         const newMap = new Map(prev);
-        Array.from(newMap.keys()).forEach(key => {
+        Array.from(newMap.keys()).forEach((key) => {
           if (key >= editingMessageIndex) {
             newMap.delete(key);
           }
@@ -245,14 +294,17 @@ export default function ChatMessages({
     }
     saveInlineEdit();
   };
-  
+
   return (
     <div
       ref={scrollContainerRef}
       className={`flex-1 overflow-y-auto pt-[60px]`}
       style={{
-        paddingTop: 'calc(60px + env(safe-area-inset-top))',
-        paddingBottom: `calc(${Math.max((textareaHeight ?? 48) + 48, isMobile ? 96 : 120)}px + env(safe-area-inset-bottom))`
+        paddingTop: "calc(60px + env(safe-area-inset-top))",
+        paddingBottom: `calc(${Math.max(
+          (textareaHeight ?? 48) + 48,
+          isMobile ? 96 : 120
+        )}px + env(safe-area-inset-bottom))`,
       }}
     >
       <div className="mx-auto w-full max-w-[44rem] px-4 sm:px-6 lg:px-0 py-4 md:py-2">
@@ -264,17 +316,24 @@ export default function ChatMessages({
           Array.from({ length: messageVersions.size }, (_, index) => {
             const versions = messageVersions.get(index);
             if (!versions || versions.length === 0) return null;
-            
+
             // Use the first message in the versions array as the original message
             const originalMessage = versions[0];
-            
+
             // Determine which version of the message to display
-            const { msg: message, currentVersion, totalVersions } = getMessageToDisplay(originalMessage, index);
-            
+            const {
+              msg: message,
+              currentVersion,
+              totalVersions,
+            } = getMessageToDisplay(originalMessage, index);
+
             // Check if this is the start of a system message group
-            const systemGroup = systemGroups.find(g => g.startIndex === index);
-            const isSystemGroupStart = systemGroup &&
-              message.role === 'system' &&
+            const systemGroup = systemGroups.find(
+              (g) => g.startIndex === index
+            );
+            const isSystemGroupStart =
+              systemGroup &&
+              message.role === "system" &&
               !shouldAlwaysShowSystemMessage(message.content);
 
             return (
@@ -288,7 +347,8 @@ export default function ChatMessages({
                         className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
                         <Eye className="w-3 h-3" />
-                        Show {systemGroup.count} Error{systemGroup.count === 1 ? '' : 's'}
+                        Show {systemGroup.count} Error
+                        {systemGroup.count === 1 ? "" : "s"}
                       </button>
                     ) : (
                       <button
@@ -303,7 +363,9 @@ export default function ChatMessages({
                     {/* Show retry button if last message contains "Pls retry" */}
                     {shouldShowGroupRetryButton(index) && (
                       <button
-                        onClick={() => retryMessage(index + systemGroup.count - 1)}
+                        onClick={() =>
+                          retryMessage(index + systemGroup.count - 1)
+                        }
                         className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
                         <svg
@@ -335,18 +397,28 @@ export default function ChatMessages({
                 )}
 
                 <div className="mb-8 last:mb-0">
-                  {message.role === 'user' ? (
+                  {message.role === "user" ? (
                     <div className="flex justify-end mb-6">
-                      <div className={`${editingMessageIndex === index ? 'w-full sm:max-w-[90%] md:max-w-[85%] lg:max-w-[75%] xl:max-w-[70%]' : 'max-w-[85%]'} break-words break-all`}>
+                      <div
+                        className={`${
+                          editingMessageIndex === index
+                            ? "w-full sm:max-w-[90%] md:max-w-[85%] lg:max-w-[75%] xl:max-w-[70%]"
+                            : "max-w-[85%]"
+                        } break-words break-all`}
+                      >
                         {editingMessageIndex === index ? (
                           <div className="flex flex-col w-full">
                             {/* Show existing attachments that will be preserved */}
-                            {typeof message.content !== 'string' && (
+                            {typeof message.content !== "string" && (
                               <>
-                                {message.content.filter(item => item.type === 'image_url').length > 0 && (
+                                {message.content.filter(
+                                  (item) => item.type === "image_url"
+                                ).length > 0 && (
                                   <div className="flex flex-wrap gap-2 mb-2">
                                     {message.content
-                                      .filter(item => item.type === 'image_url')
+                                      .filter(
+                                        (item) => item.type === "image_url"
+                                      )
                                       .map((item, imgIndex) => (
                                         <img
                                           key={`edit-img-${imgIndex}`}
@@ -354,42 +426,55 @@ export default function ChatMessages({
                                           alt="Attached"
                                           className="w-16 h-16 object-cover rounded-lg border border-white/10"
                                         />
-                                      ))
-                                    }
+                                      ))}
                                   </div>
                                 )}
-                                {message.content.filter(item => item.type === 'file').length > 0 && (
+                                {message.content.filter(
+                                  (item) => item.type === "file"
+                                ).length > 0 && (
                                   <div className="flex flex-wrap gap-2 mb-2">
                                     {message.content
-                                      .filter(item => item.type === 'file')
+                                      .filter((item) => item.type === "file")
                                       .map((item, fileIndex) => (
                                         <div
                                           key={`edit-file-${fileIndex}`}
                                           className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2"
                                         >
-                                          <FileText className="h-5 w-5 text-white/80 flex-shrink-0" aria-hidden="true" />
+                                          <FileText
+                                            className="h-5 w-5 text-white/80 flex-shrink-0"
+                                            aria-hidden="true"
+                                          />
                                           <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium text-white" title={item.file?.name || 'Attachment'}>
-                                              {item.file?.name || 'Attachment'}
+                                            <p
+                                              className="truncate text-sm font-medium text-white"
+                                              title={
+                                                item.file?.name || "Attachment"
+                                              }
+                                            >
+                                              {item.file?.name || "Attachment"}
                                             </p>
                                             {item.file?.mimeType && (
                                               <p className="text-xs uppercase text-white/60">
-                                                {item.file.mimeType === 'application/pdf' ? 'PDF' : item.file.mimeType.toUpperCase()}
+                                                {item.file.mimeType ===
+                                                "application/pdf"
+                                                  ? "PDF"
+                                                  : item.file.mimeType.toUpperCase()}
                                               </p>
                                             )}
                                           </div>
                                         </div>
-                                      ))
-                                    }
+                                      ))}
                                   </div>
                                 )}
                               </>
                             )}
                             <textarea
                               value={editingContent}
-                              onChange={(e) => setEditingContent(e.target.value)}
+                              onChange={(e) =>
+                                setEditingContent(e.target.value)
+                              }
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
+                                if (e.key === "Enter" && !e.shiftKey) {
                                   e.preventDefault();
                                   handleSaveInlineEdit();
                                 }
@@ -419,31 +504,63 @@ export default function ChatMessages({
                             <div className="group relative">
                               <div className="bg-white/10 rounded-2xl py-2 px-4 text-white">
                                 <div className="text-[18px]">
-                                  <MessageContentRenderer content={message.content} />
+                                  <MessageContentRenderer
+                                    content={message.content}
+                                  />
                                 </div>
                               </div>
-                              <div className={`flex justify-end items-center gap-2 mt-1 ${isMobile ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} transition-opacity duration-200`}>
+                              <div
+                                className={`flex justify-end items-center gap-2 mt-1 ${
+                                  isMobile
+                                    ? "opacity-100"
+                                    : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                } transition-opacity duration-200`}
+                              >
                                 {totalVersions > 1 && (
                                   <div className="flex items-center gap-1 mr-2 text-white/50 text-xs select-none">
                                     <button
-                                      onClick={() => handleVersionChange(index, 'prev', originalMessage._eventId!)}
+                                      onClick={() =>
+                                        handleVersionChange(
+                                          index,
+                                          "prev",
+                                          originalMessage._eventId!
+                                        )
+                                      }
                                       disabled={currentVersion <= 1}
-                                      className={`p-0.5 hover:text-white transition-colors ${currentVersion <= 1 ? 'opacity-30 cursor-default' : 'cursor-pointer'}`}
+                                      className={`p-0.5 hover:text-white transition-colors ${
+                                        currentVersion <= 1
+                                          ? "opacity-30 cursor-default"
+                                          : "cursor-pointer"
+                                      }`}
                                     >
                                       <ChevronLeft className="w-3 h-3" />
                                     </button>
-                                    <span>{currentVersion} / {totalVersions}</span>
+                                    <span>
+                                      {currentVersion} / {totalVersions}
+                                    </span>
                                     <button
-                                      onClick={() => handleVersionChange(index, 'next', originalMessage._eventId!)}
+                                      onClick={() =>
+                                        handleVersionChange(
+                                          index,
+                                          "next",
+                                          originalMessage._eventId!
+                                        )
+                                      }
                                       disabled={currentVersion >= totalVersions}
-                                      className={`p-0.5 hover:text-white transition-colors ${currentVersion >= totalVersions ? 'opacity-30 cursor-default' : 'cursor-pointer'}`}
+                                      className={`p-0.5 hover:text-white transition-colors ${
+                                        currentVersion >= totalVersions
+                                          ? "opacity-30 cursor-default"
+                                          : "cursor-pointer"
+                                      }`}
                                     >
                                       <ChevronRight className="w-3 h-3" />
                                     </button>
                                   </div>
                                 )}
                                 <button
-                                  onClick={() => copyMessageContent(index, message.content)}
+                                  onClick={() =>
+                                    copyMessageContent(index, message.content)
+                                  }
                                   className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
                                   aria-label="Copy message"
                                 >
@@ -466,24 +583,50 @@ export default function ChatMessages({
                         )}
                       </div>
                     </div>
-                  ) : message.role === 'system' ? (
+                  ) : message.role === "system" ? (
                     // Check if this system message should always be shown or if it's in an expanded group
-                    (shouldAlwaysShowSystemMessage(message.content) || isInExpandedGroup(index)) ? (
+                    shouldAlwaysShowSystemMessage(message.content) ||
+                    isInExpandedGroup(index) ? (
                       <div className="flex justify-center mb-6 group">
                         <div className="flex flex-col">
                           <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
                             <div className="flex items-start gap-2 min-w-0">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-red-300 mt-0.5 flex-shrink-0">
-                                <path d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="text-red-300 mt-0.5 flex-shrink-0"
+                              >
+                                <path
+                                  d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                />
                               </svg>
                               <div className="text-sm font-medium min-w-0">
-                                {getTextFromContent(message.content).split('\n').map((line, idx) => (
-                                  <div key={idx} className="break-words break-all">{line}</div>
-                                ))}
+                                {getTextFromContent(message.content)
+                                  .split("\n")
+                                  .map((line, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="break-words break-all"
+                                    >
+                                      {line}
+                                    </div>
+                                  ))}
                               </div>
                             </div>
                           </div>
-                          <div className={`mt-1.5 ${isMobile ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} transition-opacity duration-200`}>
+                          <div
+                            className={`mt-1.5 ${
+                              isMobile
+                                ? "opacity-100"
+                                : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                            } transition-opacity duration-200`}
+                          >
                             <button
                               onClick={() => retryMessage(index)}
                               className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
@@ -518,34 +661,67 @@ export default function ChatMessages({
                     ) : null // Don't render if system message is hidden
                   ) : (
                     <div className="flex flex-col items-start mb-6 group">
-                      {(message.thinking) && (
-                        <ThinkingSection thinking={message.thinking} thinkingContent={thinkingContent} />
+                      {message.thinking && (
+                        <ThinkingSection
+                          thinking={message.thinking}
+                          thinkingContent={thinkingContent}
+                        />
                       )}
                       <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
                         <MessageContentRenderer content={message.content} />
                       </div>
-                      <div className={`mt-1.5 ${isMobile ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} transition-opacity duration-200 flex items-center gap-2`}>
+                      <div
+                        className={`mt-1.5 ${
+                          isMobile
+                            ? "opacity-100"
+                            : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                        } transition-opacity duration-200 flex items-center gap-2`}
+                      >
                         {totalVersions > 1 && (
                           <div className="flex items-center gap-1 mr-2 text-white/50 text-xs select-none">
                             <button
-                              onClick={() => handleVersionChange(index, 'prev', originalMessage._eventId!)}
+                              onClick={() =>
+                                handleVersionChange(
+                                  index,
+                                  "prev",
+                                  originalMessage._eventId!
+                                )
+                              }
                               disabled={currentVersion <= 1}
-                              className={`p-0.5 hover:text-white transition-colors ${currentVersion <= 1 ? 'opacity-30 cursor-default' : 'cursor-pointer'}`}
+                              className={`p-0.5 hover:text-white transition-colors ${
+                                currentVersion <= 1
+                                  ? "opacity-30 cursor-default"
+                                  : "cursor-pointer"
+                              }`}
                             >
                               <ChevronLeft className="w-3 h-3" />
                             </button>
-                            <span>{currentVersion} / {totalVersions}</span>
+                            <span>
+                              {currentVersion} / {totalVersions}
+                            </span>
                             <button
-                              onClick={() => handleVersionChange(index, 'next', originalMessage._eventId!)}
+                              onClick={() =>
+                                handleVersionChange(
+                                  index,
+                                  "next",
+                                  originalMessage._eventId!
+                                )
+                              }
                               disabled={currentVersion >= totalVersions}
-                              className={`p-0.5 hover:text-white transition-colors ${currentVersion >= totalVersions ? 'opacity-30 cursor-default' : 'cursor-pointer'}`}
+                              className={`p-0.5 hover:text-white transition-colors ${
+                                currentVersion >= totalVersions
+                                  ? "opacity-30 cursor-default"
+                                  : "cursor-pointer"
+                              }`}
                             >
                               <ChevronRight className="w-3 h-3" />
                             </button>
                           </div>
                         )}
                         <button
-                          onClick={() => copyMessageContent(index, message.content)}
+                          onClick={() =>
+                            copyMessageContent(index, message.content)
+                          }
                           className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
                         >
                           {copiedMessageIndex === index ? (
@@ -553,7 +729,7 @@ export default function ChatMessages({
                           ) : (
                             <Copy className="w-3 h-3" />
                           )}
-                          {copiedMessageIndex === index ? 'Copied!' : 'Copy'}
+                          {copiedMessageIndex === index ? "Copied!" : "Copy"}
                         </button>
                         <button
                           onClick={() => retryMessage(index)}
@@ -583,6 +759,24 @@ export default function ChatMessages({
                           </svg>
                           Try Again
                         </button>
+                        {message.satsSpent !== undefined &&
+                          message.satsSpent > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1">
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" />
+                              </svg>
+                              {message.satsSpent.toFixed(
+                                message.satsSpent < 1 ? 3 : 0
+                              )}{" "}
+                              sats
+                            </span>
+                          )}
                       </div>
                     </div>
                   )}
@@ -592,9 +786,11 @@ export default function ChatMessages({
           })
         )}
 
-
         {thinkingContent && (
-          <ThinkingSection thinkingContent={thinkingContent} isStreaming={streamingContent == ''} />
+          <ThinkingSection
+            thinkingContent={thinkingContent}
+            isStreaming={streamingContent == ""}
+          />
         )}
 
         {streamingContent && (
