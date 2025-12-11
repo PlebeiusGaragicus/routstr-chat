@@ -293,7 +293,6 @@ export function useCashuWallet() {
       });
       
       const events = await Promise.race([queryPromise, timeoutPromise]);
-      console.log("EVENTS", events);
 
       if ((events as any[]).length === 0) {
         // No events found, but query completed successfully: clear timeout indicators

@@ -381,7 +381,8 @@ export function useCashuWithXYZ() {
       );
       console.log('rdlogs: selectedMintUrl', selectedMintUrl, selectedMintBalance);
       let providerMints = loadMintsFromAllProviders()[baseUrl];
-      if (!providerMints) {
+      console.log('rdlogs: providerMints', providerMints, baseUrl)
+      if (!providerMints && baseUrl !== '' ) {
         const response = await fetch(`${baseUrl}v1/info`, {
           method: 'GET',
           headers: {
@@ -478,69 +479,69 @@ export function useCashuWithXYZ() {
           error: `Error generating token from alternate mint: ${errorMsg}`
         };
       }
-    } else if (totalPendingBalance + selectedMintBalance >= adjustedAmount && retryCount < 1 ) {
-      console.log('=== Attempting to refund pending balances and retry ===');
-      console.log(`Total pending balance: ${totalPendingBalance} sats`);
-      console.log(`Selected mint balance: ${selectedMintBalance} sats`);
-      console.log(`Required amount: ${adjustedAmount} sats`);
-      
-      // Refund all pending balances
-      let refundSuccessful = true;
-      for (const pendingBalance of pendingBalances) {
-        const storedToken = getLocalCashuToken(pendingBalance.baseUrl);
-        if (storedToken) {
-          console.log(`Refunding pending token for ${pendingBalance.baseUrl}: ${pendingBalance.amount} sats`);
-          const refundResult = await unifiedRefund(mintUrl, pendingBalance.baseUrl, usingNip60, receiveToken, storedToken);
-          if (!refundResult.success) {
-            console.error(`Failed to refund ${pendingBalance.baseUrl}: ${refundResult.message}`);
-            refundSuccessful = false;
-          } else {
-            console.log(`Successfully refunded ${pendingBalance.baseUrl}`);
-            removeLocalCashuToken(pendingBalance.baseUrl);
+      } else if (totalPendingBalance + selectedMintBalance >= adjustedAmount && retryCount < 1 ) {
+        console.log('=== Attempting to refund pending balances and retry ===');
+        console.log(`Total pending balance: ${totalPendingBalance} sats`);
+        console.log(`Selected mint balance: ${selectedMintBalance} sats`);
+        console.log(`Required amount: ${adjustedAmount} sats`);
+        
+        // Refund all pending balances
+        let refundSuccessful = true;
+        for (const pendingBalance of pendingBalances) {
+          const storedToken = getLocalCashuToken(pendingBalance.baseUrl);
+          if (storedToken) {
+            console.log(`Refunding pending token for ${pendingBalance.baseUrl}: ${pendingBalance.amount} sats`);
+            const refundResult = await unifiedRefund(mintUrl, pendingBalance.baseUrl, usingNip60, receiveToken, storedToken);
+            if (!refundResult.success) {
+              console.error(`Failed to refund ${pendingBalance.baseUrl}: ${refundResult.message}`);
+              refundSuccessful = false;
+            } else {
+              console.log(`Successfully refunded ${pendingBalance.baseUrl}`);
+              removeLocalCashuToken(pendingBalance.baseUrl);
+            }
           }
         }
-      }
-      
-      if (refundSuccessful) {
-        console.log('All pending balances refunded. Retrying spend...');
-        // Update pending amount state so UI reflects cleared pendings immediately
-        setPendingCashuAmountState(getPendingCashuTokenAmount());
-        return spendCashu(mintUrl, amount, baseUrl, false, p2pkPubkey, excludeMints, retryCount + 1);
-      } else {
-        console.error('Some refunds failed, still gonna retry');
-        setPendingCashuAmountState(getPendingCashuTokenAmount());
-        return spendCashu(mintUrl, amount, baseUrl, false, p2pkPubkey, excludeMints, retryCount + 1);
-      }
-    } else {
-      console.error('=== Insufficient Balance Error ===');
-      console.error(`Required amount: ${adjustedAmount} sats`);
-      console.error(`Active mint (${mintUrl}): ${activeMintBalanceInSats} sats`);
-      console.error('\nAll mint balances:');
-      let maxMintBalance = 0;
-      let maxMintUrl = '';
-      for (const mintUrl in latestMintBalances) {
-        const balance = latestMintBalances[mintUrl];
-        const unit = latestMintUnits[mintUrl];
-        let balanceInSats = 0;
-        if (unit === 'msat') {
-          balanceInSats = balance / 1000;
+        
+        if (refundSuccessful) {
+          console.log('All pending balances refunded. Retrying spend...');
+          // Update pending amount state so UI reflects cleared pendings immediately
+          setPendingCashuAmountState(getPendingCashuTokenAmount());
+          return spendCashu(mintUrl, amount, baseUrl, false, p2pkPubkey, excludeMints, retryCount + 1);
         } else {
-          balanceInSats = balance;
+          console.error('Some refunds failed, still gonna retry');
+          setPendingCashuAmountState(getPendingCashuTokenAmount());
+          return spendCashu(mintUrl, amount, baseUrl, false, p2pkPubkey, excludeMints, retryCount + 1);
         }
-        if (balanceInSats > maxMintBalance) {
-          maxMintBalance = balanceInSats;
-          maxMintUrl = mintUrl;
+      } else {
+        console.error('=== Insufficient Balance Error ===');
+        console.error(`Required amount: ${adjustedAmount} sats`);
+        console.error(`Active mint (${mintUrl}): ${activeMintBalanceInSats} sats`);
+        console.error('\nAll mint balances:');
+        let maxMintBalance = 0;
+        let maxMintUrl = '';
+        for (const mintUrl in latestMintBalances) {
+          const balance = latestMintBalances[mintUrl];
+          const unit = latestMintUnits[mintUrl];
+          let balanceInSats = 0;
+          if (unit === 'msat') {
+            balanceInSats = balance / 1000;
+          } else {
+            balanceInSats = balance;
+          }
+          if (balanceInSats > maxMintBalance) {
+            maxMintBalance = balanceInSats;
+            maxMintUrl = mintUrl;
+          }
+          console.error(`  ${mintUrl}: ${balanceInSats} sats`);
         }
-        console.error(`  ${mintUrl}: ${balanceInSats} sats`);
+        const errorMsg = `Insufficient balance. Required: ${adjustedAmount} sats, Available: ${maxMintBalance} sats from mint ${maxMintUrl} is your biggest mint balance.`;
+        return {
+          token: null,
+          status: 'failed',
+          balance: 0,
+          error: errorMsg
+        };
       }
-      const errorMsg = `Insufficient balance. Required: ${adjustedAmount} sats, Available: ${maxMintBalance} sats from mint ${maxMintUrl} is your biggest mint balance.`;
-      return {
-        token: null,
-        status: 'failed',
-        balance: 0,
-        error: errorMsg
-      };
-    }
     } else {
       try {
         // Use the generateTokenCore function from useWalletOperations

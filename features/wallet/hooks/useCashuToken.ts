@@ -129,7 +129,7 @@ export function useCashuToken() {
         preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported') as 'sat' | 'msat';
       }
       
-      const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined });
+      const wallet = new Wallet(mint, { unit: preferredUnit });
 
       // Load mint keysets
       await wallet.loadMint();
@@ -355,7 +355,7 @@ export function useCashuToken() {
 
       console.log(activeKeysets, units, preferredUnit)
       
-      const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined });
+      const wallet = new Wallet(mint, { unit: preferredUnit });
 
       // Load mint keysets
       await wallet.loadMint();
@@ -429,7 +429,7 @@ export function useCashuToken() {
         const units = [...new Set(activeKeysets?.map(k => k.unit))];
         const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
 
-        const wallet = new Wallet(mint, { unit: preferredUnit, bip39seed: cashuStore.privkey ? hexToBytes(cashuStore.privkey) : undefined, keysets: keysets, mintInfo: mintDetails?.mintInfo });
+        const wallet = new Wallet(mint, { unit: preferredUnit, keysets: keysets, mintInfo: mintDetails?.mintInfo });
 
         try {
           await wallet.loadMint();

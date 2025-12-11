@@ -385,9 +385,17 @@ export const useChatActions = (): UseChatActionsReturn => {
             }
           },
           onMessageAppend: (message) => {
+            const prevId = getLastNonSystemMessageEventId(originConversationId);
+            // Update message object with prevId
+            const updatedMessage = { ...message, _prevId: prevId, _createdAt: Date.now(), _modelId: selectedModel.id};
             // Append to current messages state
-            const updatedMessages = [...currentMessages, message];
+            const updatedMessages = [...currentMessages, updatedMessage];
             updateMessages(updatedMessages);
+
+            // Publish AI response to Nostr
+            if (originConversationId) {
+                createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+            }
           },
           onBalanceUpdate: setBalance,
           onTransactionUpdate: (transaction) => {
