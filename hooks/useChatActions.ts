@@ -164,6 +164,7 @@ export const useChatActions = (): UseChatActionsReturn => {
 
     const prevId = activeConversationId ? getLastNonSystemMessageEventId(activeConversationId) : '0'.repeat(64);
 
+    console.log('updload', uploadedAttachments);
     // Create user message with text and images
     const userMessage = uploadedAttachments.length > 0
       ? createMultimodalMessage('user', inputMessage, uploadedAttachments)
@@ -179,6 +180,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     if (activeConversationId) {
       setMessages(updatedMessages);
     }
+    console.log(updatedMessage);
 
     // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
     createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);

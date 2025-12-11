@@ -194,6 +194,7 @@ export default function ChatInput({
     }
 
     if (attachmentsToAdd.length > 0) {
+       console.log(attachmentsToAdd)
       setUploadedAttachments((prev) => [
         ...prev,
         ...attachmentsToAdd.map((item) => item.attachment),

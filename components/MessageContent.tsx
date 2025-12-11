@@ -35,6 +35,7 @@ export default function MessageContentRenderer({
     if (typeof content === "string") return;
 
     const loadImages = async () => {
+      console.log(content);
       const imageItems = content.filter((item) => item.type === "image_url");
 
       for (const item of imageItems) {

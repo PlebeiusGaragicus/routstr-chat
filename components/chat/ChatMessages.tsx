@@ -56,6 +56,7 @@ export default function ChatMessages({
   const messageVersions = useMemo(() => {
     const groups = new Map<number, Message[]>();
     const allMessages = [...messages];
+    console.log(allMessages)
     
     // Build adjacency list
     const childrenMap = new Map<string, Message[]>();
@@ -91,7 +92,7 @@ export default function ChatMessages({
       currentDepth++;
       currentLevel = nextLevel;
     }
-    // console.log(groups);
+    console.log(groups);
 
     return groups;
   }, [messages]);
@@ -255,12 +256,18 @@ export default function ChatMessages({
       }}
     >
       <div className="mx-auto w-full max-w-[44rem] px-4 sm:px-6 lg:px-0 py-4 md:py-2">
-        {messages.length === 0 ? (
+        {messageVersions.size === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-400 min-h-[calc(100vh-200px)]">
             {/* Greeting message will be handled by the input component when centered */}
           </div>
         ) : (
-          messages.map((originalMessage, index) => {
+          Array.from({ length: messageVersions.size }, (_, index) => {
+            const versions = messageVersions.get(index);
+            if (!versions || versions.length === 0) return null;
+            
+            // Use the first message in the versions array as the original message
+            const originalMessage = versions[0];
+            
             // Determine which version of the message to display
             const { msg: message, currentVersion, totalVersions } = getMessageToDisplay(originalMessage, index);
             
@@ -271,7 +278,7 @@ export default function ChatMessages({
               !shouldAlwaysShowSystemMessage(message.content);
 
             return (
-              <div key={index}>
+              <div key={`msg-${index}-${originalMessage._eventId}`}>
                 {/* Show toggle button at the start of each system message group */}
                 {isSystemGroupStart && (
                   <div className="flex justify-center items-center gap-3 mb-6">

@@ -10,7 +10,7 @@ import {
   sortConversationsByRecentActivity,
   persistConversationsSnapshot
 } from '@/utils/conversationUtils';
-import { getTextFromContent } from '@/utils/messageUtils';
+import { getTextFromContent, stripImageDataFromSingleMessage } from '@/utils/messageUtils';
 import { loadActiveConversationId, saveActiveConversationId, loadLastUsedModel } from '@/utils/storageUtils';
 import { useChatSync } from './useChatSync';
 import { processInnerEvent, decryptPnsEventToInner } from '@/utils/eventProcessing';
@@ -327,8 +327,9 @@ export const useConversationState = (): UseConversationStateReturn => {
     message: Message
   ): Promise<string | null> => {
     console.log("Createing mes 1081", currentPnsKeys);
+    const strippedMessage = stripImageDataFromSingleMessage(message);
     if (currentPnsKeys) {
-      return await publishMessage(conversationId, message, currentPnsKeys, appendMessageToConversation);
+      return await publishMessage(conversationId, strippedMessage, currentPnsKeys, appendMessageToConversation);
     } else {
       console.log('[useConversationState] No currentPnsKeys, triggering stored 1081 events processing')
       triggerProcessStored1081Events();
@@ -347,7 +348,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         )
         
         if (keys) {
-           return await publishMessage(conversationId, message, keys, appendMessageToConversation);
+           return await publishMessage(conversationId, strippedMessage, keys, appendMessageToConversation);
         }
       } catch (err) {
         console.error("Failed to derive keys in time", err)
