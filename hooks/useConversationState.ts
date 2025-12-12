@@ -440,7 +440,7 @@ export const useConversationState = (): UseConversationStateReturn => {
 
       if (activeConversationId === conversationId) {
         console.log(activeConversationId, conversationId);
-        // setMessages(conversation.messages);
+        setMessages([...conversation.messages]);
       }
     },
     []

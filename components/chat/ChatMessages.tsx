@@ -69,6 +69,21 @@ export default function ChatMessages({
     return textContent.trim().startsWith("ATTENTION");
   };
 
+  // Auto-scroll to bottom when messages change or content is streaming
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+    
+    // Check if user is near the bottom (within 150px)
+    const isNearBottom =
+      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
+    
+    // Auto-scroll if user is near the bottom or if loading (new content coming)
+    if (isNearBottom || isLoading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, streamingContent, thinkingContent, isLoading]);
+
   // Group messages by their depth in the conversation tree
   const messageVersions = useMemo(() => {
     const groups = new Map<number, Message[]>();
