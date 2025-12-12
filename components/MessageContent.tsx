@@ -133,7 +133,9 @@ export default function MessageContentRenderer({
     <div className="space-y-2">
       {/* Render text content first */}
       {textContent.map((item, index) => {
-        const processedText = processCitations(item.text || "", citations);
+        // Use citations from the item itself, or fall back to the prop
+        const itemCitations = item.citations || citations;
+        const processedText = processCitations(item.text || "", itemCitations);
         return <MarkdownRenderer key={`text-${index}`} content={processedText} />;
       })}
 

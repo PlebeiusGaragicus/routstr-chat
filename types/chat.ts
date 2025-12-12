@@ -15,18 +15,18 @@ export interface MessageContent {
     storageId?: string;
   };
   hidden?: boolean;
+  thinking?: string;
+  citations?: string[];
 }
 
 export interface Message {
   role: string;
   content: string | MessageContent[];
-  thinking?: string;
   _eventId?: string;
   _prevId?: string;
   _createdAt?: number;
   _modelId?: string;
   satsSpent?: number;
-  citations?: string[];
 }
 
 export type AttachmentType = "image" | "file";

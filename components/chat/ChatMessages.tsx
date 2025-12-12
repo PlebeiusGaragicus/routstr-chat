@@ -15,6 +15,22 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import ThinkingSection from "@/components/ui/ThinkingSection";
 import { RefObject, useState, useRef, useEffect, useMemo } from "react";
 
+// Helper function to extract thinking from message content
+const getThinkingFromContent = (content: string | MessageContent[]): string | undefined => {
+  if (typeof content === "string") return undefined;
+  
+  const textContent = content.find(item => item.type === "text");
+  return textContent?.thinking;
+};
+
+// Helper function to extract citations from message content
+const getCitationsFromContent = (content: string | MessageContent[]): string[] | undefined => {
+  if (typeof content === "string") return undefined;
+  
+  const textContent = content.find(item => item.type === "text");
+  return textContent?.citations;
+};
+
 interface ChatMessagesProps {
   messages: Message[];
   streamingContent: string;
@@ -521,7 +537,7 @@ export default function ChatMessages({
                                 <div className="text-[18px]">
                                   <MessageContentRenderer
                                     content={message.content}
-                                    citations={message.citations}
+                                    citations={getCitationsFromContent(message.content)}
                                   />
                                 </div>
                               </div>
@@ -680,16 +696,16 @@ export default function ChatMessages({
                       {(() => {
                         return null;
                       })()}
-                      {message.thinking && (
+                      {getThinkingFromContent(message.content) && (
                         <ThinkingSection
-                          thinking={message.thinking}
+                          thinking={getThinkingFromContent(message.content)!}
                           thinkingContent={thinkingContent}
                         />
                       )}
                       <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
                         <MessageContentRenderer
                           content={message.content}
-                          citations={message.citations}
+                          citations={getCitationsFromContent(message.content)}
                         />
                       </div>
                       <div

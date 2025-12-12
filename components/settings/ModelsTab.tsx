@@ -56,11 +56,20 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
           endpoint_urls: p.endpoint_urls
         }));
         // Filter out staging providers on production
-        const isProduction = typeof window !== 'undefined' && 
+        const isProduction = typeof window !== 'undefined' &&
           window.location.hostname === 'chat.routstr.com';
-        const filteredList = isProduction 
+        let filteredList = isProduction
           ? list.filter(p => !p.endpoint_url?.includes('staging'))
           : list;
+        
+        // Add localhost in development
+        if (process.env.NODE_ENV === 'development') {
+          filteredList = [...filteredList, {
+            name: 'Localhost',
+            endpoint_url: 'http://localhost:8000/'
+          }];
+        }
+        
         // Keep provided order; optionally alphabetical by name for UX
         const sorted = filteredList.slice().sort((a, b) => (a.name || a.endpoint_url).localeCompare(b.name || b.endpoint_url));
         // Store all providers for Disable Providers section

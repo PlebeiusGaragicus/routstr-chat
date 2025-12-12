@@ -207,6 +207,9 @@ async function routstrRequest(params: {
         model: modelIdForRequest,
         messages: apiMessages,
         stream: true,
+        tools: [
+          { type: "web_search" },
+        ]
       }),
     });
   } catch (error: any) {
@@ -835,49 +838,45 @@ function mergeImages(
  */
 function createAssistantMessage(streamingResult: StreamingResult): Message {
   const hasImages = streamingResult.images && streamingResult.images.length > 0;
+  const hasThinking = streamingResult.thinking !== undefined;
+  const hasCitations = streamingResult.citations && streamingResult.citations.length > 0;
 
-  if (hasImages) {
-    // Create multimodal message with text and images
+  if (hasImages || hasThinking || hasCitations) {
+    // Create multimodal message with text, images, thinking, and citations
     const content: MessageContent[] = [];
 
     if (streamingResult.content) {
-      content.push({ type: "text", text: streamingResult.content });
+      const textContent: MessageContent = {
+        type: "text",
+        text: streamingResult.content
+      };
+      
+      // Add thinking and citations to the text content
+      if (hasThinking) {
+        textContent.thinking = streamingResult.thinking;
+      }
+      if (hasCitations) {
+        textContent.citations = streamingResult.citations;
+      }
+      
+      content.push(textContent);
     }
 
-    streamingResult.images!.forEach((img) => {
+    streamingResult.images?.forEach((img) => {
       content.push({
         type: "image_url",
         image_url: { url: img.image_url.url },
       });
     });
 
-    const message: Message = {
+    return {
       role: "assistant",
       content,
     };
-
-    if (streamingResult.thinking) {
-      message.thinking = streamingResult.thinking;
-    }
-
-    if (streamingResult.citations && streamingResult.citations.length > 0) {
-      message.citations = streamingResult.citations;
-    }
-
-    return message;
   }
 
-  // Create simple text message
-  const message = createTextMessage("assistant", streamingResult.content);
-  if (streamingResult.thinking) {
-    message.thinking = streamingResult.thinking;
-  }
-
-  if (streamingResult.citations && streamingResult.citations.length > 0) {
-    message.citations = streamingResult.citations;
-  }
-
-  return message;
+  // Create simple text message (no thinking, no citations, no images)
+  return createTextMessage("assistant", streamingResult.content);
 }
 
 /**

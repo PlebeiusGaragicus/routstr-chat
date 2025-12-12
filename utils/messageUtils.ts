@@ -17,15 +17,34 @@ export const getTextFromContent = (
 
 /**
  * Converts a Message object to the format expected by the API
+ * Strips out thinking and citations from MessageContent as they're metadata, not API content
  * @param message The message to convert
  * @returns Object with role and content for API consumption
  */
 export const convertMessageForAPI = (
   message: Message
 ): { role: string; content: string | MessageContent[] } => {
+  // If content is a string, return as-is
+  if (typeof message.content === "string") {
+    return {
+      role: message.role,
+      content: message.content,
+    };
+  }
+
+  // If content is an array, strip thinking and citations from text items
+  const cleanedContent = message.content.map((item) => {
+    if (item.type === "text") {
+      // Create a copy without thinking and citations
+      const { thinking, citations, ...cleanItem } = item;
+      return cleanItem;
+    }
+    return item;
+  });
+
   return {
     role: message.role,
-    content: message.content,
+    content: cleanedContent,
   };
 };
 
