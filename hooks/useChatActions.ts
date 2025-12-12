@@ -13,7 +13,6 @@ import { fetchAIResponse } from "@/utils/apiUtils";
 import { getPendingCashuTokenAmount } from "@/utils/cashuUtils";
 import { useCashuWithXYZ } from "./useCashuWithXYZ";
 import { DEFAULT_MINT_URL } from "@/lib/utils";
-import { useConversationState } from "./useConversationState";
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -80,12 +79,22 @@ export interface UseChatActionsReturn {
   ) => void;
 }
 
+export interface UseChatActionsParams {
+  createAndStoreChatEvent: (conversationId: string, message: Message) => Promise<string | null>;
+  getLastNonSystemMessageEventId: (conversationId: string) => string;
+  updateLastMessageSatsSpent: (conversationId: string, satsSpent: number) => void;
+}
+
 /**
  * Custom hook for handling chat operations and AI interactions
  * Manages message sending logic, AI response streaming,
  * token management for API calls, and error handling and retries
  */
-export const useChatActions = (): UseChatActionsReturn => {
+export const useChatActions = ({
+  createAndStoreChatEvent,
+  getLastNonSystemMessageEventId,
+  updateLastMessageSatsSpent,
+}: UseChatActionsParams): UseChatActionsReturn => {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
@@ -137,9 +146,6 @@ export const useChatActions = (): UseChatActionsReturn => {
   } = useCashuWithXYZ();
 
   // Autoscroll moved to ChatMessages to honor user scroll position
-
-  const { createAndStoreChatEvent, getLastNonSystemMessageEventId, updateLastMessageSatsSpent } =
-    useConversationState();
 
   const sendMessage = useCallback(
     async (

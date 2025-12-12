@@ -527,7 +527,8 @@ export const useConversationState = (): UseConversationStateReturn => {
       console.log(activeConversationIdRef.current, activeConversationId, conversationId);
       if (activeConversationId === conversationId) {
         console.log("latest messaegs with sats spend", conversation.messages);
-        setMessages(conversation.messages);
+        // Create new message objects to ensure React detects the change
+        setMessages(conversation.messages.map(msg => ({ ...msg })));
       }
 
       // Update conversations state to trigger re-render
