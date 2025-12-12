@@ -31,6 +31,14 @@ const getCitationsFromContent = (content: string | MessageContent[]): string[] |
   return textContent?.citations;
 };
 
+// Helper function to extract annotations from message content
+const getAnnotationsFromContent = (content: string | MessageContent[]): import("@/types/chat").AnnotationData[] | undefined => {
+  if (typeof content === "string") return undefined;
+  
+  const textContent = content.find(item => item.type === "text");
+  return textContent?.annotations;
+};
+
 interface ChatMessagesProps {
   messages: Message[];
   streamingContent: string;
@@ -538,6 +546,7 @@ export default function ChatMessages({
                                   <MessageContentRenderer
                                     content={message.content}
                                     citations={getCitationsFromContent(message.content)}
+                                    annotations={getAnnotationsFromContent(message.content)}
                                   />
                                 </div>
                               </div>
@@ -706,6 +715,7 @@ export default function ChatMessages({
                         <MessageContentRenderer
                           content={message.content}
                           citations={getCitationsFromContent(message.content)}
+                          annotations={getAnnotationsFromContent(message.content)}
                         />
                       </div>
                       <div

@@ -10,6 +10,7 @@ import { getFile } from "@/utils/indexedDb";
 interface MessageContentProps {
   content: string | ChatMessageContent[];
   citations?: string[];
+  annotations?: import("@/types/chat").AnnotationData[];
 }
 
 /**
@@ -34,9 +35,42 @@ function processCitations(text: string, citations?: string[]): string {
   });
 }
 
+/**
+ * Processes text content to replace annotated text ranges with markdown links
+ * @param text The text content
+ * @param annotations Array of annotation objects with start_index, end_index, url, and title
+ * @returns Processed text with markdown links
+ */
+function processAnnotations(text: string, annotations?: import("@/types/chat").AnnotationData[]): string {
+  if (!annotations || annotations.length === 0) {
+    return text;
+  }
+
+  // Sort annotations by start_index in descending order to process from end to start
+  // This prevents index shifting issues when replacing text
+  const sortedAnnotations = [...annotations].sort((a, b) => b.start_index - a.start_index);
+
+  let result = text;
+  for (const annotation of sortedAnnotations) {
+    const { start_index, end_index, url, title } = annotation;
+    
+    // Extract the text to be replaced
+    const annotatedText = result.substring(start_index, end_index);
+    
+    // Create markdown link with title as hover text
+    const markdownLink = `[${annotatedText}](${url} "${title}")`;
+    
+    // Replace the text range with the markdown link
+    result = result.substring(0, start_index) + markdownLink + result.substring(end_index);
+  }
+
+  return result;
+}
+
 export default function MessageContentRenderer({
   content,
   citations,
+  annotations,
 }: MessageContentProps) {
   type ImageStatus = "loading" | "loaded" | "error";
   const [imageStatusMap, setImageStatusMap] = useState<
@@ -108,7 +142,8 @@ export default function MessageContentRenderer({
   }, [content, blobUrls]);
 
   if (typeof content === "string") {
-    const processedContent = processCitations(content, citations);
+    let processedContent = processAnnotations(content, annotations);
+    processedContent = processCitations(processedContent, citations);
     return <MarkdownRenderer content={processedContent} />;
   }
 
@@ -133,9 +168,11 @@ export default function MessageContentRenderer({
     <div className="space-y-2">
       {/* Render text content first */}
       {textContent.map((item, index) => {
-        // Use citations from the item itself, or fall back to the prop
+        // Use citations and annotations from the item itself, or fall back to the prop
         const itemCitations = item.citations || citations;
-        const processedText = processCitations(item.text || "", itemCitations);
+        const itemAnnotations = item.annotations || annotations;
+        let processedText = processAnnotations(item.text || "", itemAnnotations);
+        processedText = processCitations(processedText, itemCitations);
         return <MarkdownRenderer key={`text-${index}`} content={processedText} />;
       })}
 

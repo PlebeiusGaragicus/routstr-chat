@@ -200,17 +200,21 @@ async function routstrRequest(params: {
 
   let response: Response;
   try {
+    const body: any = {
+      model: modelIdForRequest,
+      messages: apiMessages,
+      stream: true,
+    };
+
+    // Only add tools for OpenAI models
+    if (selectedModel?.name?.startsWith("OpenAI:")) {
+      body.tools = [{ type: "web_search" }];
+    }
+
     response = await fetch(`${baseUrl}v1/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        model: modelIdForRequest,
-        messages: apiMessages,
-        stream: true,
-        tools: [
-          { type: "web_search" },
-        ]
-      }),
+      body: JSON.stringify(body),
     });
   } catch (error: any) {
     // Handle network fetch errors and attempt provider failover
@@ -811,6 +815,17 @@ interface ImageData {
 }
 
 /**
+ * Annotation type from API response
+ */
+interface AnnotationData {
+  type: "url_citation";
+  start_index: number;
+  end_index: number;
+  url: string;
+  title: string;
+}
+
+/**
  * Merges new images into the accumulated images array, avoiding duplicates
  * @param accumulatedImages Current array of images
  * @param newImages New images to merge
@@ -840,9 +855,10 @@ function createAssistantMessage(streamingResult: StreamingResult): Message {
   const hasImages = streamingResult.images && streamingResult.images.length > 0;
   const hasThinking = streamingResult.thinking !== undefined;
   const hasCitations = streamingResult.citations && streamingResult.citations.length > 0;
+  const hasAnnotations = streamingResult.annotations && streamingResult.annotations.length > 0;
 
-  if (hasImages || hasThinking || hasCitations) {
-    // Create multimodal message with text, images, thinking, and citations
+  if (hasImages || hasThinking || hasCitations || hasAnnotations) {
+    // Create multimodal message with text, images, thinking, citations, and annotations
     const content: MessageContent[] = [];
 
     if (streamingResult.content) {
@@ -851,12 +867,15 @@ function createAssistantMessage(streamingResult: StreamingResult): Message {
         text: streamingResult.content
       };
       
-      // Add thinking and citations to the text content
+      // Add thinking, citations, and annotations to the text content
       if (hasThinking) {
         textContent.thinking = streamingResult.thinking;
       }
       if (hasCitations) {
         textContent.citations = streamingResult.citations;
+      }
+      if (hasAnnotations) {
+        textContent.annotations = streamingResult.annotations;
       }
       
       content.push(textContent);
@@ -875,7 +894,7 @@ function createAssistantMessage(streamingResult: StreamingResult): Message {
     };
   }
 
-  // Create simple text message (no thinking, no citations, no images)
+  // Create simple text message (no thinking, no citations, no annotations, no images)
   return createTextMessage("assistant", streamingResult.content);
 }
 
@@ -899,6 +918,7 @@ interface StreamingResult {
   model?: string;
   finish_reason?: string;
   citations?: string[];
+  annotations?: AnnotationData[];
 }
 
 /**
@@ -995,6 +1015,7 @@ async function processStreamingResponse(
   let model: string | undefined;
   let finish_reason: string | undefined;
   let citations: string[] | undefined;
+  let annotations: AnnotationData[] | undefined;
 
   // Buffer for incomplete lines - critical for handling large base64 image data
   // that may be split across multiple stream chunks
@@ -1113,6 +1134,10 @@ async function processStreamingResponse(
             if (parsedData.citations) {
               citations = parsedData.citations;
             }
+            
+            if (parsedData.annotations) {
+              annotations = parsedData.annotations
+            }
 
             // Handle finish reason
             if (
@@ -1150,8 +1175,6 @@ async function processStreamingResponse(
             // Swallow parse errors for streaming chunks
           }
         } else {
-          console.log(accumulatedContent, accumulatedThinking);
-          console.log(line);
           if (
             accumulatedContent === "" &&
             accumulatedThinking === "" &&
@@ -1172,7 +1195,8 @@ async function processStreamingResponse(
     usage,
     model,
     finish_reason,
-    citations
+    citations,
+    annotations
   };
 }
 

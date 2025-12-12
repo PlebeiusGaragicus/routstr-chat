@@ -1,5 +1,13 @@
 export type MessageContentType = "text" | "image_url" | "file";
 
+export interface AnnotationData {
+  type: "url_citation";
+  start_index: number;
+  end_index: number;
+  url: string;
+  title: string;
+}
+
 export interface MessageContent {
   type: MessageContentType;
   text?: string;
@@ -17,6 +25,7 @@ export interface MessageContent {
   hidden?: boolean;
   thinking?: string;
   citations?: string[];
+  annotations?: AnnotationData[];
 }
 
 export interface Message {
