@@ -860,6 +860,10 @@ function createAssistantMessage(streamingResult: StreamingResult): Message {
       message.thinking = streamingResult.thinking;
     }
 
+    if (streamingResult.citations && streamingResult.citations.length > 0) {
+      message.citations = streamingResult.citations;
+    }
+
     return message;
   }
 
@@ -867,6 +871,10 @@ function createAssistantMessage(streamingResult: StreamingResult): Message {
   const message = createTextMessage("assistant", streamingResult.content);
   if (streamingResult.thinking) {
     message.thinking = streamingResult.thinking;
+  }
+
+  if (streamingResult.citations && streamingResult.citations.length > 0) {
+    message.citations = streamingResult.citations;
   }
 
   return message;
@@ -891,6 +899,7 @@ interface StreamingResult {
   usage?: UsageStats;
   model?: string;
   finish_reason?: string;
+  citations?: string[];
 }
 
 /**
@@ -986,6 +995,7 @@ async function processStreamingResponse(
   let usage: UsageStats | undefined;
   let model: string | undefined;
   let finish_reason: string | undefined;
+  let citations: string[] | undefined;
 
   // Buffer for incomplete lines - critical for handling large base64 image data
   // that may be split across multiple stream chunks
@@ -1101,6 +1111,10 @@ async function processStreamingResponse(
               model = parsedData.model;
             }
 
+            if (parsedData.citations) {
+              citations = parsedData.citations;
+            }
+
             // Handle finish reason
             if (
               parsedData.choices &&
@@ -1159,6 +1173,7 @@ async function processStreamingResponse(
     usage,
     model,
     finish_reason,
+    citations
   };
 }
 

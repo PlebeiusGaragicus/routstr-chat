@@ -450,7 +450,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     conversationId: string,
     message: Message
   ): Promise<string | null> => {
-    console.log("Createing mes 1081", currentPnsKeys);
+    console.log("Createing mes 1081", message);
     const strippedMessage = stripImageDataFromSingleMessage(message);
     if (currentPnsKeys) {
       return publishMessage(conversationId, strippedMessage, currentPnsKeys, appendMessageToConversation);

@@ -9,10 +9,34 @@ import { getFile } from "@/utils/indexedDb";
 
 interface MessageContentProps {
   content: string | ChatMessageContent[];
+  citations?: string[];
+}
+
+/**
+ * Processes text content to replace citation markers [1], [2], etc. with markdown links
+ * @param text The text content with citation markers
+ * @param citations Array of citation URLs
+ * @returns Processed text with markdown links
+ */
+function processCitations(text: string, citations?: string[]): string {
+  if (!citations || citations.length === 0) {
+    return text;
+  }
+
+  // Replace citation markers [1], [2], etc. with markdown links
+  return text.replace(/\[(\d+)\]/g, (match, num) => {
+    const index = parseInt(num, 10) - 1;
+    if (index >= 0 && index < citations.length) {
+      const url = citations[index];
+      return `[[${num}]](${url})`;
+    }
+    return match; // Return original if citation not found
+  });
 }
 
 export default function MessageContentRenderer({
   content,
+  citations,
 }: MessageContentProps) {
   type ImageStatus = "loading" | "loaded" | "error";
   const [imageStatusMap, setImageStatusMap] = useState<
@@ -84,7 +108,8 @@ export default function MessageContentRenderer({
   }, [content, blobUrls]);
 
   if (typeof content === "string") {
-    return <MarkdownRenderer content={content} />;
+    const processedContent = processCitations(content, citations);
+    return <MarkdownRenderer content={processedContent} />;
   }
 
   const getAttachmentLabel = (mimeType?: string): string | null => {
@@ -107,9 +132,10 @@ export default function MessageContentRenderer({
   return (
     <div className="space-y-2">
       {/* Render text content first */}
-      {textContent.map((item, index) => (
-        <MarkdownRenderer key={`text-${index}`} content={item.text || ""} />
-      ))}
+      {textContent.map((item, index) => {
+        const processedText = processCitations(item.text || "", citations);
+        return <MarkdownRenderer key={`text-${index}`} content={processedText} />;
+      })}
 
       {/* Render file attachments */}
       {fileContent.length > 0 && (

@@ -521,6 +521,7 @@ export default function ChatMessages({
                                 <div className="text-[18px]">
                                   <MessageContentRenderer
                                     content={message.content}
+                                    citations={message.citations}
                                   />
                                 </div>
                               </div>
@@ -686,7 +687,10 @@ export default function ChatMessages({
                         />
                       )}
                       <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
-                        <MessageContentRenderer content={message.content} />
+                        <MessageContentRenderer
+                          content={message.content}
+                          citations={message.citations}
+                        />
                       </div>
                       <div
                         className={`mt-1.5 ${
