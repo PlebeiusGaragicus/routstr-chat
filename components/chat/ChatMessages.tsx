@@ -662,12 +662,6 @@ export default function ChatMessages({
                   ) : (
                     <div className="flex flex-col items-start mb-6 group">
                       {(() => {
-                        console.log(
-                          "Rendering assistant message:",
-                          message.role,
-                          "satsSpent:",
-                          message.satsSpent
-                        );
                         return null;
                       })()}
                       {message.thinking && (

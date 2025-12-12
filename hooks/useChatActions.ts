@@ -14,7 +14,6 @@ import { getPendingCashuTokenAmount } from "@/utils/cashuUtils";
 import { useCashuWithXYZ } from "./useCashuWithXYZ";
 import { DEFAULT_MINT_URL } from "@/lib/utils";
 import { useConversationState } from "./useConversationState";
-import { saveSatsSpent } from "@/utils/storageUtils";
 
 export interface UseChatActionsReturn {
   inputMessage: string;
@@ -139,7 +138,7 @@ export const useChatActions = (): UseChatActionsReturn => {
 
   // Autoscroll moved to ChatMessages to honor user scroll position
 
-  const { createAndStoreChatEvent, getLastNonSystemMessageEventId } =
+  const { createAndStoreChatEvent, getLastNonSystemMessageEventId, updateLastMessageSatsSpent } =
     useConversationState();
 
   const sendMessage = useCallback(
@@ -351,9 +350,6 @@ export const useChatActions = (): UseChatActionsReturn => {
         }));
       }
 
-    // Create a ref to track current messages during the API call
-    let currentMessages = messageHistory;
-
       try {
         const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
         await fetchAIResponse({
@@ -412,27 +408,7 @@ export const useChatActions = (): UseChatActionsReturn => {
           transactionHistory,
           onTokenCreated: setPendingCashuAmountState,
           onLastMessageSatsUpdate: (satsSpent) => {
-            // Update the last message with sats spent
-            console.log(
-              "onLastMessageSatsUpdate called with satsSpent:",
-              satsSpent
-            );
-            const lastMessage = currentMessages[currentMessages.length - 1];
-            console.log("lastMessage:", lastMessage);
-            if (lastMessage && lastMessage.role === "assistant") {
-              const updatedMessage = { ...lastMessage, satsSpent };
-              const updatedMessages = [
-                ...currentMessages.slice(0, -1),
-                updatedMessage,
-              ];
-              console.log("Updated messages with satsSpent:", updatedMessages);
-              setMessages(updatedMessages);
-
-              // Save to localStorage so it persists across syncs
-              if (lastMessage._eventId) {
-                saveSatsSpent(lastMessage._eventId, satsSpent);
-              }
-            }
+            updateLastMessageSatsSpent(originConversationId, satsSpent);
           },
         });
         setPendingCashuAmountState(getPendingCashuTokenAmount());
@@ -461,6 +437,10 @@ export const useChatActions = (): UseChatActionsReturn => {
       storeCashu,
       transactionHistory,
       setPendingCashuAmountState,
+      updateLastMessageSatsSpent,
+      getLastNonSystemMessageEventId,
+      createAndStoreChatEvent,
+      cashuStore.activeMintUrl,
     ]
   );
 

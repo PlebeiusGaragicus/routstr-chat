@@ -19,6 +19,7 @@ import {
   saveActiveConversationId,
   loadLastUsedModel,
   loadSatsSpentMap,
+  saveSatsSpent,
 } from "@/utils/storageUtils";
 import { useChatSync } from "./useChatSync";
 import {
@@ -65,6 +66,7 @@ export interface UseConversationStateReturn {
   ) => void;
   getActiveConversationId: () => string | null;
   getLastNonSystemMessageEventId: (conversationId: string) => string;
+  updateLastMessageSatsSpent: (conversationId: string, satsSpent: number) => void;
   isSyncing: boolean;
   currentPns: PnsKeys | null;
   createAndStoreChatEvent: (
@@ -196,7 +198,6 @@ export const useConversationState = (): UseConversationStateReturn => {
       );
       const sortedConversations =
         sortConversationsByRecentActivity(updatedConversations);
-      console.log("gm", sortedConversations);
       setConversations(sortedConversations);
 
       // Update messages for active conversation
@@ -207,6 +208,7 @@ export const useConversationState = (): UseConversationStateReturn => {
           // Load satsSpent from localStorage and merge with messages
           const storedSatsSpent = loadSatsSpentMap();
 
+          console.log("settings messages agian, a", activeConv.messages);
           setMessages((prevMessages) => {
             // Also collect satsSpent from current messages (in case they weren't saved yet)
             const satsSpentMap = new Map<string, number>();
@@ -434,8 +436,11 @@ export const useConversationState = (): UseConversationStateReturn => {
       setConversations(sortedConversations);
 
       // Update messages if this is the active conversation
-      if (activeConversationIdRef.current === conversationId) {
-        setMessages(conversation.messages);
+      const activeConversationId = loadActiveConversationId();
+
+      if (activeConversationId === conversationId) {
+        console.log(activeConversationId, conversationId);
+        // setMessages(conversation.messages);
       }
     },
     []
@@ -496,6 +501,42 @@ export const useConversationState = (): UseConversationStateReturn => {
     return emptyEventId;
   }, []);
 
+  const updateLastMessageSatsSpent = useCallback((conversationId: string, satsSpent: number) => {
+    
+    // Get the conversation from the ref map
+    const conversation = conversationsMapRef.current.get(conversationId);
+    if (!conversation || conversation.messages.length === 0) {
+      console.log("No conversation or messages found");
+      return;
+    }
+
+    // Update the last message with satsSpent
+    const lastMessage = conversation.messages[conversation.messages.length - 1];
+    
+    if (lastMessage && lastMessage.role === "assistant") {
+      const updatedMessage = { ...lastMessage, satsSpent };
+      conversation.messages[conversation.messages.length - 1] = updatedMessage;
+      
+      // Save to localStorage so it persists across syncs
+      if (lastMessage._eventId) {
+        saveSatsSpent(lastMessage._eventId, satsSpent);
+      }
+
+      // Update state if this is the active conversation
+      const activeConversationId = loadActiveConversationId();
+      console.log(activeConversationIdRef.current, activeConversationId, conversationId);
+      if (activeConversationId === conversationId) {
+        console.log("latest messaegs with sats spend", conversation.messages);
+        setMessages(conversation.messages);
+      }
+
+      // Update conversations state to trigger re-render
+      const updatedConversations = Array.from(conversationsMapRef.current.values());
+      const sortedConversations = sortConversationsByRecentActivity(updatedConversations);
+      setConversations(sortedConversations);
+    }
+  }, []);
+
   return {
     conversations,
     activeConversationId,
@@ -525,6 +566,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     appendMessageToConversation,
     getActiveConversationId: () => loadActiveConversationId(),
     getLastNonSystemMessageEventId,
+    updateLastMessageSatsSpent,
     conversationsLoaded,
     isSyncing,
     currentPns: currentPnsKeys,
