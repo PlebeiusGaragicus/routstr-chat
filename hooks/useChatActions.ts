@@ -183,19 +183,14 @@ export const useChatActions = (): UseChatActionsReturn => {
         _createdAt: timestamp,
       };
 
-      const updatedMessages = [...messages, updatedMessage];
+    
+    const originConversationId = activeConversationId ?? createNewConversationHandler([], timestamp.toString());
 
-      const originConversationId =
-        activeConversationId ??
-        createNewConversationHandler(updatedMessages, timestamp.toString());
-      if (activeConversationId) {
-        setMessages(updatedMessages);
-      }
+    console.log(updatedMessage);
 
-      // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
-      createAndStoreChatEvent(originConversationId, updatedMessage).catch(
-        console.error
-      );
+    // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
+    createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+    const updatedMessages = [...messages, updatedMessage];
 
       setInputMessage("");
       setUploadedAttachments([]);
@@ -356,34 +351,8 @@ export const useChatActions = (): UseChatActionsReturn => {
         }));
       }
 
-      // Create a ref to track current messages during the API call
-      let currentMessages = messageHistory;
-      const updateMessages = (newMessages: Message[]) => {
-        currentMessages = newMessages;
-        const currentlyActive = getActiveConversationId();
-        if (
-          originConversationId &&
-          currentlyActive &&
-          currentlyActive !== originConversationId
-        ) {
-          console.log(
-            "rdlogs: ONE messages: ",
-            currentMessages,
-            originConversationId,
-            currentlyActive
-          );
-          // Persist to the origin conversation without disrupting the UI of the current one
-          // saveConversationById(originConversationId, newMessages);
-        } else {
-          console.log(
-            "rdlogs: TWO messages: ",
-            currentMessages,
-            originConversationId
-          );
-          setMessages(newMessages);
-          // saveConversationById(originConversationId, newMessages);
-        }
-      };
+    // Create a ref to track current messages during the API call
+    let currentMessages = messageHistory;
 
       try {
         const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
@@ -427,22 +396,11 @@ export const useChatActions = (): UseChatActionsReturn => {
           onMessageAppend: (message) => {
             const prevId = getLastNonSystemMessageEventId(originConversationId);
             // Update message object with prevId
-            const updatedMessage = {
-              ...message,
-              _prevId: prevId,
-              _createdAt: Date.now(),
-              _modelId: selectedModel.id,
-            };
-            // Append to current messages state
-            const updatedMessages = [...currentMessages, updatedMessage];
-            updateMessages(updatedMessages);
+            const updatedMessage = { ...message, _prevId: prevId, _createdAt: Date.now(), _modelId: selectedModel.id};
 
             // Publish AI response to Nostr
             if (originConversationId) {
-              createAndStoreChatEvent(
-                originConversationId,
-                updatedMessage
-              ).catch(console.error);
+              createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
             }
           },
           onBalanceUpdate: setBalance,
@@ -468,7 +426,7 @@ export const useChatActions = (): UseChatActionsReturn => {
                 updatedMessage,
               ];
               console.log("Updated messages with satsSpent:", updatedMessages);
-              updateMessages(updatedMessages);
+              setMessages(updatedMessages);
 
               // Save to localStorage so it persists across syncs
               if (lastMessage._eventId) {

@@ -69,11 +69,11 @@ interface ChatSyncHook {
     message: Message,
     pnsKeys: PnsKeys,
     onMessagePublished?: (conversationId: string, message: Message) => void
-  ) => Promise<string | null>;
+  ) => string | null;
   migrateConversations: (
     conversations: Conversation[],
     pnsKeys: PnsKeys
-  ) => Promise<Conversation[] | null>;
+  ) => Conversation[] | null;
 }
 
 interface InnerEventPayload {
@@ -106,10 +106,10 @@ export const useChatSync = (): ChatSyncHook => {
 
   // 1. Create Inner Event (Kind 20001)
   const createInnerEvent = useCallback(
-    async (
+    (
       conversationId: string,
       message: Message
-    ): Promise<InnerEventPayload> => {
+    ): InnerEventPayload => {
       const pubkey = user?.pubkey;
       if (!pubkey) throw new Error('No public key available');
 
@@ -145,7 +145,7 @@ export const useChatSync = (): ChatSyncHook => {
   );
 
   const migrateConversations = useCallback(
-    async (conversations: Conversation[], pnsKeys: PnsKeys): Promise<Conversation[] | null> => {
+    (conversations: Conversation[], pnsKeys: PnsKeys): Conversation[] | null => {
       try {
         setIsSyncing(true);
         let addedCount = 0;
@@ -160,7 +160,7 @@ export const useChatSync = (): ChatSyncHook => {
 
             try {
               // 1. Create Inner
-              const inner = await createInnerEvent(conversation.id, message);
+              const inner = createInnerEvent(conversation.id, message);
               
               // 2. Create PNS Event
               const pnsEvent = createPnsEvent(inner, pnsKeys);
@@ -194,18 +194,18 @@ export const useChatSync = (): ChatSyncHook => {
 
   // Publish Message Flow
   const publishMessage = useCallback(
-    async (
+    (
       conversationId: string,
       message: Message,
       pnsKeys: PnsKeys,
       onMessagePublished?: (conversationId: string, message: Message) => void
-    ): Promise<string | null> => {
+    ): string | null => {
       try {
         setIsSyncing(true);
         setError(null);
 
         // 1. Create Inner
-        const inner = await createInnerEvent(conversationId, message);
+        const inner = createInnerEvent(conversationId, message);
         
         // 2. Create PNS Event (Encrypted and Signed)
         const pnsEvent = createPnsEvent(inner, pnsKeys);

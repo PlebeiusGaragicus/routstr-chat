@@ -122,38 +122,27 @@ export const useConversationState = (): UseConversationStateReturn => {
 
   // Migrate existing conversations when PNS keys are available
   useEffect(() => {
-    const performMigration = async () => {
-      if (
-        currentPnsKeys &&
-        conversationsLoaded &&
-        !migrationAttemptedRef.current
-      ) {
-        const storedConversations = loadConversationsFromStorage();
-        const hasUnsyncedMessages = storedConversations.some((c) =>
-          c.messages.some((m) => !m._eventId)
-        );
+    if (currentPnsKeys && conversationsLoaded && !migrationAttemptedRef.current) {
+      const storedConversations = loadConversationsFromStorage();
+      const hasUnsyncedMessages = storedConversations.some(c =>
+        c.messages.some(m => !m._eventId)
+      );
 
-        if (hasUnsyncedMessages) {
-          migrationAttemptedRef.current = true;
-          console.log("Found unsynced messages, starting migration...");
-          const updatedConversations = await migrateConversations(
-            storedConversations,
-            currentPnsKeys
-          );
-
-          if (updatedConversations) {
-            // Update map and state with migrated conversations (containing event IDs)
-            updatedConversations.forEach((c) => {
-              conversationsMapRef.current.set(c.id, c);
-            });
-            setConversations(updatedConversations);
-            clearAllConversations();
-          }
+      if (hasUnsyncedMessages) {
+        migrationAttemptedRef.current = true;
+        console.log('Found unsynced messages, starting migration...');
+        const updatedConversations = migrateConversations(storedConversations, currentPnsKeys);
+        
+        if (updatedConversations) {
+          // Update map and state with migrated conversations (containing event IDs)
+          updatedConversations.forEach(c => {
+            conversationsMapRef.current.set(c.id, c);
+          });
+          setConversations(updatedConversations);
+          clearAllConversations();
         }
       }
-    };
-
-    performMigration();
+    }
   }, [currentPnsKeys, conversationsLoaded, migrateConversations]);
 
   useEffect(() => {
@@ -452,87 +441,60 @@ export const useConversationState = (): UseConversationStateReturn => {
     []
   );
 
-  const createAndStoreChatEvent = useCallback(
-    async (
-      conversationId: string,
-      message: Message
-    ): Promise<string | null> => {
-      console.log("Createing mes 1081", currentPnsKeys);
-      const strippedMessage = stripImageDataFromSingleMessage(message);
-      if (currentPnsKeys) {
-        return await publishMessage(
-          conversationId,
-          strippedMessage,
-          currentPnsKeys,
-          appendMessageToConversation
-        );
-      } else {
-        console.log(
-          "[useConversationState] No currentPnsKeys, triggering stored 1081 events processing"
-        );
-        triggerProcessStored1081Events();
+  const createAndStoreChatEvent = useCallback(async (
+    conversationId: string,
+    message: Message
+  ): Promise<string | null> => {
+    console.log("Createing mes 1081", currentPnsKeys);
+    const strippedMessage = stripImageDataFromSingleMessage(message);
+    if (currentPnsKeys) {
+      return publishMessage(conversationId, strippedMessage, currentPnsKeys, appendMessageToConversation);
+    } else {
+      console.log('[useConversationState] No currentPnsKeys, triggering stored 1081 events processing')
+      triggerProcessStored1081Events();
 
-        // Wait for keys to be derived
-        try {
-          const keys = await firstValueFrom(
-            derivedPnsKeys$.pipe(
-              map((keysMap) => {
-                // Find the first PNS keys with SALT_PNS
-                return Array.from(keysMap.values()).find(
-                  (pnsKeys) => pnsKeys.salt === SALT_PNS
-                );
-              }),
-              filter((keys) => !!keys),
-              timeout(5000) // Timeout after 5 seconds
-            )
-          );
-
-          if (keys) {
-            return await publishMessage(
-              conversationId,
-              strippedMessage,
-              keys,
-              appendMessageToConversation
-            );
-          }
-        } catch (err) {
-          console.error("Failed to derive keys in time", err);
-          return null;
+      // Wait for keys to be derived
+      try {
+        const keys = await firstValueFrom(
+          derivedPnsKeys$.pipe(
+            map(keysMap => {
+               // Find the first PNS keys with SALT_PNS
+               return Array.from(keysMap.values()).find(pnsKeys => pnsKeys.salt === SALT_PNS)
+            }),
+            filter(keys => !!keys),
+            timeout(5000) // Timeout after 5 seconds
+          )
+        )
+        
+        if (keys) {
+           return publishMessage(conversationId, strippedMessage, keys, appendMessageToConversation);
         }
+      } catch (err) {
+        console.error("Failed to derive keys in time", err)
+        return null
       }
-      return null;
-    },
-    [
-      publishMessage,
-      currentPnsKeys,
-      appendMessageToConversation,
-      triggerProcessStored1081Events,
-    ]
-  );
+    }
+    return null;
+  }, [publishMessage, currentPnsKeys, appendMessageToConversation, triggerProcessStored1081Events]);
 
-  const getLastNonSystemMessageEventId = useCallback(
-    (conversationId: string): string => {
-      // Create a string of 64 zeros (empty Nostr event ID)
-      const emptyEventId = "0".repeat(64);
-
-      // Get the conversation from the ref map
-      const conversation = conversationsMapRef.current.get(conversationId);
-      if (!conversation || conversation.messages.length === 0) {
-        return emptyEventId;
-      }
-
-      // Iterate backwards to find the last non-system message
-      for (let i = conversation.messages.length - 1; i >= 0; i--) {
-        if (conversation.messages[i].role !== "system") {
-          return conversation.messages[i]._eventId || emptyEventId;
-        }
-      }
-
-      // If no non-system messages found, return empty Nostr event
+  const getLastNonSystemMessageEventId = useCallback((conversationId: string): string => {
+    // Create a string of 64 zeros (empty Nostr event ID)
+    const emptyEventId = '0'.repeat(64);
+    
+    // Get the conversation from the ref map
+    const conversation = conversationsMapRef.current.get(conversationId);
+    if (!conversation || conversation.messages.length === 0) {
       return emptyEventId;
-    },
-    []
-  );
+    }
+    
+    // Iterate backwards to find the last non-system message
+    for (let i = conversation.messages.length - 1; i >= 0; i--) {
+      return conversation.messages[i]._eventId || emptyEventId;
+    }
+    
+    // If no non-system messages found, return empty Nostr event
+    return emptyEventId;
+  }, []);
 
   return {
     conversations,

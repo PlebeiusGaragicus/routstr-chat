@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Check, XCircle, ChevronDown } from 'lucide-react';
+import { Search, Check, XCircle, ChevronDown, Minus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { Model } from '@/data/models';
 import { getModelNameWithoutProvider } from '@/data/models';
@@ -242,7 +242,64 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
 
           {/* Disable Providers Section - Bottom */}
           <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col">
-            <h4 className="text-sm font-medium text-white mb-2">Disable Providers</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-white flex items-center gap-2">
+                Disable Providers
+                <span className="text-xs font-normal text-white/60">
+                  ({allProviders.length - disabledProviders.length}/{allProviders.length})
+                </span>
+              </h4>
+              {allProviders.length > 0 && (
+                <button
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-transparent ${
+                    disabledProviders.length === 0
+                      ? 'bg-green-500/50'
+                      : disabledProviders.length === allProviders.length
+                      ? 'bg-red-500/50'
+                      : 'bg-yellow-500/50'
+                  } cursor-pointer`}
+                  onClick={() => {
+                    const shouldEnableAll = disabledProviders.length > 0;
+                    if (shouldEnableAll) {
+                      // Enable all providers
+                      setDisabledProviders([]);
+                      saveDisabledProviders([]);
+                      setProviders(allProviders);
+                    } else {
+                      // Disable all providers
+                      const allDisabled = allProviders.map(p => normalizeProviderUrl(p.endpoint_url));
+                      setDisabledProviders(allDisabled);
+                      saveDisabledProviders(allDisabled);
+                      setProviders([]);
+                    }
+                  }}
+                  type="button"
+                  role="switch"
+                  aria-checked={disabledProviders.length === 0}
+                  title={
+                    disabledProviders.length === 0
+                      ? 'Disable all providers'
+                      : disabledProviders.length === allProviders.length
+                      ? 'Enable all providers'
+                      : `Enable all providers (${allProviders.length - disabledProviders.length}/${allProviders.length} enabled)`
+                  }
+                >
+                  {disabledProviders.length > 0 && disabledProviders.length < allProviders.length ? (
+                    // Half-enabled state: show minus icon
+                    <span className="inline-block h-4 w-4 transform rounded-full bg-white flex items-center justify-center translate-x-2.5">
+                      <Minus className="h-3 w-3 text-yellow-600" strokeWidth={3} />
+                    </span>
+                  ) : (
+                    // All enabled or all disabled: show regular toggle
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        disabledProviders.length === 0 ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  )}
+                </button>
+              )}
+            </div>
             <div className="overflow-y-auto divide-y divide-white/5 max-h-[200px]">
               {isLoadingProviders ? (
                 <div className="p-2 space-y-2">
