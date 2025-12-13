@@ -7,7 +7,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';
 import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels, getRequiredSatsForModel, isModelAvailable } from '@/utils/modelUtils';
-import { recommendedModels } from '@/lib/recommendedModels';
+import { recommendedModels } from '@/lib/preconfiguredModels';
 
 interface ModelSelectorProps {
   selectedModel: Model | null;

@@ -15,7 +15,7 @@ export function normalizeBaseUrl(base?: string | null): string | null {
 // Provider models cache helpers shared across app
 // Kept here to avoid duplicating localStorage logic in components
 import type { Model } from '@/types/models';
-import { recommendedModels } from '@/lib/recommendedModels';
+import { recommendedModels } from '@/lib/preconfiguredModels';
 import { getStorageItem, loadLastUsedModel, setStorageItem } from '@/utils/storageUtils';
 
 // Extract the provider name from the model name (e.g., "Qwen" from "Qwen: Qwen3 30B A3B")

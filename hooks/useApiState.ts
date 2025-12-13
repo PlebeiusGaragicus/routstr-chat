@@ -4,7 +4,6 @@ import { Model } from '@/types/models';
 import { loadBaseUrl, saveBaseUrl, loadLastUsedModel, saveLastUsedModel, loadBaseUrlsList, saveBaseUrlsList, migrateCurrentCashuToken, loadModelProviderMap, saveModelProviderMap, setStorageItem, getStorageItem, loadDisabledProviders, saveMintsFromAllProviders, setProviderLastUpdate, getProviderLastUpdate, saveInfoFromAllProviders } from '@/utils/storageUtils';
 import {parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, isModelAvailable, getRequiredSatsForModel, modelSelectionStrategy } from '@/utils/modelUtils';
 import { getPendingCashuTokenAmount, getPendingCashuTokenDistribution } from '@/utils/cashuUtils';
-import { recommendedModels } from '@/lib/recommendedModels';
 
 export interface UseApiStateReturn {
   models: Model[];
