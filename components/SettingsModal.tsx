@@ -21,9 +21,6 @@ interface SettingsModalProps {
   onClose: () => void;
   initialActiveTab?: 'settings' | 'wallet' | 'history' | 'api-keys' | 'models';
   baseUrl: string;
-  setBaseUrl: (url: string) => void;
-  selectedModel: Model | null;
-  handleModelChange: (modelId: string) => void;
   models: readonly Model[];
   balance: number;
   setBalance: (balance: number | ((prevBalance: number) => number)) => void;
@@ -45,9 +42,6 @@ const SettingsModal = ({
   onClose,
   initialActiveTab,
   baseUrl,
-  setBaseUrl,
-  selectedModel,
-  handleModelChange,
   models,
   balance,
   setBalance,
@@ -64,7 +58,6 @@ const SettingsModal = ({
   isMobile: propIsMobile
 }: SettingsModalProps) => {
   const { user } = useCurrentUser();
-  const {logins} = useNostrLogin();
   const [activeTab, setActiveTab] = useState<'settings' | 'wallet' | 'history' | 'api-keys' | 'models'>(initialActiveTab || 'settings');
   const [baseUrls, setBaseUrls] = useState<string[]>([]); // State to hold base URLs
   const mediaQueryIsMobile = useMediaQuery('(max-width: 640px)');

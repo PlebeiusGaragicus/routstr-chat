@@ -168,9 +168,6 @@ function ChatPageContent() {
           onClose={() => setIsSettingsOpen(false)}
           initialActiveTab={initialSettingsTab}
           baseUrl={baseUrl}
-          setBaseUrl={setBaseUrl}
-          selectedModel={selectedModel}
-          handleModelChange={handleModelChange}
           models={models}
           balance={balance}
           setBalance={setBalance}

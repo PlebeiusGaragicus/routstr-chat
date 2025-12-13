@@ -10,6 +10,18 @@ import { useEventDatabase } from '@/lib/eventDatabase'
 import { onlyEvents, SyncDirection } from 'applesauce-relay'
 import { getStorageItem } from '@/utils/storageUtils'
 
+// Debug toggle - set to false to disable console logs
+const ENABLE_DEBUG_LOGS = false
+
+// Debug logging helpers
+const debugLog = (...args: any[]) => {
+  if (ENABLE_DEBUG_LOGS) console.log(...args)
+}
+
+const debugWarn = (...args: any[]) => {
+  if (ENABLE_DEBUG_LOGS) console.warn(...args)
+}
+
 // Storage key for chat sync enabled (shared with useChatSync.ts)
 const CHAT_SYNC_ENABLED_KEY = 'chatSyncEnabled'
 
@@ -46,14 +58,14 @@ export function triggerDerivedPnsSync() {
   const relays = relayUrls$.getValue()
   const signer = userSigner$.getValue()
   
-  console.log('[useChatSync1081] Manual derived PNS sync triggered.')
+  debugLog('[useChatSync1081] Manual derived PNS sync triggered.')
   
   if (relays.length === 0) {
-    console.warn('[useChatSync1081] Triggered sync but relayUrls is empty! Sync will not proceed to network.')
+    debugWarn('[useChatSync1081] Triggered sync but relayUrls is empty! Sync will not proceed to network.')
   }
 
   if (!signer) {
-    console.warn('[useChatSync1081] Triggered sync but userSigner is null! Decryption will fail.')
+    debugWarn('[useChatSync1081] Triggered sync but userSigner is null! Decryption will fail.')
   }
 
   // Emit trigger - the subscription at module level handles this imperatively
@@ -154,7 +166,7 @@ async function decrypt1081Event(event: NostrEvent, signerInfo: UserSignerInfo): 
       delete content.salt
     }
     
-    console.log('[useChatSync1081] Decrypted 1081 event content:', event.id)
+    debugLog('[useChatSync1081] Decrypted 1081 event content:', event.id)
     return content
   } catch (error) {
     console.error('[useChatSync1081] Failed to decrypt 1081 event:', event.id, error)
@@ -169,7 +181,7 @@ async function decrypt1081Event(event: NostrEvent, signerInfo: UserSignerInfo): 
  */
 function extractAndDerivePnsKeys(content: Decrypted1081Content): PnsKeys | null {
   if (!content.nsec || typeof content.nsec !== 'string') {
-    console.log('[useChatSync1081] No nsec found in decrypted content')
+    debugLog('[useChatSync1081] No nsec found in decrypted content')
     return null
   }
   
@@ -195,7 +207,7 @@ async function createAndPublishInitial1081Event(
   relayUrls: string[]
 ): Promise<NostrEvent | null> {
   try {
-    console.log('[useChatSync1081] No 1081 events found, creating initial event...')
+    debugLog('[useChatSync1081] No 1081 events found, creating initial event...')
     
     // Generate new private key
     const privateKey = generateSecretKey()
@@ -220,11 +232,11 @@ async function createAndPublishInitial1081Event(
     }
     
     const signedEvent = await signerInfo.signer.signEvent(eventTemplate)
-    console.log('[useChatSync1081] Created initial 1081 event:', signedEvent.id)
+    debugLog('[useChatSync1081] Created initial 1081 event:', signedEvent.id)
     
     // Publish to relays
     await relayPool.publish(relayUrls, signedEvent)
-    console.log('[useChatSync1081] Published initial 1081 event to relays:', relayUrls)
+    debugLog('[useChatSync1081] Published initial 1081 event to relays:', relayUrls)
     
     // Add to event store
     eventStore.add(signedEvent)
@@ -233,7 +245,7 @@ async function createAndPublishInitial1081Event(
     const pnsKeys = extractAndDerivePnsKeys(contentObj)
     if (pnsKeys) {
       newDerivedPnsKey$.next(pnsKeys)
-      console.log('[useChatSync1081] Added derived PNS key for new nsec:', pnsKeys.pnsKeypair.pubKey)
+      debugLog('[useChatSync1081] Added derived PNS key for new nsec:', pnsKeys.pnsKeypair.pubKey)
     }
     
     return signedEvent
@@ -254,7 +266,7 @@ const eventsReceived$ = new BehaviorSubject<number>(0)
 
 // Function to manually trigger processing of stored 1081 events
 export function triggerProcessStored1081Events() {
-  console.log('[useChatSync1081] Manually triggering stored 1081 events processing')
+  debugLog('[useChatSync1081] Manually triggering stored 1081 events processing')
   eventsReceived$.next(syncStats1081.eventsReceived + 1) // Increment to ensure emission
 }
 
@@ -270,7 +282,7 @@ const sync1081Event$ = combineLatest([userPubkeyDefined$, relayUrlsDefined$, use
       kinds: [1081],
       authors: [userPubkey],
     }
-    console.log('[useChatSync1081] Syncing with relays:', relayUrls, 'user.pub', userPubkey, 'user.sign', signerInfo)
+    debugLog('[useChatSync1081] Syncing with relays:', relayUrls, 'user.pub', userPubkey, 'user.sign', signerInfo)
 
     // Use relayPool.subscription to get events from relays
     return relayPool.subscription(relayUrls, kind1081Filter).pipe(
@@ -278,7 +290,7 @@ const sync1081Event$ = combineLatest([userPubkeyDefined$, relayUrlsDefined$, use
       // Cast to unknown first since sync may emit "EOSE" at runtime even if not typed
       mergeMap((value: unknown) => {
         if (value === "EOSE") {
-          console.log('[useChatSync1081] EOSE REACHED')
+          debugLog('[useChatSync1081] EOSE REACHED')
           
           // Check if we have any 1081 events from this user in the event store
           const eventDatabase = useEventDatabase.getState()
@@ -287,7 +299,7 @@ const sync1081Event$ = combineLatest([userPubkeyDefined$, relayUrlsDefined$, use
             authors: [userPubkey]
           })
           
-          console.log('[useChatSync1081] Existing 1081 events after EOSE:', existing1081Events.length)
+          debugLog('[useChatSync1081] Existing 1081 events after EOSE:', existing1081Events.length)
           
           // If no 1081 events exist, create and publish initial one
           if (existing1081Events.length === 0) {
@@ -310,17 +322,17 @@ const sync1081Event$ = combineLatest([userPubkeyDefined$, relayUrlsDefined$, use
       filter((value): value is NostrEvent => typeof value === 'object' && value !== null && 'id' in value),
       tap((event: NostrEvent) => {
         syncStats1081.eventsReceived++
-        console.log('[useChatSync1081] Synced 1081 event:', event.id, 'Total:', syncStats1081.eventsReceived, eventStore.hasEvent(event.id))
+        debugLog('[useChatSync1081] Synced 1081 event:', event.id, 'Total:', syncStats1081.eventsReceived, eventStore.hasEvent(event.id))
         eventStore.add(event)
         eventsReceived$.next(syncStats1081.eventsReceived)
       }),
       // Handle EmptyError when sync completes with no events to sync
       // This happens when there are no events matching the filter on any relay
       catchError((err) => {
-        console.log('[useChatSync1081] Sync error:', err)
+        debugLog('[useChatSync1081] Sync error:', err)
         // EmptyError is thrown when firstValueFrom receives no emissions
         if (err.name === 'EmptyError') {
-          console.log('[useChatSync1081] Sync complete - no events to sync')
+          debugLog('[useChatSync1081] Sync complete - no events to sync')
           return EMPTY
         }
         // Re-throw other errors
@@ -341,7 +353,7 @@ const processStored1081Events$ = combineLatest([
   userPubkeyDefined$
 ]).pipe(
   tap(([count, signer, pubkey]) => {
-    console.log('[useChatSync1081] processStored1081Events$ input update:', { count, hasSigner: !!signer, pubkey })
+    debugLog('[useChatSync1081] processStored1081Events$ input update:', { count, hasSigner: !!signer, pubkey })
   }),
   filter(([count]) => count > 0),
   switchMap(([_, signerInfo, userPubkey]) => {
@@ -358,7 +370,7 @@ const processStored1081Events$ = combineLatest([
       return EMPTY
     }
 
-    console.log('[useChatSync1081] Processing new stored 1081 events:', newEvents.length)
+    debugLog('[useChatSync1081] Processing new stored 1081 events:', newEvents.length)
 
     return from(newEvents).pipe(
       mergeMap(event => {
@@ -375,7 +387,7 @@ const processStored1081Events$ = combineLatest([
           if (pnsKeys) {
             // Emit the newly derived PNS keys
             newDerivedPnsKey$.next(pnsKeys)
-            console.log('[useChatSync1081] Added derived PNS key to observable:', pnsKeys.pnsKeypair.pubKey)
+            debugLog('[useChatSync1081] Added derived PNS key to observable:', pnsKeys.pnsKeypair.pubKey)
           }
         }
       }),
@@ -409,7 +421,7 @@ const syncDerivedPnsResults$ = new Subject<NostrEvent>()
 // Imperative function to perform derived PNS sync - creates a fresh subscription each time
 function performDerivedPnsSync(pubkeys: string[], relayUrls: string[]): void {
   if (pubkeys.length === 0 || relayUrls.length === 0) {
-    console.log('[useChatSync1081] performDerivedPnsSync: skipping, no pubkeys or relays')
+    debugLog('[useChatSync1081] performDerivedPnsSync: skipping, no pubkeys or relays')
     return
   }
 
@@ -423,19 +435,19 @@ function performDerivedPnsSync(pubkeys: string[], relayUrls: string[]): void {
     authors: pubkeys,
   }
 
-  console.log('[useChatSync1081] Syncing derived PNS events for pubkeys:', pubkeys)
+  debugLog('[useChatSync1081] Syncing derived PNS events for pubkeys:', pubkeys)
 
   // Create fresh subscription for each sync - this won't be affected by previous completions
   relayPool.sync(relayUrls, eventStore, kind1080Filter, SyncDirection.BOTH).pipe(
     tap((event: NostrEvent) => {
       syncStatsDerivedPns.eventsReceived++
-      console.log('[useChatSync1081] Synced derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
+      debugLog('[useChatSync1081] Synced derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
       eventStore.add(event)
     }),
     catchError((err: any) => {
       // Handle EmptyError which can happen when sync completes with no events
       if (err?.name === 'EmptyError' || err?.message === 'no elements in sequence') {
-        console.log('[useChatSync1081] Derived PNS sync complete - no events to sync')
+        debugLog('[useChatSync1081] Derived PNS sync complete - no events to sync')
         return EMPTY
       }
       console.error('[useChatSync1081] Derived PNS sync error:', err)
@@ -444,7 +456,7 @@ function performDerivedPnsSync(pubkeys: string[], relayUrls: string[]): void {
   ).subscribe({
     next: (event) => syncDerivedPnsResults$.next(event),
     error: (err) => console.error('[useChatSync1081] performDerivedPnsSync error:', err),
-    complete: () => console.log('[useChatSync1081] performDerivedPnsSync complete'),
+    complete: () => debugLog('[useChatSync1081] performDerivedPnsSync complete'),
   })
 }
 
@@ -453,21 +465,21 @@ const autoSyncDerivedPns$ = combineLatest([derivedPnsPubkeys$, relayUrlsDefined$
   filter(([pubkeys, _]) => pubkeys.length > 0),
   take(1), // Only auto-sync once on initial load
   tap(([pubkeys, relayUrls]) => {
-    console.log('[useChatSync1081] Auto-triggering initial derived PNS sync')
+    debugLog('[useChatSync1081] Auto-triggering initial derived PNS sync')
     performDerivedPnsSync(pubkeys, relayUrls)
   }),
 )
 
 // Handle manual sync triggers - creates fresh sync each time
 syncDerivedPnsTrigger$.pipe(
-  tap(() => console.log('[useChatSync1081] Manual sync trigger received')),
+  tap(() => debugLog('[useChatSync1081] Manual sync trigger received')),
   withLatestFrom(relayUrls$),
   switchMap(([_, relayUrls]) => {
     return derivedPnsPubkeys$.pipe(
       take(1),
       tap(pubkeys => {
         if (pubkeys.length === 0) {
-          console.log('[useChatSync1081] No derived PNS keys, triggering stored events processing')
+          debugLog('[useChatSync1081] No derived PNS keys, triggering stored events processing')
           triggerProcessStored1081Events()
         }
       }),
@@ -479,7 +491,7 @@ syncDerivedPnsTrigger$.pipe(
             take(1),
             timeout({ first: 5000 }),
             catchError(err => {
-              console.warn('[useChatSync1081] Timed out waiting for derived PNS keys:', err)
+              debugWarn('[useChatSync1081] Timed out waiting for derived PNS keys:', err)
               return of([])
             })
           )
@@ -490,7 +502,7 @@ syncDerivedPnsTrigger$.pipe(
         if (pubkeys.length > 0 && relayUrls.length > 0) {
           performDerivedPnsSync(pubkeys, relayUrls)
         } else {
-          console.warn('[useChatSync1081] Cannot sync: pubkeys or relays missing', { pubkeys: pubkeys.length, relays: relayUrls.length })
+          debugWarn('[useChatSync1081] Cannot sync: pubkeys or relays missing', { pubkeys: pubkeys.length, relays: relayUrls.length })
         }
       })
     )
@@ -515,13 +527,13 @@ const liveDerivedPnsEvents$ = combineLatest([derivedPnsPubkeys$, relayUrlsDefine
       authors: pubkeys
     }
 
-    // console.log('[useChatSync1081] Live derived PNS events for pubkeys:', pubkeys)
+    // debugLog('[useChatSync1081] Live derived PNS events for pubkeys:', pubkeys)
 
     return relayPool.subscription(relayUrls, kind1080Filter).pipe(
       onlyEvents(),
       tap((event: NostrEvent) => {
         syncStatsDerivedPns.eventsReceived++
-        // console.log('[useChatSync1081] Live derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
+        // debugLog('[useChatSync1081] Live derived PNS event:', event.id, 'from:', event.pubkey.slice(0, 8))
         eventStore.add(event)
       }),
       defaultIfEmpty(null),
@@ -533,7 +545,7 @@ const liveDerivedPnsEvents$ = combineLatest([derivedPnsPubkeys$, relayUrlsDefine
   }),
   tap({
     error: (err) => console.error('[useChatSync1081] liveDerivedPnsEvents$ stream error:', err),
-    complete: () => console.log('[useChatSync1081] liveDerivedPnsEvents$ stream completed'),
+    complete: () => debugLog('[useChatSync1081] liveDerivedPnsEvents$ stream completed'),
   }),
   retry(1),
   shareReplay(1),
@@ -570,7 +582,7 @@ export function useChatSync1081() {
   }, [])
 
   useEffect(() => {
-    console.log("CURRENT ", currentDerivedPnsKeys);
+    debugLog("CURRENT ", currentDerivedPnsKeys);
     // Find the first PNS keys with SALT_PNS from currentDerivedPnsKeys
     const firstPnsKeysWithSalt = Array.from(currentDerivedPnsKeys.values()).find(
       pnsKeys => pnsKeys.salt === SALT_PNS
@@ -599,7 +611,7 @@ export function useChatSync1081() {
         setLoading1081(false)
       },
       complete: () => {
-        console.log('[useChatSyncProMax] Sync complete. Total events:', syncCount1081Ref.current)
+        debugLog('[useChatSyncProMax] Sync complete. Total events:', syncCount1081Ref.current)
         setLoading1081(false)
       },
     })
@@ -611,7 +623,7 @@ export function useChatSync1081() {
 
   // Subscribe to derived PNS events sync
   useEffect(() => {
-    console.log('[useChatSync1081] Subscribing to syncDerivedPnsEvents$')
+    debugLog('[useChatSync1081] Subscribing to syncDerivedPnsEvents$')
     setLoadingDerivedPns(true)
     syncCountDerivedPnsRef.current = 0
 
@@ -639,7 +651,7 @@ export function useChatSync1081() {
         setLoadingDerivedPns(false)
       },
       complete: () => {
-        console.log('[useChatSync1081] Derived PNS sync complete. Total events:', syncCountDerivedPnsRef.current)
+        debugLog('[useChatSync1081] Derived PNS sync complete. Total events:', syncCountDerivedPnsRef.current)
         setLoadingDerivedPns(false)
       },
     })
@@ -684,7 +696,7 @@ export function useChatSync1081() {
   // Log derived PNS sync statistics
   useEffect(() => {
     if (currentDerivedPnsKeys.size !== 0)
-      console.log('[useChatSync1081] Derived PNS events count:', derivedPnsEvents.length, 'Pub keys:', currentDerivedPnsKeys.size, Date.now())
+      debugLog('[useChatSync1081] Derived PNS events count:', derivedPnsEvents.length, 'Pub keys:', currentDerivedPnsKeys.size, Date.now())
   }, [derivedPnsEvents, currentDerivedPnsKeys])
 
   return {

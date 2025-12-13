@@ -114,16 +114,11 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
 
       // Filter out disabled providers
       const disabledProviders = loadDisabledProviders();
-      bases = bases.filter(base => {
-        const normalized = base.endsWith('/') ? base : `${base}/`;
-        return !disabledProviders.includes(normalized);
-      });
 
       // Process results progressively as each provider responds
       const modelsFromAllProviders: Record<string, Model[]> = {};
       const bestById = new Map<string, { model: Model; base: string }>();
       let processedCount = 0;
-      const totalProviders = bases.length;
 
       function estimateMinCost(m: Model): number {
         return m?.sats_pricing?.completion ?? 0;
@@ -154,7 +149,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
         try {
           // Check if we need to fetch or can use cached data
           const lastUpdate = getProviderLastUpdate(base);
-          const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+          const ONE_HOUR = 10 * 60 * 1000; // 10 mins in milliseconds
           const shouldFetch = !lastUpdate || (Date.now() - lastUpdate) > ONE_HOUR;
           
           let list: Model[];
@@ -162,7 +157,10 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
           if (shouldFetch) {
             // Fetch fresh data from provider
             const res = await fetch(`${base}v1/models`);
-            if (!res.ok) throw new Error(`Failed ${res.status}`);
+            if (!res.ok) {
+              setProviderLastUpdate(base, Date.now());
+              throw new Error(`Failed ${res.status}`);
+            }
             const json = await res.json();
             list = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
               ...m,
@@ -181,19 +179,21 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
             modelsFromAllProviders[base] = list;
           }
           
-          // Update best-priced models
-          for (const m of list) {
-            const existing = bestById.get(m.id);
-            if (!existing) {
-              if (!m.sats_pricing) // filtering all models without sats pricing
-                continue
-              bestById.set(m.id, { model: m, base });
-              continue;
-            }
-            const currentCost = estimateMinCost(m);
-            const existingCost = estimateMinCost(existing.model);
-            if (currentCost < existingCost) {
-              bestById.set(m.id, { model: m, base });
+          if (!disabledProviders.includes(base)) {
+            // Update best-priced models
+            for (const m of list) {
+              const existing = bestById.get(m.id);
+              if (!existing) {
+                if (!m.sats_pricing) // filtering all models without sats pricing
+                  continue
+                bestById.set(m.id, { model: m, base });
+                continue;
+              }
+              const currentCost = estimateMinCost(m);
+              const existingCost = estimateMinCost(existing.model);
+              if (currentCost < existingCost) {
+                bestById.set(m.id, { model: m, base });
+              }
             }
           }
           
@@ -231,7 +231,19 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
         modelToSelect = await modelSelectionStrategy(combinedModels, maxBalance, pendingCashuAmountState);
       }
       setSelectedModel(modelToSelect);
-      if (modelToSelect && lastUsedModelId && !lastUsedModelId.includes('@@')) saveLastUsedModel(modelToSelect.id);
+      if (modelToSelect && lastUsedModelId && !lastUsedModelId.includes('@@')) {
+        saveLastUsedModel(modelToSelect.id);
+        // Switch provider base URL if a provider is configured for this model
+        try {
+          const map = loadModelProviderMap();
+          const mappedBase = map[modelToSelect.id];
+          console.log('rdlogs: mappedBase', mappedBase);
+          if (mappedBase && typeof mappedBase === 'string' && mappedBase.length > 0) {
+            const normalized = mappedBase.endsWith('/') ? mappedBase : `${mappedBase}/`;
+            setBaseUrl(normalized);
+          }
+        } catch {}
+      }
     } catch (error) {
       console.error('Error while fetching models', error);
       setModels([]);

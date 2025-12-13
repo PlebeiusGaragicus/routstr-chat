@@ -24,6 +24,7 @@ import { isThinkingCapableModel } from "./thinkingParser";
 import { SpendCashuResult } from "@/hooks/useCashuWithXYZ";
 import { Model } from "@/data/models";
 import { getModelForBase, getRequiredSatsForModel } from "./modelUtils";
+import { saveFile } from "@/utils/indexedDb";
 
 export interface FetchAIResponseParams {
   messageHistory: Message[];
@@ -515,7 +516,7 @@ export const fetchAIResponse = async (
             )
           );
         } else {
-          onMessageAppend(createAssistantMessage(streamingResult));
+          onMessageAppend(await createAssistantMessage(streamingResult));
         }
       } else {
         logApiError(
@@ -847,11 +848,30 @@ function mergeImages(
 }
 
 /**
+ * Converts a base64 data URL to a File object
+ * @param dataUrl Base64 data URL
+ * @param filename The filename to use
+ * @returns File object
+ */
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const arr = dataUrl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
+/**
  * Creates an assistant message from streaming result
  * @param streamingResult The result from streaming response
  * @returns Assistant message with text, images, and optional thinking
  */
-function createAssistantMessage(streamingResult: StreamingResult): Message {
+async function createAssistantMessage(streamingResult: StreamingResult): Promise<Message> {
   const hasImages = streamingResult.images && streamingResult.images.length > 0;
   const hasThinking = streamingResult.thinking !== undefined;
   const hasCitations = streamingResult.citations && streamingResult.citations.length > 0;
@@ -881,12 +901,35 @@ function createAssistantMessage(streamingResult: StreamingResult): Message {
       content.push(textContent);
     }
 
-    streamingResult.images?.forEach((img) => {
-      content.push({
-        type: "image_url",
-        image_url: { url: img.image_url.url },
-      });
-    });
+    // Process images and save to IndexedDB
+    if (streamingResult.images) {
+      for (let i = 0; i < streamingResult.images.length; i++) {
+        const img = streamingResult.images[i];
+        let storageId: string | undefined;
+        
+        try {
+          // Convert base64 URL to File and save to IndexedDB
+          const file = dataUrlToFile(img.image_url.url, `ai-image-${Date.now()}-${i}.png`);
+          storageId = await saveFile(file);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          if (errorMessage.includes("quota")) {
+            console.warn("Storage is full. Image will be available in this session but may not be saved in history.");
+          } else {
+            console.warn("Failed to save image to storage:", errorMessage);
+          }
+          // Continue without storageId (will rely on base64 in memory)
+        }
+
+        content.push({
+          type: "image_url",
+          image_url: {
+            url: img.image_url.url,
+            storageId
+          },
+        });
+      }
+    }
 
     return {
       role: "assistant",

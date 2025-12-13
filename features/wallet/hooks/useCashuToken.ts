@@ -263,7 +263,6 @@ export function useCashuToken() {
     }
 
     if (needsActivation) {
-      console.log("INITI", existingMint, needsActivation);
       try {
         const mintService = new MintService();
         const { mintInfo, keysets, keys } = await mintService.activateMint(normalizedMintUrl);

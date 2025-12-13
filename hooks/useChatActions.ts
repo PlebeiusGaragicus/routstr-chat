@@ -191,8 +191,6 @@ export const useChatActions = ({
     
     const originConversationId = activeConversationId ?? createNewConversationHandler([], timestamp.toString());
 
-    console.log(updatedMessage);
-
     // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
     createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
     const updatedMessages = [...messages, updatedMessage];
