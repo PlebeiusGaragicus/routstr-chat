@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
-import { Model } from '@/data/models';
+import { Model } from '@/types/models';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { TransactionHistory } from '@/types/chat';
 import GeneralTab from './settings/GeneralTab';
@@ -34,6 +34,7 @@ interface SettingsModalProps {
   setConfiguredModels?: (models: string[]) => void;
   modelProviderMap?: Record<string, string>;
   setModelProviderFor?: (modelId: string, baseUrl: string) => void;
+  fetchModels?: (balance: number) => Promise<void>;
   isMobile?: boolean;
 }
 
@@ -55,6 +56,7 @@ const SettingsModal = ({
   setConfiguredModels,
   modelProviderMap,
   setModelProviderFor,
+  fetchModels,
   isMobile: propIsMobile
 }: SettingsModalProps) => {
   const { user } = useCurrentUser();
@@ -137,6 +139,7 @@ const SettingsModal = ({
             setConfiguredModels={setConfiguredModels}
             modelProviderMap={modelProviderMap}
             setModelProviderFor={setModelProviderFor}
+            fetchModels={fetchModels}
           />
         ) : activeTab === 'history' ? (
           <HistoryTab

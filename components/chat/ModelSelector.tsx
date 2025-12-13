@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Search, Settings, Star, Info, Image as ImageIcon, Type, Mic, Video, Copy, Check } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Model } from '@/data/models';
-import { getModelNameWithoutProvider, getProviderFromModelName } from '@/data/models';
+import { Model } from '@/types/models';
+import { getModelNameWithoutProvider, getProviderFromModelName } from '@/utils/modelUtils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';

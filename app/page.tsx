@@ -31,10 +31,8 @@ function ChatPageContent() {
     
     // API State
     baseUrl,
-    setBaseUrl,
-    selectedModel,
-    handleModelChange,
     models,
+    fetchModels,
     
     // Balance and Transaction State
     balance,
@@ -181,6 +179,7 @@ function ChatPageContent() {
           setConfiguredModels={setConfiguredModels}
           modelProviderMap={modelProviderMap}
           setModelProviderFor={setModelProviderFor}
+          fetchModels={fetchModels}
         />
       )}
 

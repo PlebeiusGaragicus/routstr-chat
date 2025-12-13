@@ -3,9 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Check, XCircle, ChevronDown, Minus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-import { Model } from '@/data/models';
-import { getModelNameWithoutProvider } from '@/data/models';
-import { normalizeBaseUrl as normalizeBaseUrlUtil, parseModelKey as parseModelKeyUtil, getCachedProviderModels, upsertCachedProviderModels } from '@/utils/modelUtils';
+import { Model } from '@/types/models';
+import { getModelNameWithoutProvider, normalizeBaseUrl as normalizeBaseUrlUtil, parseModelKey as parseModelKeyUtil, getCachedProviderModels, upsertCachedProviderModels } from '@/utils/modelUtils';
 import { loadDisabledProviders, saveDisabledProviders } from '@/utils/storageUtils';
 
 type ProviderItem = { name: string; endpoint_url: string; endpoint_urls?: string[] };
@@ -17,6 +16,7 @@ interface ModelsTabProps {
   setConfiguredModels?: (models: string[]) => void;
   modelProviderMap?: Record<string, string>;
   setModelProviderFor?: (modelId: string, baseUrl: string) => void;
+  fetchModels?: (balance: number) => Promise<void>;
 }
 
 const ModelsTab: React.FC<ModelsTabProps> = ({
@@ -25,7 +25,8 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   toggleConfiguredModel,
   setConfiguredModels,
   modelProviderMap = {},
-  setModelProviderFor
+  setModelProviderFor,
+  fetchModels
 }) => {
   // Search specific to provider models in "All Models" card
   const [providerSearchQuery, setProviderSearchQuery] = useState('');
@@ -191,6 +192,10 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
         return !updated.includes(normalizedUrl);
       });
       setProviders(filtered);
+      // Trigger fetchModels to refresh available models
+      if (fetchModels) {
+        fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
+      }
       return updated;
     });
   };
@@ -280,6 +285,10 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       setDisabledProviders(allDisabled);
                       saveDisabledProviders(allDisabled);
                       setProviders([]);
+                    }
+                    // Trigger fetchModels to refresh available models
+                    if (fetchModels) {
+                      fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
                     }
                   }}
                   type="button"

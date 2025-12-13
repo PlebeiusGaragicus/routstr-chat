@@ -22,7 +22,7 @@ import {
 import { getDecodedToken } from "@cashu/cashu-ts";
 import { isThinkingCapableModel } from "./thinkingParser";
 import { SpendCashuResult } from "@/hooks/useCashuWithXYZ";
-import { Model } from "@/data/models";
+import { Model } from "@/types/models";
 import { getModelForBase, getRequiredSatsForModel } from "./modelUtils";
 import { saveFile } from "@/utils/indexedDb";
 

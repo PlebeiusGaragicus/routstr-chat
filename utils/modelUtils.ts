@@ -14,9 +14,27 @@ export function normalizeBaseUrl(base?: string | null): string | null {
 
 // Provider models cache helpers shared across app
 // Kept here to avoid duplicating localStorage logic in components
-import type { Model } from '@/data/models';
+import type { Model } from '@/types/models';
 import { recommendedModels } from '@/lib/recommendedModels';
 import { getStorageItem, loadLastUsedModel, setStorageItem } from '@/utils/storageUtils';
+
+// Extract the provider name from the model name (e.g., "Qwen" from "Qwen: Qwen3 30B A3B")
+export function getProviderFromModelName(modelName: string): string {
+  const colonIndex = modelName.indexOf(':');
+  if (colonIndex !== -1) {
+    return modelName.substring(0, colonIndex).trim();
+  }
+  return 'Unknown';
+}
+
+// Extract the model name without provider (e.g., "Qwen3 30B A3B" from "Qwen: Qwen3 30B A3B")
+export function getModelNameWithoutProvider(modelName: string): string {
+  const colonIndex = modelName.indexOf(':');
+  if (colonIndex !== -1) {
+    return modelName.substring(colonIndex + 1).trim();
+  }
+  return modelName;
+}
 
 export function upsertCachedProviderModels(baseUrl: string, models: Model[]): void {
   try {
