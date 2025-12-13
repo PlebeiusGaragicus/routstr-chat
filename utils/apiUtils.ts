@@ -581,7 +581,7 @@ export const fetchAIResponse = async (
       const errorMsg =
         "Error in fetchAIReponse: " +
         error.message +
-        (isDev || isBeta ? " | " + error.stack : "");
+        (isDev || isBeta ? " | " + 'error.stack' : ""); // remove for now
       logApiError(errorMsg, onMessageAppend);
     } else {
       logApiError("An unknown error occurred", onMessageAppend);

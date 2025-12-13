@@ -173,7 +173,6 @@ export const useChatActions = ({
         ? getLastNonSystemMessageEventId(activeConversationId)
         : "0".repeat(64);
 
-      console.log("updload", uploadedAttachments);
       // Create user message with text and images
       const userMessage =
         uploadedAttachments.length > 0
@@ -190,10 +189,10 @@ export const useChatActions = ({
 
     
     const originConversationId = activeConversationId ?? createNewConversationHandler([], timestamp.toString());
+    const updatedMessages = [...messages, updatedMessage];
 
     // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
     createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
-    const updatedMessages = [...messages, updatedMessage];
 
       setInputMessage("");
       setUploadedAttachments([]);
