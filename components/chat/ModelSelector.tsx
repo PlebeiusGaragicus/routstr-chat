@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Search, Settings, Star, Info, Image as ImageIcon, Type, Mic, Video, Copy, Check } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Search, Settings, Star, Info, Image as ImageIcon, Type, Mic, Video, Copy, Check, Globe } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Model } from '@/types/models';
 import { getModelNameWithoutProvider, getProviderFromModelName } from '@/utils/modelUtils';
@@ -7,7 +7,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
 import { loadModelProviderMap, loadDisabledProviders } from '@/utils/storageUtils';
 import { parseModelKey, normalizeBaseUrl, upsertCachedProviderModels, getCachedProviderModels, getRequiredSatsForModel, isModelAvailable } from '@/utils/modelUtils';
-import { recommendedModels } from '@/lib/preconfiguredModels';
+import { recommendedModels, webSearchModels } from '@/lib/preconfiguredModels';
 
 interface ModelSelectorProps {
   selectedModel: Model | null;
@@ -58,6 +58,7 @@ export default function ModelSelector({
   const [loadingProviderBases, setLoadingProviderBases] = useState<Set<string>>(new Set());
   const [detailsBaseUrl, setDetailsBaseUrl] = useState<string | null>(null);
   const [pairFilters, setPairFilters] = useState<Set<string>>(new Set());
+  const [webSearchFilter, setWebSearchFilter] = useState<boolean>(false);
   const [copiedModelId, setCopiedModelId] = useState<string | null>(null);
   // Drawer open/close animation state
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
@@ -191,12 +192,18 @@ export default function ModelSelector({
     return Array.from(found.values()).sort((a, b) => a.key.localeCompare(b.key));
   }, [dedupedModels]);
 
-  // Filter models based on search query and selected input->output pair filters
+  // Filter models based on search query, selected input->output pair filters, and web search filter
   const filteredModels = dedupedModels.filter(model => {
     const matchesSearch = getModelNameWithoutProvider(model.name)
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
+    
+    // Apply web search filter
+    if (webSearchFilter && !webSearchModels.includes(model.id)) {
+      return false;
+    }
+    
     if (pairFilters.size === 0) return true;
     const inputs = new Set((model.architecture?.input_modalities ?? ['text']).map(normalizeModality));
     const outputs = new Set((model.architecture?.output_modalities ?? ['text']).map(normalizeModality));
@@ -428,6 +435,20 @@ export default function ModelSelector({
   const renderQuickFilters = () => (
     <div className="mt-2 -mx-2 px-2">
       <div className="flex gap-1.5 flex-wrap overflow-x-hidden pb-1 pr-2">
+        {/* Web Search Filter */}
+        <button
+          onClick={() => setWebSearchFilter(!webSearchFilter)}
+          className={`shrink-0 h-6 inline-flex items-center gap-1 px-2 rounded-full text-[11px] border transition-colors cursor-pointer ${
+            webSearchFilter ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/15 text-white/70 hover:bg-white/10'
+          }`}
+          title="Filter web search models"
+          type="button"
+          aria-pressed={webSearchFilter}
+        >
+          <Globe className="h-3.5 w-3.5" />
+          <span>Web Search</span>
+        </button>
+        
         {quickPairOptions.map(opt => {
           const isActive = pairFilters.has(opt.key);
           return (
@@ -450,9 +471,12 @@ export default function ModelSelector({
             </button>
           );
         })}
-        {pairFilters.size > 0 && (
+        {(pairFilters.size > 0 || webSearchFilter) && (
           <button
-            onClick={() => setPairFilters(new Set())}
+            onClick={() => {
+              setPairFilters(new Set());
+              setWebSearchFilter(false);
+            }}
             className="shrink-0 h-6 text-[11px] px-2 rounded-full bg-white/0 text-white/60 hover:text-white/90 hover:bg-white/10 border border-white/15 cursor-pointer"
             title="Clear filters"
             type="button"
