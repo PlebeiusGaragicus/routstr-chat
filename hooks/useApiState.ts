@@ -149,7 +149,7 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
         try {
           // Check if we need to fetch or can use cached data
           const lastUpdate = getProviderLastUpdate(base);
-          const ONE_HOUR = 10 * 60 * 1000; // 10 mins in milliseconds
+          const ONE_HOUR = 21 * 60 * 1000; // 21 mins in milliseconds
           const shouldFetch = !lastUpdate || (Date.now() - lastUpdate) > ONE_HOUR;
           
           let list: Model[];

@@ -809,13 +809,17 @@ export default function ChatMessages({
                         </button>
                         {message.satsSpent !== undefined &&
                           message.satsSpent > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1">
+                            <span className="flex items-center gap-1 text-xs text-amber-400/80 px-2 py-1">
+                              - {message.satsSpent.toFixed(
+                                message.satsSpent < 1 ? 3 : 0
+                              )}{" "}
                               <svg
                                 width="16"
                                 height="16"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
+                                style={{ marginLeft: '-5px', marginBottom: '-1px' }}
                               >
                                 <path
                                   fillRule="evenodd"
@@ -831,10 +835,6 @@ export default function ChatMessages({
                                   fill="currentColor"
                                 />
                               </svg>
-                              {message.satsSpent.toFixed(
-                                message.satsSpent < 1 ? 3 : 0
-                              )}{" "}
-                              sats
                             </span>
                           )}
                       </div>

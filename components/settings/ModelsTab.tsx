@@ -192,12 +192,14 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
         return !updated.includes(normalizedUrl);
       });
       setProviders(filtered);
-      // Trigger fetchModels to refresh available models
-      if (fetchModels) {
-        fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
-      }
       return updated;
     });
+    // Trigger fetchModels to refresh available models (after state update)
+    if (fetchModels) {
+      setTimeout(() => {
+        fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
+      }, 0);
+    }
   };
 
   const isProviderDisabled = (providerUrl: string): boolean => {
@@ -286,9 +288,11 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       saveDisabledProviders(allDisabled);
                       setProviders([]);
                     }
-                    // Trigger fetchModels to refresh available models
+                    // Trigger fetchModels to refresh available models (after state update)
                     if (fetchModels) {
-                      fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
+                      setTimeout(() => {
+                        fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
+                      }, 0);
                     }
                   }}
                   type="button"
