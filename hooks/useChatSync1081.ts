@@ -582,7 +582,6 @@ export function useChatSync1081() {
   }, [])
 
   useEffect(() => {
-    debugLog("CURRENT ", currentDerivedPnsKeys);
     // Find the first PNS keys with SALT_PNS from currentDerivedPnsKeys
     const firstPnsKeysWithSalt = Array.from(currentDerivedPnsKeys.values()).find(
       pnsKeys => pnsKeys.salt === SALT_PNS
