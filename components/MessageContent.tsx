@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MarkdownRenderer from "./MarkdownRenderer";
 import { downloadImageFromSrc } from "../utils/download";
 import { FileText } from "lucide-react";
@@ -77,6 +77,8 @@ export default function MessageContentRenderer({
     Record<string, ImageStatus>
   >({});
   const [blobUrls, setBlobUrls] = useState<Record<string, string>>({});
+  const loadedImagesRef = useRef<Set<string>>(new Set());
+  const cleanupUrlsRef = useRef<string[]>([]);
 
   const setImageStatus = (key: string, status: ImageStatus) => {
     setImageStatusMap((prev) => {
@@ -93,7 +95,7 @@ export default function MessageContentRenderer({
     if (typeof content === "string") return;
 
     const loadImages = async () => {
-      console.log(content);
+      // console.log(content);
       const imageItems = content.filter((item) => item.type === "image_url");
 
       for (const item of imageItems) {
@@ -105,11 +107,15 @@ export default function MessageContentRenderer({
         if (url && url.length > 0) continue;
 
         // If we have a storageId but no URL, and haven't loaded it yet
-        if (storageId && !blobUrls[storageId]) {
+        if (storageId && !loadedImagesRef.current.has(storageId)) {
+          // Mark as loaded immediately to prevent double-loading in Strict Mode
+          loadedImagesRef.current.add(storageId);
+
           try {
             const file = await getFile(storageId);
             if (file) {
               const objectUrl = URL.createObjectURL(file);
+              cleanupUrlsRef.current.push(objectUrl);
               setBlobUrls((prev) => ({ ...prev, [storageId]: objectUrl }));
             } else {
               // File not found - mark as error so user sees feedback
@@ -128,18 +134,21 @@ export default function MessageContentRenderer({
     };
 
     loadImages();
+  }, [content]);
 
-    // Cleanup object URLs on unmount to prevent memory leaks
+  // Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
     return () => {
-      Object.values(blobUrls).forEach((url) => {
+      cleanupUrlsRef.current.forEach((url) => {
         try {
           URL.revokeObjectURL(url);
         } catch (error) {
           // Ignore revocation errors
         }
       });
+      loadedImagesRef.current.clear();
     };
-  }, [content, blobUrls]);
+  }, []);
 
   if (typeof content === "string") {
     let processedContent = processAnnotations(content, annotations);

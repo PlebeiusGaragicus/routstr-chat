@@ -152,11 +152,18 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
           // Check if we need to fetch or can use cached data
           const lastUpdate = getProviderLastUpdate(base);
           const ONE_HOUR = 21 * 60 * 1000; // 21 mins in milliseconds
-          const shouldFetch = !lastUpdate || (Date.now() - lastUpdate) > ONE_HOUR;
+          const cacheExpired = !lastUpdate || (Date.now() - lastUpdate) > ONE_HOUR;
+          
+          // Load from storage first
+          const cachedModels = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {});
+          const cachedList = cachedModels[base] || [];
+          
+          // Determine if we need to fetch: either cache expired OR cache is empty
+          const needsFetch = cacheExpired || !cachedList || cachedList.length === 0;
           
           let list: Model[];
           
-          if (shouldFetch) {
+          if (needsFetch) {
             // Fetch fresh data from provider
             const res = await fetch(`${base}v1/models`);
             if (!res.ok) {
@@ -175,9 +182,8 @@ export const useApiState = (isAuthenticated: boolean, balance: number, maxBalanc
             // Update timestamp for this provider
             setProviderLastUpdate(base, Date.now());
           } else {
-            // Load from storage (cached data is fresh enough)
-            const cachedModels = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {});
-            list = cachedModels[base] || [];
+            // Use cached data (it's fresh enough and not empty)
+            list = cachedList;
             modelsFromAllProviders[base] = list;
           }
           
