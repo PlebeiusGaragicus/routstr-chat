@@ -41,27 +41,35 @@ function processCitations(text: string, citations?: string[]): string {
  * @param annotations Array of annotation objects with start_index, end_index, url, and title
  * @returns Processed text with markdown links
  */
-function processAnnotations(text: string, annotations?: import("@/types/chat").AnnotationData[]): string {
+function processAnnotations(
+  text: string,
+  annotations?: import("@/types/chat").AnnotationData[]
+): string {
   if (!annotations || annotations.length === 0) {
     return text;
   }
 
   // Sort annotations by start_index in descending order to process from end to start
   // This prevents index shifting issues when replacing text
-  const sortedAnnotations = [...annotations].sort((a, b) => b.start_index - a.start_index);
+  const sortedAnnotations = [...annotations].sort(
+    (a, b) => b.start_index - a.start_index
+  );
 
   let result = text;
   for (const annotation of sortedAnnotations) {
     const { start_index, end_index, url, title } = annotation;
-    
+
     // Extract the text to be replaced
     const annotatedText = result.substring(start_index, end_index);
-    
+
     // Create markdown link with title as hover text
     const markdownLink = `[${annotatedText}](${url} "${title}")`;
-    
+
     // Replace the text range with the markdown link
-    result = result.substring(0, start_index) + markdownLink + result.substring(end_index);
+    result =
+      result.substring(0, start_index) +
+      markdownLink +
+      result.substring(end_index);
   }
 
   return result;
@@ -180,9 +188,14 @@ export default function MessageContentRenderer({
         // Use citations and annotations from the item itself, or fall back to the prop
         const itemCitations = item.citations || citations;
         const itemAnnotations = item.annotations || annotations;
-        let processedText = processAnnotations(item.text || "", itemAnnotations);
+        let processedText = processAnnotations(
+          item.text || "",
+          itemAnnotations
+        );
         processedText = processCitations(processedText, itemCitations);
-        return <MarkdownRenderer key={`text-${index}`} content={processedText} />;
+        return (
+          <MarkdownRenderer key={`text-${index}`} content={processedText} />
+        );
       })}
 
       {/* Render file attachments */}

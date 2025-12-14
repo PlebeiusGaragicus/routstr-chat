@@ -16,26 +16,32 @@ import ThinkingSection from "@/components/ui/ThinkingSection";
 import { RefObject, useState, useRef, useEffect, useMemo } from "react";
 
 // Helper function to extract thinking from message content
-const getThinkingFromContent = (content: string | MessageContent[]): string | undefined => {
+const getThinkingFromContent = (
+  content: string | MessageContent[]
+): string | undefined => {
   if (typeof content === "string") return undefined;
-  
-  const textContent = content.find(item => item.type === "text");
+
+  const textContent = content.find((item) => item.type === "text");
   return textContent?.thinking;
 };
 
 // Helper function to extract citations from message content
-const getCitationsFromContent = (content: string | MessageContent[]): string[] | undefined => {
+const getCitationsFromContent = (
+  content: string | MessageContent[]
+): string[] | undefined => {
   if (typeof content === "string") return undefined;
-  
-  const textContent = content.find(item => item.type === "text");
+
+  const textContent = content.find((item) => item.type === "text");
   return textContent?.citations;
 };
 
 // Helper function to extract annotations from message content
-const getAnnotationsFromContent = (content: string | MessageContent[]): import("@/types/chat").AnnotationData[] | undefined => {
+const getAnnotationsFromContent = (
+  content: string | MessageContent[]
+): import("@/types/chat").AnnotationData[] | undefined => {
   if (typeof content === "string") return undefined;
-  
-  const textContent = content.find(item => item.type === "text");
+
+  const textContent = content.find((item) => item.type === "text");
   return textContent?.annotations;
 };
 
@@ -97,14 +103,17 @@ export default function ChatMessages({
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
-    
+
     // Check if user is near the bottom (within 150px)
     const isNearBottom =
-      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
-    
+      scrollContainer.scrollHeight -
+        scrollContainer.scrollTop -
+        scrollContainer.clientHeight <
+      150;
+
     // Auto-scroll if user is near the bottom or if loading (new content coming)
     if (isNearBottom || isLoading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, streamingContent, thinkingContent, isLoading]);
 
@@ -112,7 +121,7 @@ export default function ChatMessages({
   const messageVersions = useMemo(() => {
     const groups = new Map<number, Message[]>();
     const allMessages = [...messages];
-    console.log(allMessages);
+    console.log(allMessages.map((msg) => [msg._prevId, msg._eventId]));
 
     // Build adjacency list
     const childrenMap = new Map<string, Message[]>();
@@ -545,8 +554,12 @@ export default function ChatMessages({
                                 <div className="text-[18px]">
                                   <MessageContentRenderer
                                     content={message.content}
-                                    citations={getCitationsFromContent(message.content)}
-                                    annotations={getAnnotationsFromContent(message.content)}
+                                    citations={getCitationsFromContent(
+                                      message.content
+                                    )}
+                                    annotations={getAnnotationsFromContent(
+                                      message.content
+                                    )}
                                   />
                                 </div>
                               </div>
@@ -715,7 +728,9 @@ export default function ChatMessages({
                         <MessageContentRenderer
                           content={message.content}
                           citations={getCitationsFromContent(message.content)}
-                          annotations={getAnnotationsFromContent(message.content)}
+                          annotations={getAnnotationsFromContent(
+                            message.content
+                          )}
                         />
                       </div>
                       <div
@@ -810,7 +825,8 @@ export default function ChatMessages({
                         {message.satsSpent !== undefined &&
                           message.satsSpent > 0 && (
                             <span className="flex items-center gap-1 text-xs text-amber-400/80 px-2 py-1">
-                              - {message.satsSpent.toFixed(
+                              -{" "}
+                              {message.satsSpent.toFixed(
                                 message.satsSpent < 1 ? 3 : 0
                               )}{" "}
                               <svg
@@ -819,7 +835,7 @@ export default function ChatMessages({
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
-                                style={{ marginLeft: '-5px' }}
+                                style={{ marginLeft: "-5px" }}
                               >
                                 <path
                                   fillRule="evenodd"

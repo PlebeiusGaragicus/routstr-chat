@@ -910,7 +910,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
             <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
           </svg>
           <span className={isMobile ? 'text-xs' : 'text-sm'}>
-            {isBalanceLoading ? 'loading' : `${localBalance} sats`}
+            {isBalanceLoading ? 'loading' : `${localBalance.toFixed(2)} sats`}
           </span>
         </button>
       </PopoverTrigger>
@@ -1064,7 +1064,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ setIsSettingsOpen, setI
                 </div>
                 <div className="text-white/60 text-sm mb-2">Balance</div>
                 <div className="text-white text-2xl font-bold">
-                  {isBalanceLoading ? 'loading' : `${localBalance} sats`}
+                  {isBalanceLoading ? 'loading' : `${localBalance.toFixed(2)} sats`}
                 </div>
               </div>
 

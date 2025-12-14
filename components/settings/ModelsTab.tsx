@@ -1,13 +1,30 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Check, XCircle, ChevronDown, Minus } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-import { Model } from '@/types/models';
-import { getModelNameWithoutProvider, normalizeBaseUrl as normalizeBaseUrlUtil, parseModelKey as parseModelKeyUtil, getCachedProviderModels, upsertCachedProviderModels } from '@/utils/modelUtils';
-import { loadDisabledProviders, saveDisabledProviders } from '@/utils/storageUtils';
+import React, { useEffect, useMemo, useState } from "react";
+import { Search, Check, XCircle, ChevronDown, Minus } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/Popover";
+import { Model } from "@/types/models";
+import {
+  getModelNameWithoutProvider,
+  normalizeBaseUrl as normalizeBaseUrlUtil,
+  parseModelKey as parseModelKeyUtil,
+  getCachedProviderModels,
+  upsertCachedProviderModels,
+} from "@/utils/modelUtils";
+import {
+  loadDisabledProviders,
+  saveDisabledProviders,
+} from "@/utils/storageUtils";
 
-type ProviderItem = { name: string; endpoint_url: string; endpoint_urls?: string[] };
+type ProviderItem = {
+  name: string;
+  endpoint_url: string;
+  endpoint_urls?: string[];
+};
 
 interface ModelsTabProps {
   models: readonly Model[];
@@ -26,14 +43,14 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   setConfiguredModels,
   modelProviderMap = {},
   setModelProviderFor,
-  fetchModels
+  fetchModels,
 }) => {
   // Search specific to provider models in "All Models" card
-  const [providerSearchQuery, setProviderSearchQuery] = useState('');
+  const [providerSearchQuery, setProviderSearchQuery] = useState("");
   const [providers, setProviders] = useState<ProviderItem[]>([]);
   const [allProviders, setAllProviders] = useState<ProviderItem[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [providerModels, setProviderModels] = useState<readonly Model[]>([]);
   const [isLoadingProviderModels, setIsLoadingProviderModels] = useState(false);
   const [isProviderPopoverOpen, setIsProviderPopoverOpen] = useState(false);
@@ -48,38 +65,48 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
     const fetchProviders = async () => {
       try {
         setIsLoadingProviders(true);
-        const res = await fetch('https://api.routstr.com/v1/providers/');
-        if (!res.ok) throw new Error('Failed to fetch providers');
+        const res = await fetch("https://api.routstr.com/v1/providers/");
+        if (!res.ok) throw new Error("Failed to fetch providers");
         const data = await res.json();
         const list: ProviderItem[] = (data?.providers ?? []).map((p: any) => ({
           name: p.name || p.endpoint_url,
           endpoint_url: p.endpoint_url,
-          endpoint_urls: p.endpoint_urls
+          endpoint_urls: p.endpoint_urls,
         }));
         // Filter out staging providers on production
-        const isProduction = typeof window !== 'undefined' &&
-          window.location.hostname === 'chat.routstr.com';
+        const isProduction =
+          typeof window !== "undefined" &&
+          window.location.hostname === "chat.routstr.com";
         let filteredList = isProduction
-          ? list.filter(p => !p.endpoint_url?.includes('staging'))
+          ? list.filter((p) => !p.endpoint_url?.includes("staging"))
           : list;
-        
+
         // Add localhost in development
-        if (process.env.NODE_ENV === 'development') {
-          filteredList = [...filteredList, {
-            name: 'Localhost',
-            endpoint_url: 'http://localhost:8000/'
-          }];
+        if (process.env.NODE_ENV === "development") {
+          filteredList = [
+            ...filteredList,
+            {
+              name: "Localhost",
+              endpoint_url: "http://localhost:8000/",
+            },
+          ];
         }
-        
+
         // Keep provided order; optionally alphabetical by name for UX
-        const sorted = filteredList.slice().sort((a, b) => (a.name || a.endpoint_url).localeCompare(b.name || b.endpoint_url));
+        const sorted = filteredList
+          .slice()
+          .sort((a, b) =>
+            (a.name || a.endpoint_url).localeCompare(b.name || b.endpoint_url)
+          );
         // Store all providers for Disable Providers section
         setAllProviders(sorted);
         // Filter out disabled providers for dropdown
         const disabled = loadDisabledProviders();
-        const filtered = sorted.filter(p => {
-          const primary = p.endpoint_url?.startsWith('http') ? p.endpoint_url : `https://${p.endpoint_url}`;
-          const normalized = primary.endsWith('/') ? primary : `${primary}/`;
+        const filtered = sorted.filter((p) => {
+          const primary = p.endpoint_url?.startsWith("http")
+            ? p.endpoint_url
+            : `https://${p.endpoint_url}`;
+          const normalized = primary.endsWith("/") ? primary : `${primary}/`;
           return !disabled.includes(normalized);
         });
         setProviders(filtered);
@@ -87,8 +114,10 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
         // Default selection: first entry only (no special host preference)
         if (filtered.length > 0 && !selectedProvider) {
           const baseUrlRaw = filtered[0].endpoint_url;
-          const primary = baseUrlRaw?.startsWith('http') ? baseUrlRaw : `https://${baseUrlRaw}`;
-          setSelectedProvider(primary.endsWith('/') ? primary : `${primary}/`);
+          const primary = baseUrlRaw?.startsWith("http")
+            ? baseUrlRaw
+            : `https://${baseUrlRaw}`;
+          setSelectedProvider(primary.endsWith("/") ? primary : `${primary}/`);
         }
       } catch (e) {
         console.error(e);
@@ -104,9 +133,11 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
       if (!selectedProvider) return;
       try {
         setIsLoadingProviderModels(true);
-        const base = selectedProvider.endsWith('/') ? selectedProvider : `${selectedProvider}/`;
+        const base = selectedProvider.endsWith("/")
+          ? selectedProvider
+          : `${selectedProvider}/`;
         const res = await fetch(`${base}v1/models`);
-        if (!res.ok) throw new Error('Failed to fetch models for provider');
+        if (!res.ok) throw new Error("Failed to fetch models for provider");
         const data = await res.json();
         const list = (data?.data ?? []) as readonly Model[];
         setProviderModels(list);
@@ -125,30 +156,37 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   }, [selectedProvider]);
 
   // Helpers to work with provider-qualified model keys: `${modelId}@@${baseUrl}`
-  const normalizeBaseUrl = (base: string): string => normalizeBaseUrlUtil(base) || '';
+  const normalizeBaseUrl = (base: string): string =>
+    normalizeBaseUrlUtil(base) || "";
 
   const buildModelKey = (modelId: string, baseUrl: string): string => {
     const normalized = normalizeBaseUrl(baseUrl);
     return `${modelId}@@${normalized}`;
   };
 
-  const parseModelKey = (key: string): { id: string; base: string | null } => parseModelKeyUtil(key);
+  const parseModelKey = (key: string): { id: string; base: string | null } =>
+    parseModelKeyUtil(key);
 
   // Build configured list: each favorite is a specific (id, provider) pair if encoded
   const configuredModelsList = useMemo(() => {
     // Map over configured keys -> { key, id, base, model }, falling back to cached provider models if not in main list
     return configuredModels.map((key) => {
       const { id, base } = parseModelKey(key);
-      let model = models.find(m => m.id === id);
+      let model = models.find((m) => m.id === id);
       if (!model && base) {
         try {
           const cached = getCachedProviderModels(base);
           if (cached && Array.isArray(cached)) {
-            model = cached.find(m => m.id === id);
+            model = cached.find((m) => m.id === id);
           }
         } catch {}
       }
-      return { key, id, base, model } as { key: string; id: string; base: string | null; model: Model | undefined };
+      return { key, id, base, model } as {
+        key: string;
+        id: string;
+        base: string | null;
+        model: Model | undefined;
+      };
     });
   }, [models, configuredModels]);
 
@@ -158,12 +196,17 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
 
   const getProviderLabelFor = (modelKeyOrId: string): string => {
     const parsed = parseModelKey(modelKeyOrId);
-    const base = parsed.base || modelProviderMap[modelKeyOrId] || modelProviderMap[parsed.id];
-    if (!base) return 'System default';
+    const base =
+      parsed.base ||
+      modelProviderMap[modelKeyOrId] ||
+      modelProviderMap[parsed.id];
+    if (!base) return "System default";
     try {
-      const match = providers.find(pr => {
-        const primary = pr.endpoint_url?.startsWith('http') ? pr.endpoint_url : `https://${pr.endpoint_url}`;
-        const normalized = primary.endsWith('/') ? primary : `${primary}/`;
+      const match = providers.find((pr) => {
+        const primary = pr.endpoint_url?.startsWith("http")
+          ? pr.endpoint_url
+          : `https://${pr.endpoint_url}`;
+        const normalized = primary.endsWith("/") ? primary : `${primary}/`;
         return normalized === base;
       });
       return match ? `${match.name} — ${base}` : base;
@@ -173,22 +216,26 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   };
 
   const normalizeProviderUrl = (endpointUrl: string): string => {
-    const primary = endpointUrl?.startsWith('http') ? endpointUrl : `https://${endpointUrl}`;
-    return primary.endsWith('/') ? primary : `${primary}/`;
+    const primary = endpointUrl?.startsWith("http")
+      ? endpointUrl
+      : `https://${endpointUrl}`;
+    return primary.endsWith("/") ? primary : `${primary}/`;
   };
 
   const toggleProviderDisabled = (providerUrl: string) => {
     const normalized = normalizeProviderUrl(providerUrl);
-    setDisabledProviders(prev => {
+    setDisabledProviders((prev) => {
       const isDisabled = prev.includes(normalized);
       const updated = isDisabled
-        ? prev.filter(url => url !== normalized)
+        ? prev.filter((url) => url !== normalized)
         : [...prev, normalized];
       saveDisabledProviders(updated);
       // Update filtered providers list
-      const filtered = allProviders.filter(p => {
-        const primary = p.endpoint_url?.startsWith('http') ? p.endpoint_url : `https://${p.endpoint_url}`;
-        const normalizedUrl = primary.endsWith('/') ? primary : `${primary}/`;
+      const filtered = allProviders.filter((p) => {
+        const primary = p.endpoint_url?.startsWith("http")
+          ? p.endpoint_url
+          : `https://${p.endpoint_url}`;
+        const normalizedUrl = primary.endsWith("/") ? primary : `${primary}/`;
         return !updated.includes(normalizedUrl);
       });
       setProviders(filtered);
@@ -197,7 +244,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
     // Trigger fetchModels to refresh available models (after state update)
     if (fetchModels) {
       setTimeout(() => {
-        fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
+        fetchModels(0).catch((err) =>
+          console.error("Failed to refresh models:", err)
+        );
       }, 0);
     }
   };
@@ -228,30 +277,49 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
               )}
             </div>
             <div className="overflow-y-auto divide-y divide-white/5 max-h-[200px]">
-              {configuredModelsList.length > 0 ? configuredModelsList.map(item => (
-                <div key={item.key} className="flex items-center justify-between py-2">
-                  <div className="min-w-0">
-                    <div className="text-sm text-white truncate flex items-center gap-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-yellow-400 flex-shrink-0">
-                        <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.401 8.167L12 18.896l-7.335 3.868 1.401-8.167L.132 9.21l8.2-1.192L12 .587z"/>
-                      </svg>
-                      <span className="truncate">{item.model ? getModelNameWithoutProvider(item.model.name) : item.id}</span>
-                    </div>
-                    <div className="text-[11px] text-white/60 truncate">
-                      Provider: <span className="text-white/80">{getProviderLabelFor(item.key)}</span>
-                    </div>
-                  </div>
-                  <button
-                    className="text-white/50 hover:text-red-400 text-xs cursor-pointer"
-                    onClick={() => toggleConfiguredModel(item.key)}
-                    title="Remove from My Models"
-                    type="button"
+              {configuredModelsList.length > 0 ? (
+                configuredModelsList.map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between py-2"
                   >
-                    Remove
-                  </button>
+                    <div className="min-w-0">
+                      <div className="text-sm text-white truncate flex items-center gap-1.5">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="h-3.5 w-3.5 text-yellow-400 flex-shrink-0"
+                        >
+                          <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.401 8.167L12 18.896l-7.335 3.868 1.401-8.167L.132 9.21l8.2-1.192L12 .587z" />
+                        </svg>
+                        <span className="truncate">
+                          {item.model
+                            ? getModelNameWithoutProvider(item.model.name)
+                            : item.id}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-white/60 truncate">
+                        Provider:{" "}
+                        <span className="text-white/80">
+                          {getProviderLabelFor(item.key)}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className="text-white/50 hover:text-red-400 text-xs cursor-pointer"
+                      onClick={() => toggleConfiguredModel(item.key)}
+                      title="Remove from My Models"
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-white/50 py-4 text-center">
+                  No models selected. Add from the list →
                 </div>
-              )) : (
-                <div className="text-sm text-white/50 py-4 text-center">No models selected. Add from the list →</div>
               )}
             </div>
           </div>
@@ -262,17 +330,18 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
               <h4 className="text-sm font-medium text-white flex items-center gap-2">
                 Disable Providers
                 <span className="text-xs font-normal text-white/60">
-                  ({allProviders.length - disabledProviders.length}/{allProviders.length})
+                  ({allProviders.length - disabledProviders.length}/
+                  {allProviders.length})
                 </span>
               </h4>
               {allProviders.length > 0 && (
                 <button
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-transparent ${
                     disabledProviders.length === 0
-                      ? 'bg-green-500/50'
+                      ? "bg-green-500/50"
                       : disabledProviders.length === allProviders.length
-                      ? 'bg-red-500/50'
-                      : 'bg-yellow-500/50'
+                      ? "bg-red-500/50"
+                      : "bg-yellow-500/50"
                   } cursor-pointer`}
                   onClick={() => {
                     const shouldEnableAll = disabledProviders.length > 0;
@@ -283,7 +352,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       setProviders(allProviders);
                     } else {
                       // Disable all providers
-                      const allDisabled = allProviders.map(p => normalizeProviderUrl(p.endpoint_url));
+                      const allDisabled = allProviders.map((p) =>
+                        normalizeProviderUrl(p.endpoint_url)
+                      );
                       setDisabledProviders(allDisabled);
                       saveDisabledProviders(allDisabled);
                       setProviders([]);
@@ -291,7 +362,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     // Trigger fetchModels to refresh available models (after state update)
                     if (fetchModels) {
                       setTimeout(() => {
-                        fetchModels(0).catch(err => console.error('Failed to refresh models:', err));
+                        fetchModels(0).catch((err) =>
+                          console.error("Failed to refresh models:", err)
+                        );
                       }, 0);
                     }
                   }}
@@ -300,22 +373,30 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                   aria-checked={disabledProviders.length === 0}
                   title={
                     disabledProviders.length === 0
-                      ? 'Disable all providers'
+                      ? "Disable all providers"
                       : disabledProviders.length === allProviders.length
-                      ? 'Enable all providers'
-                      : `Enable all providers (${allProviders.length - disabledProviders.length}/${allProviders.length} enabled)`
+                      ? "Enable all providers"
+                      : `Enable all providers (${
+                          allProviders.length - disabledProviders.length
+                        }/${allProviders.length} enabled)`
                   }
                 >
-                  {disabledProviders.length > 0 && disabledProviders.length < allProviders.length ? (
+                  {disabledProviders.length > 0 &&
+                  disabledProviders.length < allProviders.length ? (
                     // Half-enabled state: show minus icon
                     <span className="inline-block h-4 w-4 transform rounded-full bg-white flex items-center justify-center translate-x-2.5">
-                      <Minus className="h-3 w-3 text-yellow-600" strokeWidth={3} />
+                      <Minus
+                        className="h-3 w-3 text-yellow-600"
+                        strokeWidth={3}
+                      />
                     </span>
                   ) : (
                     // All enabled or all disabled: show regular toggle
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        disabledProviders.length === 0 ? 'translate-x-5' : 'translate-x-1'
+                        disabledProviders.length === 0
+                          ? "translate-x-5"
+                          : "translate-x-1"
                       }`}
                     />
                   )}
@@ -334,28 +415,41 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                 </div>
               ) : allProviders.length > 0 ? (
                 allProviders.map((provider) => {
-                  const normalized = normalizeProviderUrl(provider.endpoint_url);
+                  const normalized = normalizeProviderUrl(
+                    provider.endpoint_url
+                  );
                   const isDisabled = isProviderDisabled(provider.endpoint_url);
-                  if (normalized.includes('http://')) return null;
+                  if (normalized.includes("http://")) return null;
                   return (
-                    <div key={`${provider.name}-${normalized}`} className="flex items-center justify-between py-2">
+                    <div
+                      key={`${provider.name}-${normalized}`}
+                      className="flex items-center justify-between py-2"
+                    >
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm text-white truncate">{provider.name}</div>
-                        <div className="text-[11px] text-white/60 truncate">{normalized}</div>
+                        <div className="text-sm text-white truncate">
+                          {provider.name}
+                        </div>
+                        <div className="text-[11px] text-white/60 truncate">
+                          {normalized}
+                        </div>
                       </div>
                       <button
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-transparent ${
-                          isDisabled ? 'bg-red-500/50' : 'bg-green-500/50'
+                          isDisabled ? "bg-red-500/50" : "bg-green-500/50"
                         } cursor-pointer`}
-                        onClick={() => toggleProviderDisabled(provider.endpoint_url)}
+                        onClick={() =>
+                          toggleProviderDisabled(provider.endpoint_url)
+                        }
                         type="button"
                         role="switch"
                         aria-checked={!isDisabled}
-                        title={isDisabled ? 'Enable provider' : 'Disable provider'}
+                        title={
+                          isDisabled ? "Enable provider" : "Disable provider"
+                        }
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            isDisabled ? 'translate-x-1' : 'translate-x-5'
+                            isDisabled ? "translate-x-1" : "translate-x-5"
                           }`}
                         />
                       </button>
@@ -363,7 +457,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                   );
                 })
               ) : (
-                <div className="text-sm text-white/50 py-4 text-center">No providers available</div>
+                <div className="text-sm text-white/50 py-4 text-center">
+                  No providers available
+                </div>
               )}
             </div>
           </div>
@@ -372,14 +468,19 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
         <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col min-h-[300px]">
           <h4 className="text-sm font-medium text-white mb-2">All Models</h4>
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[11px] text-white/60 flex-shrink-0">Provider</span>
+            <span className="text-[11px] text-white/60 flex-shrink-0">
+              Provider
+            </span>
             {isLoadingProviders ? (
               <div className="inline-block align-middle">
                 <div className="h-6 w-56 bg-white/5 border border-white/10 rounded animate-pulse" />
               </div>
             ) : providers.length > 0 ? (
               <div className="flex-1 min-w-0">
-                <Popover open={isProviderPopoverOpen} onOpenChange={setIsProviderPopoverOpen}>
+                <Popover
+                  open={isProviderPopoverOpen}
+                  onOpenChange={setIsProviderPopoverOpen}
+                >
                   <PopoverTrigger asChild>
                     <button
                       className="inline-flex items-center gap-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white/80 hover:bg-white/10 cursor-pointer w-full justify-between"
@@ -387,18 +488,27 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     >
                       <span className="truncate text-left">
                         {(() => {
-                          const p = providers.find(pr => {
-                            const primary = pr.endpoint_url?.startsWith('http') ? pr.endpoint_url : `https://${pr.endpoint_url}`;
-                            const normalized = primary.endsWith('/') ? primary : `${primary}/`;
+                          const p = providers.find((pr) => {
+                            const primary = pr.endpoint_url?.startsWith("http")
+                              ? pr.endpoint_url
+                              : `https://${pr.endpoint_url}`;
+                            const normalized = primary.endsWith("/")
+                              ? primary
+                              : `${primary}/`;
                             return normalized === selectedProvider;
                           });
-                          return p ? `${p.name} — ${selectedProvider}` : selectedProvider || 'Select provider';
+                          return p
+                            ? `${p.name} — ${selectedProvider}`
+                            : selectedProvider || "Select provider";
                         })()}
                       </span>
                       <ChevronDown className="h-3 w-3 text-white/60 flex-shrink-0" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="bg-[#181818] border border-white/10 text-white p-2 w-96 rounded-md shadow-lg z-[9999]">
+                  <PopoverContent
+                    align="start"
+                    className="bg-[#181818] border border-white/10 text-white p-2 w-96 rounded-md shadow-lg z-[9999]"
+                  >
                     <div className="mb-2 relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                       <input
@@ -406,32 +516,50 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                         className="w-full bg-white/5 border border-white/10 rounded pl-8 pr-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
                         onChange={(e) => {
                           const q = e.target.value.toLowerCase();
-                          setProviders(prev => prev.slice().sort((a, b) => {
-                            const an = (a.name || a.endpoint_url).toLowerCase();
-                            const bn = (b.name || b.endpoint_url).toLowerCase();
-                            const am = an.includes(q) ? 0 : 1;
-                            const bm = bn.includes(q) ? 0 : 1;
-                            return am - bm || an.localeCompare(bn);
-                          }));
+                          setProviders((prev) =>
+                            prev.slice().sort((a, b) => {
+                              const an = (
+                                a.name || a.endpoint_url
+                              ).toLowerCase();
+                              const bn = (
+                                b.name || b.endpoint_url
+                              ).toLowerCase();
+                              const am = an.includes(q) ? 0 : 1;
+                              const bm = bn.includes(q) ? 0 : 1;
+                              return am - bm || an.localeCompare(bn);
+                            })
+                          );
                         }}
                       />
                     </div>
                     <div className="max-h-64 overflow-y-auto">
                       {providers.map((p) => {
-                        const primary = p.endpoint_url?.startsWith('http') ? p.endpoint_url : `https://${p.endpoint_url}`;
-                        const normalized = primary.endsWith('/') ? primary : `${primary}/`;
+                        const primary = p.endpoint_url?.startsWith("http")
+                          ? p.endpoint_url
+                          : `https://${p.endpoint_url}`;
+                        const normalized = primary.endsWith("/")
+                          ? primary
+                          : `${primary}/`;
                         const isActive = normalized === selectedProvider;
-                        if (normalized.includes('http://')) return null;
+                        if (normalized.includes("http://")) return null;
                         return (
                           <button
                             key={`${p.name}-${normalized}`}
-                            className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10 cursor-pointer ${isActive ? 'bg-white/10' : ''}`}
-                            onClick={() => { setSelectedProvider(normalized); setIsProviderPopoverOpen(false); }}
+                            className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10 cursor-pointer ${
+                              isActive ? "bg-white/10" : ""
+                            }`}
+                            onClick={() => {
+                              setSelectedProvider(normalized);
+                              setIsProviderPopoverOpen(false);
+                            }}
                             type="button"
                           >
                             <div className="truncate">
                               <span className="text-white/90">{p.name}</span>
-                              <span className="text-white/40"> — {normalized}</span>
+                              <span className="text-white/40">
+                                {" "}
+                                — {normalized}
+                              </span>
                             </div>
                           </button>
                         );
@@ -441,7 +569,9 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                 </Popover>
               </div>
             ) : (
-              <span className="text-[11px] text-white/50">No providers available</span>
+              <span className="text-[11px] text-white/50">
+                No providers available
+              </span>
             )}
           </div>
           {/* Provider models search */}
@@ -464,46 +594,59 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                   </div>
                 ))}
               </div>
-            ) : providerModels.filter(m => {
-              const q = providerSearchQuery.toLowerCase();
-              return m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
-            }).length > 0 ? providerModels.filter(m => {
-              const q = providerSearchQuery.toLowerCase();
-              return m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
-            }).map(model => (
-              <div key={`${selectedProvider}-${model.id}`} className="flex items-center justify-between py-2">
-                <div className="min-w-0">
-                  <div className="text-sm text-white truncate">{getModelNameWithoutProvider(model.name)}</div>
-                </div>
-                <button
-                  className="text-white/80 hover:text-white text-xs border border-white/20 rounded px-2 py-1 cursor-pointer flex items-center gap-1"
-                  onClick={() => {
-                    const base = normalizeBaseUrl(selectedProvider);
-                    const key = buildModelKey(model.id, base);
-                    if (setModelProviderFor) {
-                      // Store mapping for this specific provider-qualified key
-                      setModelProviderFor(key, base);
-                    }
-                    toggleConfiguredModel(key);
-                  }}
-                  title="Favorite this model"
-                  type="button"
-                >
-                  <Check className="h-3 w-3" /> Favorite
-                </button>
+            ) : providerModels.filter((m) => {
+                const q = providerSearchQuery.toLowerCase();
+                return (
+                  m.name.toLowerCase().includes(q) ||
+                  m.id.toLowerCase().includes(q)
+                );
+              }).length > 0 ? (
+              providerModels
+                .filter((m) => {
+                  const q = providerSearchQuery.toLowerCase();
+                  return (
+                    m.name.toLowerCase().includes(q) ||
+                    m.id.toLowerCase().includes(q)
+                  );
+                })
+                .map((model) => (
+                  <div
+                    key={`${selectedProvider}-${model.id}`}
+                    className="flex items-center justify-between py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm text-white truncate">
+                        {getModelNameWithoutProvider(model.name)}
+                      </div>
+                    </div>
+                    <button
+                      className="text-white/80 hover:text-white text-xs border border-white/20 rounded px-2 py-1 cursor-pointer flex items-center gap-1"
+                      onClick={() => {
+                        const base = normalizeBaseUrl(selectedProvider);
+                        const key = buildModelKey(model.id, base);
+                        if (setModelProviderFor) {
+                          // Store mapping for this specific provider-qualified key
+                          setModelProviderFor(key, base);
+                        }
+                        toggleConfiguredModel(key);
+                      }}
+                      title="Favorite this model"
+                      type="button"
+                    >
+                      <Check className="h-3 w-3" /> Favorite
+                    </button>
+                  </div>
+                ))
+            ) : (
+              <div className="text-sm text-white/50 py-4 text-center">
+                No models found for this provider
               </div>
-            )) : (
-              <div className="text-sm text-white/50 py-4 text-center">No models found for this provider</div>
             )}
           </div>
         </div>
       </div>
-
-      
     </div>
   );
 };
 
 export default ModelsTab;
-
-

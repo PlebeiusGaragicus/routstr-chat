@@ -80,9 +80,18 @@ export interface UseChatActionsReturn {
 }
 
 export interface UseChatActionsParams {
-  createAndStoreChatEvent: (conversationId: string, message: Message) => Promise<string | null>;
-  getLastNonSystemMessageEventId: (conversationId: string) => string;
-  updateLastMessageSatsSpent: (conversationId: string, satsSpent: number) => void;
+  createAndStoreChatEvent: (
+    conversationId: string,
+    message: Message
+  ) => Promise<string | null>;
+  getLastNonSystemMessageEventId: (
+    conversationId: string,
+    lastMessageRole?: string
+  ) => string;
+  updateLastMessageSatsSpent: (
+    conversationId: string,
+    satsSpent: number
+  ) => void;
 }
 
 /**
@@ -187,12 +196,15 @@ export const useChatActions = ({
         _createdAt: timestamp,
       };
 
-    
-    const originConversationId = activeConversationId ?? createNewConversationHandler([], timestamp.toString());
-    const updatedMessages = [...messages, updatedMessage];
+      const originConversationId =
+        activeConversationId ??
+        createNewConversationHandler([], timestamp.toString());
+      const updatedMessages = [...messages, updatedMessage];
 
-    // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
-    createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+      // The _prevId is already set in the userMessage from our getLastNonSystemMessagePrevId function
+      createAndStoreChatEvent(originConversationId, updatedMessage).catch(
+        console.error
+      );
 
       setInputMessage("");
       setUploadedAttachments([]);
@@ -202,8 +214,7 @@ export const useChatActions = ({
         setMessages,
         selectedModel,
         baseUrl,
-        originConversationId,
-        getActiveConversationId
+        originConversationId
       );
     },
     [
@@ -291,8 +302,7 @@ export const useChatActions = ({
           setMessages,
           selectedModel,
           baseUrl,
-          originConversationId,
-          getActiveConversationId
+          originConversationId
         );
       }
     },
@@ -322,7 +332,7 @@ export const useChatActions = ({
         selectedModel,
         baseUrl,
         originConversationId,
-        getActiveConversationId
+        true
       );
     },
     []
@@ -335,7 +345,7 @@ export const useChatActions = ({
       selectedModel: any,
       baseUrl: string,
       originConversationId: string,
-      getActiveConversationId: () => string | null
+      retryMessage?: boolean
     ) => {
       setIsLoading(true);
       setStreamingContent("");
@@ -393,13 +403,28 @@ export const useChatActions = ({
             }
           },
           onMessageAppend: (message) => {
-            const prevId = getLastNonSystemMessageEventId(originConversationId);
+            let prevId;
+            if (retryMessage)
+              prevId = getLastNonSystemMessageEventId(
+                originConversationId,
+                "user"
+              );
+            else prevId = getLastNonSystemMessageEventId(originConversationId);
+
             // Update message object with prevId
-            const updatedMessage = { ...message, _prevId: prevId, _createdAt: Date.now(), _modelId: selectedModel.id};
+            const updatedMessage = {
+              ...message,
+              _prevId: prevId,
+              _createdAt: Date.now(),
+              _modelId: selectedModel.id,
+            };
 
             // Publish AI response to Nostr
             if (originConversationId) {
-              createAndStoreChatEvent(originConversationId, updatedMessage).catch(console.error);
+              createAndStoreChatEvent(
+                originConversationId,
+                updatedMessage
+              ).catch(console.error);
             }
           },
           onBalanceUpdate: setBalance,

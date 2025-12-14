@@ -9,10 +9,38 @@ export const getTextFromContent = (
   content: string | MessageContent[]
 ): string => {
   if (typeof content === "string") return content;
-  const textContent = content.find(
-    (item) => item.type === "text" && !item.hidden
-  );
-  return textContent?.text || "";
+  
+  try {
+    const textContent = content.find(
+      (item) => item.type === "text" && !item.hidden
+    );
+    return textContent?.text || "";
+  } catch (error) {
+    // Check if content is an error object with the expected structure
+    if (
+      typeof content === "object" &&
+      content !== null &&
+      "error" in content &&
+      "request_id" in content
+    ) {
+      const errorObj = content as any;
+      const errorMessage = errorObj.error?.message || "Unknown error";
+      const errorType = errorObj.error?.type || "unknown";
+      const errorCode = errorObj.error?.code || "";
+      const requestId = errorObj.request_id || "";
+      
+      return `Error: ${errorMessage}\nType: ${errorType}\nCode: ${errorCode}\nRequest ID: ${requestId}`;
+    }
+    
+    // Only log if it's an unexpected error format
+    console.error("Error in getTextFromContent - content.find is not a function");
+    console.error("Content type:", typeof content);
+    console.error("Content value:", content);
+    console.error("Content is Array:", Array.isArray(content));
+    console.error("Error:", error);
+    
+    return "";
+  }
 };
 
 /**

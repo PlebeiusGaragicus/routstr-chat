@@ -66,7 +66,10 @@ export interface UseConversationStateReturn {
   ) => void;
   getActiveConversationId: () => string | null;
   getLastNonSystemMessageEventId: (conversationId: string) => string;
-  updateLastMessageSatsSpent: (conversationId: string, satsSpent: number) => void;
+  updateLastMessageSatsSpent: (
+    conversationId: string,
+    satsSpent: number
+  ) => void;
   isSyncing: boolean;
   currentPns: PnsKeys | null;
   createAndStoreChatEvent: (
@@ -124,20 +127,27 @@ export const useConversationState = (): UseConversationStateReturn => {
 
   // Migrate existing conversations when PNS keys are available
   useEffect(() => {
-    if (currentPnsKeys && conversationsLoaded && !migrationAttemptedRef.current) {
+    if (
+      currentPnsKeys &&
+      conversationsLoaded &&
+      !migrationAttemptedRef.current
+    ) {
       const storedConversations = loadConversationsFromStorage();
-      const hasUnsyncedMessages = storedConversations.some(c =>
-        c.messages.some(m => !m._eventId)
+      const hasUnsyncedMessages = storedConversations.some((c) =>
+        c.messages.some((m) => !m._eventId)
       );
 
       if (hasUnsyncedMessages) {
         migrationAttemptedRef.current = true;
-        console.log('Found unsynced messages, starting migration...');
-        const updatedConversations = migrateConversations(storedConversations, currentPnsKeys);
-        
+        console.log("Found unsynced messages, starting migration...");
+        const updatedConversations = migrateConversations(
+          storedConversations,
+          currentPnsKeys
+        );
+
         if (updatedConversations) {
           // Update map and state with migrated conversations (containing event IDs)
-          updatedConversations.forEach(c => {
+          updatedConversations.forEach((c) => {
             conversationsMapRef.current.set(c.id, c);
           });
           setConversations(updatedConversations);
@@ -446,97 +456,143 @@ export const useConversationState = (): UseConversationStateReturn => {
     []
   );
 
-  const createAndStoreChatEvent = useCallback(async (
-    conversationId: string,
-    message: Message
-  ): Promise<string | null> => {
-    console.log("Createing mes 1081", message);
-    const strippedMessage = stripImageDataFromSingleMessage(message);
-    if (currentPnsKeys) {
-      return publishMessage(conversationId, strippedMessage, currentPnsKeys, appendMessageToConversation);
-    } else {
-      console.log('[useConversationState] No currentPnsKeys, triggering stored 1081 events processing')
-      triggerProcessStored1081Events();
+  const createAndStoreChatEvent = useCallback(
+    async (
+      conversationId: string,
+      message: Message
+    ): Promise<string | null> => {
+      console.log("Createing mes 1081", message);
+      const strippedMessage = stripImageDataFromSingleMessage(message);
+      if (currentPnsKeys) {
+        return publishMessage(
+          conversationId,
+          strippedMessage,
+          currentPnsKeys,
+          appendMessageToConversation
+        );
+      } else {
+        console.log(
+          "[useConversationState] No currentPnsKeys, triggering stored 1081 events processing"
+        );
+        triggerProcessStored1081Events();
 
-      // Wait for keys to be derived
-      try {
-        const keys = await firstValueFrom(
-          derivedPnsKeys$.pipe(
-            map(keysMap => {
-               // Find the first PNS keys with SALT_PNS
-               return Array.from(keysMap.values()).find(pnsKeys => pnsKeys.salt === SALT_PNS)
-            }),
-            filter(keys => !!keys),
-            timeout(5000) // Timeout after 5 seconds
-          )
-        )
-        
-        if (keys) {
-           return publishMessage(conversationId, strippedMessage, keys, appendMessageToConversation);
+        // Wait for keys to be derived
+        try {
+          const keys = await firstValueFrom(
+            derivedPnsKeys$.pipe(
+              map((keysMap) => {
+                // Find the first PNS keys with SALT_PNS
+                return Array.from(keysMap.values()).find(
+                  (pnsKeys) => pnsKeys.salt === SALT_PNS
+                );
+              }),
+              filter((keys) => !!keys),
+              timeout(5000) // Timeout after 5 seconds
+            )
+          );
+
+          if (keys) {
+            return publishMessage(
+              conversationId,
+              strippedMessage,
+              keys,
+              appendMessageToConversation
+            );
+          }
+        } catch (err) {
+          console.error("Failed to derive keys in time", err);
+          return null;
         }
-      } catch (err) {
-        console.error("Failed to derive keys in time", err)
-        return null
       }
-    }
-    return null;
-  }, [publishMessage, currentPnsKeys, appendMessageToConversation, triggerProcessStored1081Events]);
+      return null;
+    },
+    [
+      publishMessage,
+      currentPnsKeys,
+      appendMessageToConversation,
+      triggerProcessStored1081Events,
+    ]
+  );
 
-  const getLastNonSystemMessageEventId = useCallback((conversationId: string): string => {
-    // Create a string of 64 zeros (empty Nostr event ID)
-    const emptyEventId = '0'.repeat(64);
-    
-    // Get the conversation from the ref map
-    const conversation = conversationsMapRef.current.get(conversationId);
-    if (!conversation || conversation.messages.length === 0) {
+  const getLastNonSystemMessageEventId = useCallback(
+    (conversationId: string, lastMessageRole?: string): string => {
+      // Create a string of 64 zeros (empty Nostr event ID)
+      const emptyEventId = "0".repeat(64);
+
+      // Get the conversation from the ref map
+      const conversation = conversationsMapRef.current.get(conversationId);
+      if (!conversation || conversation.messages.length === 0) {
+        return emptyEventId;
+      }
+
+      // Iterate backwards to find the last message of the specified type
+      for (let i = conversation.messages.length - 1; i >= 0; i--) {
+        const message = conversation.messages[i];
+
+        if (lastMessageRole) {
+          // If lastMessageRole is specified, only consider messages of that type
+          if (message.role === lastMessageRole) {
+            return message._eventId || emptyEventId;
+          }
+        } else {
+          // If no type specified, find last non-system message
+          return message._eventId || emptyEventId;
+        }
+      }
+
+      // If no non-system messages found, return empty Nostr event
       return emptyEventId;
-    }
-    
-    // Iterate backwards to find the last non-system message
-    for (let i = conversation.messages.length - 1; i >= 0; i--) {
-      return conversation.messages[i]._eventId || emptyEventId;
-    }
-    
-    // If no non-system messages found, return empty Nostr event
-    return emptyEventId;
-  }, []);
+    },
+    []
+  );
 
-  const updateLastMessageSatsSpent = useCallback((conversationId: string, satsSpent: number) => {
-    
-    // Get the conversation from the ref map
-    const conversation = conversationsMapRef.current.get(conversationId);
-    if (!conversation || conversation.messages.length === 0) {
-      console.log("No conversation or messages found");
-      return;
-    }
-
-    // Update the last message with satsSpent
-    const lastMessage = conversation.messages[conversation.messages.length - 1];
-    
-    if (lastMessage && lastMessage.role === "assistant") {
-      const updatedMessage = { ...lastMessage, satsSpent };
-      conversation.messages[conversation.messages.length - 1] = updatedMessage;
-      
-      // Save to localStorage so it persists across syncs
-      if (lastMessage._eventId) {
-        saveSatsSpent(lastMessage._eventId, satsSpent);
+  const updateLastMessageSatsSpent = useCallback(
+    (conversationId: string, satsSpent: number) => {
+      // Get the conversation from the ref map
+      const conversation = conversationsMapRef.current.get(conversationId);
+      if (!conversation || conversation.messages.length === 0) {
+        console.log("No conversation or messages found");
+        return;
       }
 
-      // Update state if this is the active conversation
-      const activeConversationId = loadActiveConversationId();
-      console.log(activeConversationIdRef.current, activeConversationId, conversationId);
-      if (activeConversationId === conversationId) {
-        console.log("latest messaegs with sats spend", conversation.messages);
-        // Create new message objects to ensure React detects the change
-        setMessages(conversation.messages.map(msg => ({ ...msg })));
-      }
+      // Update the last message with satsSpent
+      const lastMessage =
+        conversation.messages[conversation.messages.length - 1];
 
-      // Update conversations state to trigger re-render
-      const updatedConversations = Array.from(conversationsMapRef.current.values());
-      const sortedConversations = sortConversationsByRecentActivity(updatedConversations);
-      setConversations(sortedConversations);
-    }
-  }, []);
+      if (lastMessage && lastMessage.role === "assistant") {
+        const updatedMessage = { ...lastMessage, satsSpent };
+        conversation.messages[conversation.messages.length - 1] =
+          updatedMessage;
+
+        // Save to localStorage so it persists across syncs
+        if (lastMessage._eventId) {
+          saveSatsSpent(lastMessage._eventId, satsSpent);
+        }
+
+        // Update state if this is the active conversation
+        const activeConversationId = loadActiveConversationId();
+        console.log(
+          activeConversationIdRef.current,
+          activeConversationId,
+          conversationId
+        );
+        if (activeConversationId === conversationId) {
+          console.log("latest messaegs with sats spend", conversation.messages);
+          // Create new message objects to ensure React detects the change
+          setMessages(conversation.messages.map((msg) => ({ ...msg })));
+        }
+
+        // Update conversations state to trigger re-render
+        const updatedConversations = Array.from(
+          conversationsMapRef.current.values()
+        );
+        const sortedConversations =
+          sortConversationsByRecentActivity(updatedConversations);
+        setConversations(sortedConversations);
+      }
+    },
+    []
+  );
 
   return {
     conversations,

@@ -348,6 +348,7 @@ export function useCashuWithXYZ() {
     console.log('rdlogs: totalBalance', totalBalance, adjustedAmount);
 
     if (totalBalance < adjustedAmount) {
+      console.log('cashu proofs', cashuStore.proofs, mintBalances)
       const errorMsg = `Insufficient balance to spend. Please add more tokens to your wallet. You need at least ${adjustedAmount} sats to use the model.`;
       console.error(errorMsg, adjustedAmount);
       return {

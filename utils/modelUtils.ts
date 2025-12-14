@@ -1,47 +1,66 @@
-export function parseModelKey(key: string): { id: string; base: string | null } {
-  const separatorIndex = key.indexOf('@@');
+export function parseModelKey(key: string): {
+  id: string;
+  base: string | null;
+} {
+  const separatorIndex = key.indexOf("@@");
   if (separatorIndex === -1) {
     return { id: key, base: null };
   }
-  return { id: key.slice(0, separatorIndex), base: key.slice(separatorIndex + 2) };
+  return {
+    id: key.slice(0, separatorIndex),
+    base: key.slice(separatorIndex + 2),
+  };
 }
 
 export function normalizeBaseUrl(base?: string | null): string | null {
-  if (!base || typeof base !== 'string' || base.length === 0) return null;
-  const withProto = base.startsWith('http') ? base : `https://${base}`;
-  return withProto.endsWith('/') ? withProto : `${withProto}/`;
+  if (!base || typeof base !== "string" || base.length === 0) return null;
+  const withProto = base.startsWith("http") ? base : `https://${base}`;
+  return withProto.endsWith("/") ? withProto : `${withProto}/`;
 }
 
 // Provider models cache helpers shared across app
 // Kept here to avoid duplicating localStorage logic in components
-import type { Model } from '@/types/models';
-import { recommendedModels } from '@/lib/preconfiguredModels';
-import { getStorageItem, loadLastUsedModel, setStorageItem } from '@/utils/storageUtils';
+import type { Model } from "@/types/models";
+import { recommendedModels } from "@/lib/preconfiguredModels";
+import {
+  getStorageItem,
+  loadLastUsedModel,
+  setStorageItem,
+} from "@/utils/storageUtils";
 
 // Extract the provider name from the model name (e.g., "Qwen" from "Qwen: Qwen3 30B A3B")
 export function getProviderFromModelName(modelName: string): string {
-  const colonIndex = modelName.indexOf(':');
+  const colonIndex = modelName.indexOf(":");
   if (colonIndex !== -1) {
     return modelName.substring(0, colonIndex).trim();
   }
-  return 'Unknown';
+  return "Unknown";
 }
 
 // Extract the model name without provider (e.g., "Qwen3 30B A3B" from "Qwen: Qwen3 30B A3B")
 export function getModelNameWithoutProvider(modelName: string): string {
-  const colonIndex = modelName.indexOf(':');
+  const colonIndex = modelName.indexOf(":");
   if (colonIndex !== -1) {
     return modelName.substring(colonIndex + 1).trim();
   }
   return modelName;
 }
 
-export function upsertCachedProviderModels(baseUrl: string, models: Model[]): void {
+export function upsertCachedProviderModels(
+  baseUrl: string,
+  models: Model[]
+): void {
   try {
     const normalized = normalizeBaseUrl(baseUrl);
     if (!normalized) return;
-    const existing = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
-   setStorageItem('modelsFromAllProviders', { ...existing, [normalized]: models });
+    const existing = getStorageItem<Record<string, Model[]>>(
+      "modelsFromAllProviders",
+      {} as any
+    );
+    setStorageItem("modelsFromAllProviders", {
+      ...existing,
+      [normalized]: models,
+    });
   } catch {}
 }
 
@@ -49,7 +68,10 @@ export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
   try {
     const normalized = normalizeBaseUrl(baseUrl);
     if (!normalized) return undefined;
-    const all = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
+    const all = getStorageItem<Record<string, Model[]>>(
+      "modelsFromAllProviders",
+      {} as any
+    );
     return all[normalized];
   } catch {
     return undefined;
@@ -61,13 +83,19 @@ export function getCachedProviderModels(baseUrl: string): Model[] | undefined {
  * - Falls back to fetching from `${baseUrl}/v1/models`
  * - Caches fetched list for future lookups
  */
-export async function getModelForBase(baseUrl: string, modelId: string): Promise<Model | null> {
+export async function getModelForBase(
+  baseUrl: string,
+  modelId: string
+): Promise<Model | null> {
   try {
     const normalized = normalizeBaseUrl(baseUrl);
     if (!normalized) return null;
 
     // 1) Try cached models
-    const cached = getCachedProviderModels(normalized) ?? getCachedProviderModels(baseUrl) ?? [];
+    const cached =
+      getCachedProviderModels(normalized) ??
+      getCachedProviderModels(baseUrl) ??
+      [];
     if (Array.isArray(cached) && cached.length > 0) {
       const hit = cached.find((m: Model) => m.id === modelId) ?? null;
       if (hit) return hit;
@@ -81,7 +109,7 @@ export async function getModelForBase(baseUrl: string, modelId: string): Promise
     const providerList: Model[] = Array.isArray(json?.data)
       ? json.data.map((m: Model) => ({
           ...m,
-          id: m.id.split('/').pop() || m.id
+          id: m.id.split("/").pop() || m.id,
         }))
       : [];
 
@@ -99,27 +127,31 @@ export async function getModelForBase(baseUrl: string, modelId: string): Promise
  * Extract image resolution (width, height) from a base64 data URL without DOM.
  * Supports PNG and JPEG. Returns null if format unsupported or parsing fails.
  */
-function getImageResolutionFromDataUrl(dataUrl: string): { width: number; height: number } | null {
+function getImageResolutionFromDataUrl(
+  dataUrl: string
+): { width: number; height: number } | null {
   try {
-    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:"))
+      return null;
 
-    const commaIdx = dataUrl.indexOf(',');
+    const commaIdx = dataUrl.indexOf(",");
     if (commaIdx === -1) return null;
 
     const meta = dataUrl.slice(5, commaIdx); // e.g. "image/png;base64"
     const base64 = dataUrl.slice(commaIdx + 1);
 
     // Decode base64 to binary
-    const binary = typeof atob === 'function'
-      ? atob(base64)
-      : Buffer.from(base64, 'base64').toString('binary');
+    const binary =
+      typeof atob === "function"
+        ? atob(base64)
+        : Buffer.from(base64, "base64").toString("binary");
 
     const len = binary.length;
     const bytes = new Uint8Array(len);
     for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
 
-    const isPNG = meta.includes('image/png');
-    const isJPEG = meta.includes('image/jpeg') || meta.includes('image/jpg');
+    const isPNG = meta.includes("image/png");
+    const isJPEG = meta.includes("image/jpeg") || meta.includes("image/jpg");
 
     // PNG: width/height are 4-byte big-endian at offsets 16 and 20
     if (isPNG) {
@@ -128,7 +160,11 @@ function getImageResolutionFromDataUrl(dataUrl: string): { width: number; height
       for (let i = 0; i < sig.length; i++) {
         if (bytes[i] !== sig[i]) return null;
       }
-      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      const view = new DataView(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength
+      );
       const width = view.getUint32(16, false);
       const height = view.getUint32(20, false);
       if (width > 0 && height > 0) return { width, height };
@@ -139,31 +175,32 @@ function getImageResolutionFromDataUrl(dataUrl: string): { width: number; height
     if (isJPEG) {
       let offset = 0;
       // JPEG SOI 0xFFD8
-      if (bytes[offset++] !== 0xFF || bytes[offset++] !== 0xD8) return null;
+      if (bytes[offset++] !== 0xff || bytes[offset++] !== 0xd8) return null;
 
       while (offset < bytes.length) {
         // Find marker
-        while (offset < bytes.length && bytes[offset] !== 0xFF) offset++;
+        while (offset < bytes.length && bytes[offset] !== 0xff) offset++;
         if (offset + 1 >= bytes.length) break;
 
         // Skip fill bytes 0xFF
-        while (bytes[offset] === 0xFF) offset++;
+        while (bytes[offset] === 0xff) offset++;
         const marker = bytes[offset++];
 
         // Standalone markers without length
-        if (marker === 0xD8 || marker === 0xD9) continue; // SOI/EOI
+        if (marker === 0xd8 || marker === 0xd9) continue; // SOI/EOI
 
         if (offset + 1 >= bytes.length) break;
         const length = (bytes[offset] << 8) | bytes[offset + 1];
         offset += 2;
 
         // SOF0 (0xC0) or SOF2 (0xC2) contain dimensions
-        if (marker === 0xC0 || marker === 0xC2) {
+        if (marker === 0xc0 || marker === 0xc2) {
           if (length < 7 || offset + length - 2 > bytes.length) return null;
           const precision = bytes[offset];
           const height = (bytes[offset + 1] << 8) | bytes[offset + 2];
           const width = (bytes[offset + 3] << 8) | bytes[offset + 4];
-          if (precision > 0 && width > 0 && height > 0) return { width, height };
+          if (precision > 0 && width > 0 && height > 0)
+            return { width, height };
           return null;
         } else {
           // Skip this segment
@@ -189,9 +226,9 @@ function getImageResolutionFromDataUrl(dataUrl: string): { width: number; height
 export function calculateImageTokens(
   width: number,
   height: number,
-  detail: 'low' | 'high' | 'auto' = 'auto'
+  detail: "low" | "high" | "auto" = "auto"
 ): number {
-  if (detail === 'low') return 85;
+  if (detail === "low") return 85;
 
   let w = width;
   let h = height;
@@ -228,10 +265,11 @@ export function calculateImageTokens(
   return 85 + 170 * numTiles;
 }
 
-
-
 // Determine required minimum sats to run a request for a model
-export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): number => {
+export const getRequiredSatsForModel = (
+  model: Model,
+  apiMessages?: any[]
+): number => {
   try {
     let imageTokens = 0;
     if (apiMessages) {
@@ -239,31 +277,37 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
         const content = (msg as any)?.content;
         if (Array.isArray(content)) {
           for (const part of content) {
-            const isImage = part && typeof part === 'object' && part.type === 'image_url';
-            const url: string | undefined =
-              isImage
-                ? (typeof part.image_url === 'string'
-                    ? part.image_url
-                    : part.image_url?.url)
-                : undefined;
+            const isImage =
+              part && typeof part === "object" && part.type === "image_url";
+            const url: string | undefined = isImage
+              ? typeof part.image_url === "string"
+                ? part.image_url
+                : part.image_url?.url
+              : undefined;
 
             // Expecting a base64 data URL for local image inputs
-            if (url && typeof url === 'string' && url.startsWith('data:')) {
+            if (url && typeof url === "string" && url.startsWith("data:")) {
               const res = getImageResolutionFromDataUrl(url);
               if (res) {
-                const tokensFromImage = calculateImageTokens(res.width, res.height)
+                const tokensFromImage = calculateImageTokens(
+                  res.width,
+                  res.height
+                );
                 // const patchSize = 32;
                 // const patchesW = Math.floor((res.width + patchSize - 1) / patchSize);
                 // const patchesH = Math.floor((res.height + patchSize - 1) / patchSize);
                 // const tokensFromImage = patchesW * patchesH;
                 imageTokens += tokensFromImage;
-                console.log('IMAGE INPUT RESOLUTION', {
+                console.log("IMAGE INPUT RESOLUTION", {
                   width: res.width,
                   height: res.height,
-                  tokensFromImage
+                  tokensFromImage,
                 });
               } else {
-                console.log('IMAGE INPUT RESOLUTION', 'unknown (unsupported format or parse failure)');
+                console.log(
+                  "IMAGE INPUT RESOLUTION",
+                  "unknown (unsupported format or parse failure)"
+                );
               }
             }
           }
@@ -275,7 +319,8 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
       ? (apiMessages as any[]).map((m: any) => {
           if (Array.isArray(m?.content)) {
             const filtered = m.content.filter(
-              (p: any) => !(p && typeof p === 'object' && p.type === 'image_url')
+              (p: any) =>
+                !(p && typeof p === "object" && p.type === "image_url")
             );
             return { ...m, content: filtered };
           }
@@ -291,17 +336,22 @@ export const getRequiredSatsForModel = (model: Model, apiMessages?: any[]): numb
 
     if (apiMessages) {
       console.log("OUR TOKENS (TEXT-ONLY)", approximateTokens);
-      console.log("IMAGE TOKENS", imageTokens, "TOTAL INPUT TOKENS", totalInputTokens);
+      console.log(
+        "IMAGE TOKENS",
+        imageTokens,
+        "TOTAL INPUT TOKENS",
+        totalInputTokens
+      );
     }
     const sp: any = model?.sats_pricing as any;
-    
+
     if (!sp) return 0;
-    
+
     // If we don't have max_completion_cost, fall back to max_cost
     if (!sp.max_completion_cost) {
       return sp.max_cost ?? 50;
     }
-    
+
     // Calculate based on token usage (similar to getTokenAmountForModel in apiUtils.ts)
     const promptCosts = (sp.prompt || 0) * totalInputTokens;
     const totalEstimatedCosts = (promptCosts + sp.max_completion_cost) * 1.05;
@@ -319,36 +369,48 @@ export const isModelAvailable = (model: Model, balance: number) => {
     const required = getRequiredSatsForModel(model);
     if (!required || required <= 0) return true;
     return balance >= required;
-  }
-  catch(error){ 
+  } catch (error) {
     console.log(model);
     console.error(error);
     return true;
   }
 };
 
-export const modelSelectionStrategy = async (models: Model[], maxBalance: number, pendingCashuAmountState: number): Promise<Model | null> => {
+export const modelSelectionStrategy = async (
+  models: Model[],
+  maxBalance: number,
+  pendingCashuAmountState: number
+): Promise<Model | null> => {
   let modelToSelect: Model | null = null;
   const lastUsedModelId = loadLastUsedModel();
   if (!modelToSelect) {
-    if (lastUsedModelId && lastUsedModelId.includes('@@')) {
+    if (lastUsedModelId && lastUsedModelId.includes("@@")) {
       const { id, base } = parseModelKey(lastUsedModelId);
       const fixedBase = normalizeBaseUrl(base);
       if (!fixedBase) return null;
-      const normalized = fixedBase.endsWith('/') ? fixedBase : `${fixedBase}/`;
-      const allByProvider = getStorageItem<Record<string, Model[]>>('modelsFromAllProviders', {} as any);
-      const list = allByProvider?.[normalized] || allByProvider?.[lastUsedModelId] || [];
-      modelToSelect = Array.isArray(list) ? (list.find((m: Model) => m.id === id) ?? null) : null;
+      const normalized = fixedBase.endsWith("/") ? fixedBase : `${fixedBase}/`;
+      const allByProvider = getStorageItem<Record<string, Model[]>>(
+        "modelsFromAllProviders",
+        {} as any
+      );
+      const list =
+        allByProvider?.[normalized] || allByProvider?.[lastUsedModelId] || [];
+      modelToSelect = Array.isArray(list)
+        ? list.find((m: Model) => m.id === id) ?? null
+        : null;
       if (!modelToSelect) {
         const res = await fetch(`${normalized}v1/models`);
         if (res.ok) {
           const json = await res.json();
-          const providerList: Model[] = Array.isArray(json?.data) ? json.data.map((m: Model) => ({
-            ...m,
-            id: m.id.split('/').pop() || m.id
-          })) : [];
-          const transformedId = id.split('/').pop() || id;
-          const found = providerList.find((m: Model) => m.id === transformedId) ?? null;
+          const providerList: Model[] = Array.isArray(json?.data)
+            ? json.data.map((m: Model) => ({
+                ...m,
+                id: m.id.split("/").pop() || m.id,
+              }))
+            : [];
+          const transformedId = id.split("/").pop() || id;
+          const found =
+            providerList.find((m: Model) => m.id === transformedId) ?? null;
           console.log("SMG", providerList);
           if (found) {
             // cache to storage for future
@@ -357,28 +419,37 @@ export const modelSelectionStrategy = async (models: Model[], maxBalance: number
           }
         }
       }
-    }
-    else if (lastUsedModelId) {
-      modelToSelect = models.find((m: Model) => m.id === lastUsedModelId) ?? null;
+    } else if (lastUsedModelId) {
+      modelToSelect =
+        models.find((m: Model) => m.id === lastUsedModelId) ?? null;
     }
   }
 
   if (!modelToSelect) {
-    const recommended = models.filter((m: Model) => recommendedModels.includes(m.id))
-      .sort((a, b) => recommendedModels.indexOf(a.id) - recommendedModels.indexOf(b.id));
-    const compatible = recommended.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState));
-   if (compatible.length > 0) modelToSelect = compatible[0];
-  }
-
-  if (!modelToSelect) {
-    const compatible = models.filter((m: Model) => isModelAvailable(m, maxBalance + pendingCashuAmountState))
-    .sort((a, b) => {
-      const aMaxCost = getRequiredSatsForModel(a);
-      const bMaxCost = getRequiredSatsForModel(b);
-      return bMaxCost - aMaxCost; // Descending order
-    });
+    const recommended = models
+      .filter((m: Model) => recommendedModels.includes(m.id))
+      .sort(
+        (a, b) =>
+          recommendedModels.indexOf(a.id) - recommendedModels.indexOf(b.id)
+      );
+    const compatible = recommended.filter((m: Model) =>
+      isModelAvailable(m, maxBalance + pendingCashuAmountState)
+    );
     if (compatible.length > 0) modelToSelect = compatible[0];
   }
-  
+
+  if (!modelToSelect) {
+    const compatible = models
+      .filter((m: Model) =>
+        isModelAvailable(m, maxBalance + pendingCashuAmountState)
+      )
+      .sort((a, b) => {
+        const aMaxCost = getRequiredSatsForModel(a);
+        const bMaxCost = getRequiredSatsForModel(b);
+        return bMaxCost - aMaxCost; // Descending order
+      });
+    if (compatible.length > 0) modelToSelect = compatible[0];
+  }
+
   return modelToSelect;
-}
+};
