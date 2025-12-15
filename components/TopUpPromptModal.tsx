@@ -22,9 +22,10 @@ interface TopUpPromptModalProps {
   onTopUp: (amount?: number) => void;
   onDontShowAgain: () => void;
   setIsLoginModalOpen: (open: boolean) => void;
+  cashuToken?: string;
 }
 
-const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain, setIsLoginModalOpen }) => {
+const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, onDontShowAgain, setIsLoginModalOpen, cashuToken: cashuTokenParam }) => {
   const [customAmount, setCustomAmount] = useState('');
   const [invoice, setInvoice] = useState('');
   const [quoteId, setQuoteId] = useState('');
@@ -118,6 +119,58 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({ isOpen, onClose, on
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // Auto-receive cashu token from URL parameter
+  useEffect(() => {
+    if (!isOpen || !isHydrated || !cashuTokenParam) return;
+    
+    // Set the token and switch to token tab
+    setCashuToken(cashuTokenParam);
+    setActiveTab('token');
+    
+    // Automatically receive the token
+    const autoReceive = async () => {
+      if (!cashuTokenParam.trim()) return;
+      
+      createNsecForLogin();
+
+      try {
+        setIsReceivingToken(true);
+        setError(null);
+        
+        // Decode token to get original amount and unit for display
+        const decodedToken = getDecodedToken(cashuTokenParam.trim());
+        if (!decodedToken) {
+          throw new Error('Invalid token format');
+        }
+        
+        const tokenUnit = decodedToken.unit || 'sat';
+        // Calculate total from original token proofs
+        const originalTotalAmount = decodedToken.proofs.reduce((sum: number, p: { amount: number }) => sum + p.amount, 0);
+        
+        // Receive the token
+        await receiveToken(cashuTokenParam.trim());
+        
+        // Convert msat to sat for display consistency
+        const displayAmount = tokenUnit === 'msat' ? Math.floor(originalTotalAmount / 1000) : originalTotalAmount;
+        
+        setSuccessMessage(`Received ${formatBalance(displayAmount, 'sats')}!`);
+        setCashuToken('');
+        setTimeout(() => {
+          setSuccessMessage(null);
+          onClose();
+        }, 2000);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to receive token';
+        setError(message);
+        setTimeout(() => setError(null), 3000);
+      } finally {
+        setIsReceivingToken(false);
+      }
+    };
+    
+    void autoReceive();
+  }, [isOpen, isHydrated, cashuTokenParam]);
 
   if (!isOpen || !isHydrated) return null;
 

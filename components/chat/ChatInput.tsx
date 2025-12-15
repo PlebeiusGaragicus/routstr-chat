@@ -590,7 +590,7 @@ export default function ChatInput({
                 onChange={(e) => setInputMessage(e.target.value)}
                 onPaste={handlePaste}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey && !isMobile) {
                     e.preventDefault();
                     if (isLoading) {
                       // Show red button for 1 second

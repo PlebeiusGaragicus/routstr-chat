@@ -62,6 +62,7 @@ function ChatPageContent() {
   const pendingUrlSyncRef = useRef(false);
   const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
   const chatIdFromUrl = useMemo(() => searchParams.get('chatId'), [searchParams]);
+  const cashuTokenFromUrl = useMemo(() => searchParams.get('cashu'), [searchParams]);
 
   // QR Code Modal State
   const [qrModalData, setQrModalData] = useState<{ invoice: string; amount: string; unit: string } | null>(null);
@@ -198,6 +199,7 @@ function ChatPageContent() {
           onTopUp={handleTopUp}
           onDontShowAgain={() => { setTopUpPromptDismissed(true); markTopUpPromptSeen(); }}
           setIsLoginModalOpen={setIsLoginModalOpen}
+          cashuToken={cashuTokenFromUrl || undefined}
         />
       )}
 
