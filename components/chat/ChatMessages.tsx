@@ -1,19 +1,17 @@
 import { Message, MessageContent } from "@/types/chat";
-import {
-  Edit,
-  MessageSquare,
-  Copy,
-  Check,
-  Eye,
-  EyeOff,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Edit, Copy, Check, Eye, EyeOff, FileText } from "lucide-react";
 import MessageContentRenderer from "@/components/MessageContent";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import ThinkingSection from "@/components/ui/ThinkingSection";
-import { RefObject, useState, useRef, useEffect, useMemo } from "react";
+import VersionNavigator from "@/components/chat/VersionNavigator";
+import {
+  RefObject,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 
 // Helper function to extract thinking from message content
 const getThinkingFromContent = (
@@ -116,6 +114,29 @@ export default function ChatMessages({
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, streamingContent, thinkingContent, isLoading]);
+
+  // Reset selectedVersions if any selected eventId is not in the messages list
+  useEffect(() => {
+    // Only proceed if there are selected versions
+    if (selectedVersions.size === 0) return;
+
+    // Create a Set of all message eventIds for fast lookup
+    const messageEventIds = new Set(
+      messages
+        .map((msg) => msg._eventId)
+        .filter((id): id is string => id !== undefined)
+    );
+
+    // Check if any selected version's eventId is not in the messages list
+    const hasInvalidSelection = Array.from(selectedVersions.values()).some(
+      (eventId) => !messageEventIds.has(eventId)
+    );
+
+    // If any invalid selection found, reset the map
+    if (hasInvalidSelection) {
+      setSelectedVersions(new Map());
+    }
+  }, [messages]);
 
   // Helper: Check if a message should always be shown individually
   const isStandaloneSystemMessage = (msg: Message): boolean => {
@@ -289,33 +310,33 @@ export default function ChatMessages({
     };
   };
 
-  const handleVersionChange = (
-    index: number,
-    direction: "prev" | "next",
-    currentMessageId: string
-  ) => {
-    const versions = messageVersions.get(index);
-    console.log("ed", versions, index, messageVersions);
-    if (!versions) return;
+  const handleVersionChange = useCallback(
+    (index: number, direction: "prev" | "next", currentMessageId: string) => {
+      const versions = messageVersions.get(index);
+      console.log("ed", versions, index, messageVersions);
+      if (!versions) return;
 
-    const currentSelectedId = selectedVersions.get(index) || currentMessageId;
-    const currentIndex = versions.findIndex(
-      (v) => v._eventId === currentSelectedId
-    );
+      const currentSelectedId = selectedVersions.get(index) || currentMessageId;
+      const currentIndex = versions.findIndex(
+        (v) => v._eventId === currentSelectedId
+      );
+      console.log(currentIndex, currentSelectedId, selectedVersions);
 
-    if (currentIndex === -1) return;
+      if (currentIndex === -1) return;
 
-    let newIndex = direction === "prev" ? currentIndex - 1 : currentIndex + 1;
+      let newIndex = direction === "prev" ? currentIndex - 1 : currentIndex + 1;
 
-    // Clamp index
-    if (newIndex < 0) newIndex = 0;
-    if (newIndex >= versions.length) newIndex = versions.length - 1;
+      // Clamp index
+      if (newIndex < 0) newIndex = 0;
+      if (newIndex >= versions.length) newIndex = versions.length - 1;
 
-    const newVersionId = versions[newIndex]._eventId;
-    if (newVersionId) {
-      setSelectedVersions((prev) => new Map(prev).set(index, newVersionId));
-    }
-  };
+      const newVersionId = versions[newIndex]._eventId;
+      if (newVersionId) {
+        setSelectedVersions((prev) => new Map(prev).set(index, newVersionId));
+      }
+    },
+    [messageVersions, selectedVersions]
+  );
 
   const systemGroupsMap = identifySystemGroups();
 
@@ -451,312 +472,235 @@ export default function ChatMessages({
 
             return (
               <div key={`msg-${index}-${originalMessage._eventId}`}>
-                {/* Show toggle button at the start of each system message group */}
-                {isSystemGroupStart && (
-                  <div className="flex justify-center items-center gap-3 mb-6">
-                    {!expandedSystemGroups.has(
-                      systemGroup.firstMessage._eventId!
-                    ) ? (
-                      <button
-                        onClick={() =>
-                          toggleSystemGroup(systemGroup.firstMessage._eventId!)
-                        }
-                        className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
-                      >
-                        <Eye className="w-3 h-3" />
-                        Show {systemGroup.count} Error
-                        {systemGroup.count === 1 ? "" : "s"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          toggleSystemGroup(systemGroup.firstMessage._eventId!)
-                        }
-                        className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
-                      >
-                        <EyeOff className="w-3 h-3" />
-                        Hide Errors
-                      </button>
-                    )}
-
-                    {/* Show retry button if last message contains "Pls retry" */}
-                    {shouldShowGroupRetryButton(
-                      systemGroup.firstMessage._eventId!
-                    ) && (
-                      <button
-                        onClick={() =>
-                          retryMessage(messageIndex + systemGroup.count - 1)
-                        }
-                        className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
-                      >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="rotate-45"
-                        >
-                          <path
-                            d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        Retry
-                      </button>
-                    )}
-                  </div>
-                )}
-
                 <div className="mb-8 last:mb-0">
                   {message.role === "user" ? (
-                    <div className="flex justify-end mb-6">
-                      <div
-                        className={`${
-                          editingMessageIndex === index
-                            ? "w-full sm:max-w-[90%] md:max-w-[85%] lg:max-w-[75%] xl:max-w-[70%]"
-                            : "max-w-[85%]"
-                        } break-words break-all`}
-                      >
-                        {editingMessageIndex === index ? (
-                          <div className="flex flex-col w-full">
-                            {/* Show existing attachments that will be preserved */}
-                            {typeof message.content !== "string" && (
-                              <>
-                                {message.content.filter(
-                                  (item) => item.type === "image_url"
-                                ).length > 0 && (
-                                  <div className="flex flex-wrap gap-2 mb-2">
-                                    {message.content
-                                      .filter(
-                                        (item) => item.type === "image_url"
-                                      )
-                                      .map((item, imgIndex) => (
-                                        <img
-                                          key={`edit-img-${imgIndex}`}
-                                          src={item.image_url?.url}
-                                          alt="Attached"
-                                          className="w-16 h-16 object-cover rounded-lg border border-white/10"
-                                        />
-                                      ))}
-                                  </div>
-                                )}
-                                {message.content.filter(
-                                  (item) => item.type === "file"
-                                ).length > 0 && (
-                                  <div className="flex flex-wrap gap-2 mb-2">
-                                    {message.content
-                                      .filter((item) => item.type === "file")
-                                      .map((item, fileIndex) => (
-                                        <div
-                                          key={`edit-file-${fileIndex}`}
-                                          className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2"
-                                        >
-                                          <FileText
-                                            className="h-5 w-5 text-white/80 flex-shrink-0"
-                                            aria-hidden="true"
+                    <>
+                      <div className="flex justify-end mb-2">
+                        <VersionNavigator
+                          currentVersion={currentVersion}
+                          totalVersions={totalVersions}
+                          onNavigate={(direction) =>
+                            handleVersionChange(
+                              index,
+                              direction,
+                              originalMessage._eventId!
+                            )
+                          }
+                          className="mr-2"
+                        />
+                      </div>
+                      <div className="flex justify-end mb-6">
+                        <div
+                          className={`${
+                            editingMessageIndex === index
+                              ? "w-full sm:max-w-[90%] md:max-w-[85%] lg:max-w-[75%] xl:max-w-[70%]"
+                              : "max-w-[85%]"
+                          } break-words break-all`}
+                        >
+                          {editingMessageIndex === index ? (
+                            <div className="flex flex-col w-full">
+                              {/* Show existing attachments that will be preserved */}
+                              {typeof message.content !== "string" && (
+                                <>
+                                  {message.content.filter(
+                                    (item) => item.type === "image_url"
+                                  ).length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                      {message.content
+                                        .filter(
+                                          (item) => item.type === "image_url"
+                                        )
+                                        .map((item, imgIndex) => (
+                                          <img
+                                            key={`edit-img-${imgIndex}`}
+                                            src={item.image_url?.url}
+                                            alt="Attached"
+                                            className="w-16 h-16 object-cover rounded-lg border border-white/10"
                                           />
-                                          <div className="min-w-0 flex-1">
-                                            <p
-                                              className="truncate text-sm font-medium text-white"
-                                              title={
-                                                item.file?.name || "Attachment"
-                                              }
-                                            >
-                                              {item.file?.name || "Attachment"}
-                                            </p>
-                                            {item.file?.mimeType && (
-                                              <p className="text-xs uppercase text-white/60">
-                                                {item.file.mimeType ===
-                                                "application/pdf"
-                                                  ? "PDF"
-                                                  : item.file.mimeType.toUpperCase()}
+                                        ))}
+                                    </div>
+                                  )}
+                                  {message.content.filter(
+                                    (item) => item.type === "file"
+                                  ).length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                      {message.content
+                                        .filter((item) => item.type === "file")
+                                        .map((item, fileIndex) => (
+                                          <div
+                                            key={`edit-file-${fileIndex}`}
+                                            className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2"
+                                          >
+                                            <FileText
+                                              className="h-5 w-5 text-white/80 flex-shrink-0"
+                                              aria-hidden="true"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                              <p
+                                                className="truncate text-sm font-medium text-white"
+                                                title={
+                                                  item.file?.name ||
+                                                  "Attachment"
+                                                }
+                                              >
+                                                {item.file?.name ||
+                                                  "Attachment"}
                                               </p>
-                                            )}
+                                              {item.file?.mimeType && (
+                                                <p className="text-xs uppercase text-white/60">
+                                                  {item.file.mimeType ===
+                                                  "application/pdf"
+                                                    ? "PDF"
+                                                    : item.file.mimeType.toUpperCase()}
+                                                </p>
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
-                                      ))}
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            <textarea
-                              value={editingContent}
-                              onChange={(e) =>
-                                setEditingContent(e.target.value)
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleSaveInlineEdit();
+                                        ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              <textarea
+                                value={editingContent}
+                                onChange={(e) =>
+                                  setEditingContent(e.target.value)
                                 }
-                              }}
-                              className="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white focus:outline-none focus:border-white/40"
-                              rows={3}
-                              autoFocus
-                            />
-                            <div className="flex justify-end space-x-2 mt-2">
-                              <button
-                                onClick={cancelEditing}
-                                className="text-xs text-gray-300 hover:text-white bg-white/10 px-3 py-1.5 rounded-md"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={handleSaveInlineEdit}
-                                disabled={isLoading}
-                                className="text-xs text-black bg-white px-3 py-1.5 rounded-md hover:bg-white/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/70"
-                              >
-                                Send
-                              </button>
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSaveInlineEdit();
+                                  }
+                                }}
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white focus:outline-none focus:border-white/40"
+                                rows={3}
+                                autoFocus
+                              />
+                              <div className="flex justify-end space-x-2 mt-2">
+                                <button
+                                  onClick={cancelEditing}
+                                  className="text-xs text-gray-300 hover:text-white bg-white/10 px-3 py-1.5 rounded-md"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={handleSaveInlineEdit}
+                                  disabled={isLoading}
+                                  className="text-xs text-black bg-white px-3 py-1.5 rounded-md hover:bg-white/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/70"
+                                >
+                                  Send
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="group relative">
-                              <div className="bg-white/10 rounded-2xl py-2 px-4 text-white">
-                                <div className="text-[18px]">
-                                  <MessageContentRenderer
-                                    content={message.content}
-                                    citations={getCitationsFromContent(
-                                      message.content
+                          ) : (
+                            <div>
+                              <div className="group relative">
+                                <div className="bg-white/10 rounded-2xl py-2 px-4 text-white">
+                                  <div className="text-[18px]">
+                                    <MessageContentRenderer
+                                      content={message.content}
+                                      citations={getCitationsFromContent(
+                                        message.content
+                                      )}
+                                      annotations={getAnnotationsFromContent(
+                                        message.content
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+                                <div
+                                  className={`flex justify-end items-center gap-2 mt-1 ${
+                                    isMobile
+                                      ? "opacity-100"
+                                      : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                  } transition-opacity duration-200`}
+                                >
+                                  <button
+                                    onClick={() =>
+                                      copyMessageContent(index, message.content)
+                                    }
+                                    className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
+                                    aria-label="Copy message"
+                                  >
+                                    {copiedMessageIndex === index ? (
+                                      <Check className="w-4 h-4" />
+                                    ) : (
+                                      <Copy className="w-4 h-4" />
                                     )}
-                                    annotations={getAnnotationsFromContent(
-                                      message.content
-                                    )}
-                                  />
+                                  </button>
+                                  <button
+                                    onClick={() => startEditingMessage(index)}
+                                    className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
+                                    aria-label="Edit message"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
-                              <div
-                                className={`flex justify-end items-center gap-2 mt-1 ${
-                                  isMobile
-                                    ? "opacity-100"
-                                    : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                                } transition-opacity duration-200`}
-                              >
-                                {totalVersions > 1 && (
-                                  <div className="flex items-center gap-1 mr-2 text-white/50 text-xs select-none">
-                                    <button
-                                      onClick={() =>
-                                        handleVersionChange(
-                                          index,
-                                          "prev",
-                                          originalMessage._eventId!
-                                        )
-                                      }
-                                      disabled={currentVersion <= 1}
-                                      className={`p-0.5 hover:text-white transition-colors ${
-                                        currentVersion <= 1
-                                          ? "opacity-30 cursor-default"
-                                          : "cursor-pointer"
-                                      }`}
-                                    >
-                                      <ChevronLeft className="w-3 h-3" />
-                                    </button>
-                                    <span>
-                                      {currentVersion} / {totalVersions}
-                                    </span>
-                                    <button
-                                      onClick={() =>
-                                        handleVersionChange(
-                                          index,
-                                          "next",
-                                          originalMessage._eventId!
-                                        )
-                                      }
-                                      disabled={currentVersion >= totalVersions}
-                                      className={`p-0.5 hover:text-white transition-colors ${
-                                        currentVersion >= totalVersions
-                                          ? "opacity-30 cursor-default"
-                                          : "cursor-pointer"
-                                      }`}
-                                    >
-                                      <ChevronRight className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                )}
-                                <button
-                                  onClick={() =>
-                                    copyMessageContent(index, message.content)
-                                  }
-                                  className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
-                                  aria-label="Copy message"
-                                >
-                                  {copiedMessageIndex === index ? (
-                                    <Check className="w-4 h-4" />
-                                  ) : (
-                                    <Copy className="w-4 h-4" />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => startEditingMessage(index)}
-                                  className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
-                                  aria-label="Edit message"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </>
                   ) : message.role === "system" ? (
-                    // Check if this system message should always be shown or if it's in an expanded group
-                    shouldAlwaysShowSystemMessage(message.content) ||
-                    isInExpandedGroup(message._eventId) ? (
-                      <div className="flex justify-center mb-6 group">
-                        <div className="flex flex-col">
-                          <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
-                            <div className="flex items-start gap-2 min-w-0">
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="text-red-300 mt-0.5 flex-shrink-0"
-                              >
-                                <path
-                                  d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                              <div className="text-sm font-medium min-w-0">
-                                {getTextFromContent(message.content)
-                                  .split("\n")
-                                  .map((line, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="break-words break-all"
-                                    >
-                                      {line}
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          </div>
-                          <div
-                            className={`mt-1.5 ${
-                              isMobile
-                                ? "opacity-100"
-                                : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                            } transition-opacity duration-200`}
-                          >
+                    <>
+                      <div className="flex justify-center mb-2">
+                        <VersionNavigator
+                          currentVersion={currentVersion}
+                          totalVersions={totalVersions}
+                          onNavigate={(direction) =>
+                            handleVersionChange(
+                              index,
+                              direction,
+                              originalMessage._eventId!
+                            )
+                          }
+                          className=""
+                        />
+                      </div>
+                      {/* Show toggle button at the start of each system message group */}
+                      {isSystemGroupStart && (
+                        <div className="flex justify-center items-center gap-3 mb-6">
+                          {!expandedSystemGroups.has(
+                            systemGroup.firstMessage._eventId!
+                          ) ? (
                             <button
-                              onClick={() => retryMessage(index)}
-                              className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                              onClick={() =>
+                                toggleSystemGroup(
+                                  systemGroup.firstMessage._eventId!
+                                )
+                              }
+                              className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
+                            >
+                              <Eye className="w-3 h-3" />
+                              Show {systemGroup.count} Error
+                              {systemGroup.count === 1 ? "" : "s"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                toggleSystemGroup(
+                                  systemGroup.firstMessage._eventId!
+                                )
+                              }
+                              className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
+                            >
+                              <EyeOff className="w-3 h-3" />
+                              Hide Errors
+                            </button>
+                          )}
+
+                          {/* Show retry button if last message contains "Pls retry" */}
+                          {shouldShowGroupRetryButton(
+                            systemGroup.firstMessage._eventId!
+                          ) && (
+                            <button
+                              onClick={() =>
+                                retryMessage(
+                                  messageIndex + systemGroup.count - 1
+                                )
+                              }
+                              className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                             >
                               <svg
                                 width="12"
@@ -782,152 +726,233 @@ export default function ChatMessages({
                               </svg>
                               Retry
                             </button>
-                          </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Check if this system message should always be shown or if it's in an expanded group */}
+                      {
+                        shouldAlwaysShowSystemMessage(message.content) ||
+                        isInExpandedGroup(message._eventId)
+                          ? (() => {
+                              // Determine which messages to render
+                              const messagesToRender: Array<{
+                                msg: Message;
+                                idx: number;
+                              }> =
+                                systemGroup &&
+                                systemGroup.count > 1 &&
+                                expandedSystemGroups.has(
+                                  systemGroup.firstMessage._eventId!
+                                )
+                                  ? Array.from(
+                                      { length: systemGroup.count },
+                                      (_, i) => ({
+                                        msg: messages[messageIndex + i],
+                                        idx: messageIndex + i,
+                                      })
+                                    ).filter((item) => item.msg)
+                                  : [{ msg: message, idx: index }];
+
+                              return messagesToRender.map(
+                                ({ msg, idx }, renderIdx) => (
+                                  <div
+                                    key={`system-${messageIndex}-${renderIdx}`}
+                                    className="flex justify-center mb-6 group"
+                                  >
+                                    <div className="flex flex-col">
+                                      <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
+                                        <div className="flex items-start gap-2 min-w-0">
+                                          <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="text-red-300 mt-0.5 flex-shrink-0"
+                                          >
+                                            <path
+                                              d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                            />
+                                          </svg>
+                                          <div className="text-sm font-medium min-w-0">
+                                            {getTextFromContent(msg.content)
+                                              .split("\n")
+                                              .map((line, lineIdx) => (
+                                                <div
+                                                  key={lineIdx}
+                                                  className="break-words break-all"
+                                                >
+                                                  {line}
+                                                </div>
+                                              ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div
+                                        className={`mt-1.5 ${
+                                          isMobile
+                                            ? "opacity-100"
+                                            : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                        } transition-opacity duration-200`}
+                                      >
+                                        <button
+                                          onClick={() => retryMessage(idx)}
+                                          className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                                        >
+                                          <svg
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="rotate-45"
+                                          >
+                                            <path
+                                              d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                            />
+                                            <path
+                                              d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                          </svg>
+                                          Retry
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              );
+                            })()
+                          : null /* Don't render if system message is hidden */
+                      }
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-start mb-2">
+                        <VersionNavigator
+                          currentVersion={currentVersion}
+                          totalVersions={totalVersions}
+                          onNavigate={(direction) =>
+                            handleVersionChange(
+                              index,
+                              direction,
+                              originalMessage._eventId!
+                            )
+                          }
+                          className="ml-2"
+                        />
+                      </div>
+                      <div className="flex flex-col items-start mb-6 group">
+                        {(() => {
+                          return null;
+                        })()}
+                        {getThinkingFromContent(message.content) && (
+                          <ThinkingSection
+                            thinking={getThinkingFromContent(message.content)!}
+                            thinkingContent={thinkingContent}
+                          />
+                        )}
+                        <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
+                          <MessageContentRenderer
+                            content={message.content}
+                            citations={getCitationsFromContent(message.content)}
+                            annotations={getAnnotationsFromContent(
+                              message.content
+                            )}
+                          />
+                        </div>
+                        <div
+                          className={`mt-1.5 ${
+                            isMobile
+                              ? "opacity-100"
+                              : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          } transition-opacity duration-200 flex items-center gap-2`}
+                        >
+                          <button
+                            onClick={() =>
+                              copyMessageContent(index, message.content)
+                            }
+                            className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                          >
+                            {copiedMessageIndex === index ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            {copiedMessageIndex === index ? "Copied!" : "Copy"}
+                          </button>
+                          <button
+                            onClick={() => retryMessage(index)}
+                            className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="rotate-45"
+                            >
+                              <path
+                                d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            Try Again
+                          </button>
+                          {message.satsSpent !== undefined &&
+                            message.satsSpent > 0 && (
+                              <span className="flex items-center gap-1 text-xs text-amber-400/80 px-2 py-1">
+                                -{" "}
+                                {message.satsSpent.toFixed(
+                                  message.satsSpent < 1 ? 3 : 0
+                                )}{" "}
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  style={{ marginLeft: "-5px" }}
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    clipRule="evenodd"
+                                    d="M8.7516 6.75V17.25H13.2464C14.602 17.1894 15.6545 16.0156 15.6 14.625C15.6545 13.234 14.6014 12.0601 13.2454 12H11.5333C12.8893 11.9399 13.9424 10.766 13.8879 9.375C13.9424 7.98403 12.8893 6.81005 11.5333 6.75L8.7516 6.75Z"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M8.0016 19C8.0016 19.4142 8.33739 19.75 8.7516 19.75C9.16581 19.75 9.5016 19.4142 9.5016 19H8.0016ZM8.7516 17.25H9.5016C9.5016 16.8358 9.16581 16.5 8.7516 16.5V17.25ZM6.825 16.5C6.41079 16.5 6.075 16.8358 6.075 17.25C6.075 17.6642 6.41079 18 6.825 18V16.5ZM9.5016 5C9.5016 4.58579 9.16581 4.25 8.7516 4.25C8.33739 4.25 8.0016 4.58579 8.0016 5H9.5016ZM8.7516 6.75V7.5C9.16581 7.5 9.5016 7.16421 9.5016 6.75H8.7516ZM6.825 6C6.41079 6 6.075 6.33579 6.075 6.75C6.075 7.16421 6.41079 7.5 6.825 7.5V6ZM11.5333 12.75C11.9475 12.75 12.2833 12.4142 12.2833 12C12.2833 11.5858 11.9475 11.25 11.5333 11.25V12.75ZM8.7516 11.25C8.33739 11.25 8.0016 11.5858 8.0016 12C8.0016 12.4142 8.33739 12.75 8.7516 12.75V11.25ZM10.5697 6.75C10.5697 7.16421 10.9055 7.5 11.3197 7.5C11.734 7.5 12.0697 7.16421 12.0697 6.75H10.5697ZM12.0697 5C12.0697 4.58579 11.734 4.25 11.3197 4.25C10.9055 4.25 10.5697 4.58579 10.5697 5H12.0697ZM10.5697 19C10.5697 19.4142 10.9055 19.75 11.3197 19.75C11.734 19.75 12.0697 19.4142 12.0697 19H10.5697ZM12.0697 17.25C12.0697 16.8358 11.734 16.5 11.3197 16.5C10.9055 16.5 10.5697 16.8358 10.5697 17.25H12.0697ZM9.5016 19V17.25H8.0016V19H9.5016ZM8.7516 16.5H6.825V18H8.7516V16.5ZM8.0016 5V6.75H9.5016V5H8.0016ZM8.7516 6H6.825V7.5H8.7516V6ZM11.5333 11.25H8.7516V12.75H11.5333V11.25ZM12.0697 6.75V5H10.5697V6.75H12.0697ZM12.0697 19V17.25H10.5697V19H12.0697Z"
+                                    fill="currentColor"
+                                  />
+                                </svg>
+                              </span>
+                            )}
                         </div>
                       </div>
-                    ) : null // Don't render if system message is hidden
-                  ) : (
-                    <div className="flex flex-col items-start mb-6 group">
-                      {(() => {
-                        return null;
-                      })()}
-                      {getThinkingFromContent(message.content) && (
-                        <ThinkingSection
-                          thinking={getThinkingFromContent(message.content)!}
-                          thinkingContent={thinkingContent}
-                        />
-                      )}
-                      <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
-                        <MessageContentRenderer
-                          content={message.content}
-                          citations={getCitationsFromContent(message.content)}
-                          annotations={getAnnotationsFromContent(
-                            message.content
-                          )}
-                        />
-                      </div>
-                      <div
-                        className={`mt-1.5 ${
-                          isMobile
-                            ? "opacity-100"
-                            : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                        } transition-opacity duration-200 flex items-center gap-2`}
-                      >
-                        {totalVersions > 1 && (
-                          <div className="flex items-center gap-1 mr-2 text-white/50 text-xs select-none">
-                            <button
-                              onClick={() =>
-                                handleVersionChange(
-                                  index,
-                                  "prev",
-                                  originalMessage._eventId!
-                                )
-                              }
-                              disabled={currentVersion <= 1}
-                              className={`p-0.5 hover:text-white transition-colors ${
-                                currentVersion <= 1
-                                  ? "opacity-30 cursor-default"
-                                  : "cursor-pointer"
-                              }`}
-                            >
-                              <ChevronLeft className="w-3 h-3" />
-                            </button>
-                            <span>
-                              {currentVersion} / {totalVersions}
-                            </span>
-                            <button
-                              onClick={() =>
-                                handleVersionChange(
-                                  index,
-                                  "next",
-                                  originalMessage._eventId!
-                                )
-                              }
-                              disabled={currentVersion >= totalVersions}
-                              className={`p-0.5 hover:text-white transition-colors ${
-                                currentVersion >= totalVersions
-                                  ? "opacity-30 cursor-default"
-                                  : "cursor-pointer"
-                              }`}
-                            >
-                              <ChevronRight className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                        <button
-                          onClick={() =>
-                            copyMessageContent(index, message.content)
-                          }
-                          className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
-                        >
-                          {copiedMessageIndex === index ? (
-                            <Check className="w-3 h-3" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                          {copiedMessageIndex === index ? "Copied!" : "Copy"}
-                        </button>
-                        <button
-                          onClick={() => retryMessage(index)}
-                          className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="rotate-45"
-                          >
-                            <path
-                              d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            />
-                            <path
-                              d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          Try Again
-                        </button>
-                        {message.satsSpent !== undefined &&
-                          message.satsSpent > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-amber-400/80 px-2 py-1">
-                              -{" "}
-                              {message.satsSpent.toFixed(
-                                message.satsSpent < 1 ? 3 : 0
-                              )}{" "}
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                style={{ marginLeft: "-5px" }}
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  clipRule="evenodd"
-                                  d="M8.7516 6.75V17.25H13.2464C14.602 17.1894 15.6545 16.0156 15.6 14.625C15.6545 13.234 14.6014 12.0601 13.2454 12H11.5333C12.8893 11.9399 13.9424 10.766 13.8879 9.375C13.9424 7.98403 12.8893 6.81005 11.5333 6.75L8.7516 6.75Z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M8.0016 19C8.0016 19.4142 8.33739 19.75 8.7516 19.75C9.16581 19.75 9.5016 19.4142 9.5016 19H8.0016ZM8.7516 17.25H9.5016C9.5016 16.8358 9.16581 16.5 8.7516 16.5V17.25ZM6.825 16.5C6.41079 16.5 6.075 16.8358 6.075 17.25C6.075 17.6642 6.41079 18 6.825 18V16.5ZM9.5016 5C9.5016 4.58579 9.16581 4.25 8.7516 4.25C8.33739 4.25 8.0016 4.58579 8.0016 5H9.5016ZM8.7516 6.75V7.5C9.16581 7.5 9.5016 7.16421 9.5016 6.75H8.7516ZM6.825 6C6.41079 6 6.075 6.33579 6.075 6.75C6.075 7.16421 6.41079 7.5 6.825 7.5V6ZM11.5333 12.75C11.9475 12.75 12.2833 12.4142 12.2833 12C12.2833 11.5858 11.9475 11.25 11.5333 11.25V12.75ZM8.7516 11.25C8.33739 11.25 8.0016 11.5858 8.0016 12C8.0016 12.4142 8.33739 12.75 8.7516 12.75V11.25ZM10.5697 6.75C10.5697 7.16421 10.9055 7.5 11.3197 7.5C11.734 7.5 12.0697 7.16421 12.0697 6.75H10.5697ZM12.0697 5C12.0697 4.58579 11.734 4.25 11.3197 4.25C10.9055 4.25 10.5697 4.58579 10.5697 5H12.0697ZM10.5697 19C10.5697 19.4142 10.9055 19.75 11.3197 19.75C11.734 19.75 12.0697 19.4142 12.0697 19H10.5697ZM12.0697 17.25C12.0697 16.8358 11.734 16.5 11.3197 16.5C10.9055 16.5 10.5697 16.8358 10.5697 17.25H12.0697ZM9.5016 19V17.25H8.0016V19H9.5016ZM8.7516 16.5H6.825V18H8.7516V16.5ZM8.0016 5V6.75H9.5016V5H8.0016ZM8.7516 6H6.825V7.5H8.7516V6ZM11.5333 11.25H8.7516V12.75H11.5333V11.25ZM12.0697 6.75V5H10.5697V6.75H12.0697ZM12.0697 19V17.25H10.5697V19H12.0697Z"
-                                  fill="currentColor"
-                                />
-                              </svg>
-                            </span>
-                          )}
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
