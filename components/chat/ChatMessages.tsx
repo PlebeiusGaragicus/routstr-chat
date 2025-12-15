@@ -83,7 +83,7 @@ export default function ChatMessages({
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(
     null
   );
-  const [expandedSystemGroups, setExpandedSystemGroups] = useState<Set<number>>(
+  const [expandedSystemGroups, setExpandedSystemGroups] = useState<Set<string>>(
     new Set()
   );
   const [selectedVersions, setSelectedVersions] = useState<Map<number, string>>(
@@ -221,7 +221,6 @@ export default function ChatMessages({
     const currentIndex = versions.findIndex(
       (v) => v._eventId === currentSelectedId
     );
-    console.log(currentIndex, selectedVersions, currentSelectedId);
 
     if (currentIndex === -1) return;
 
@@ -239,7 +238,7 @@ export default function ChatMessages({
 
   // Function to identify system message groups
   const getSystemMessageGroups = () => {
-    const groups: { startIndex: number; count: number }[] = [];
+    const groups: { prevId: string; count: number; startIndex: number }[] = [];
     let currentGroupStart: number | null = null;
     let currentGroupCount = 0;
 
@@ -256,9 +255,11 @@ export default function ChatMessages({
         }
       } else {
         if (currentGroupStart !== null) {
+          const firstMessage = messages[currentGroupStart];
           groups.push({
-            startIndex: currentGroupStart,
+            prevId: firstMessage._prevId || "",
             count: currentGroupCount,
+            startIndex: currentGroupStart,
           });
           currentGroupStart = null;
           currentGroupCount = 0;
@@ -268,7 +269,12 @@ export default function ChatMessages({
 
     // Don't forget the last group if it ends at the last message
     if (currentGroupStart !== null) {
-      groups.push({ startIndex: currentGroupStart, count: currentGroupCount });
+      const firstMessage = messages[currentGroupStart];
+      groups.push({
+        prevId: firstMessage._prevId || "",
+        count: currentGroupCount,
+        startIndex: currentGroupStart,
+      });
     }
 
     return groups;
@@ -277,13 +283,13 @@ export default function ChatMessages({
   const systemGroups = getSystemMessageGroups();
 
   // Toggle a specific system message group
-  const toggleSystemGroup = (groupStartIndex: number) => {
+  const toggleSystemGroup = (groupPrevId: string) => {
     setExpandedSystemGroups((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(groupStartIndex)) {
-        newSet.delete(groupStartIndex);
+      if (newSet.has(groupPrevId)) {
+        newSet.delete(groupPrevId);
       } else {
-        newSet.add(groupStartIndex);
+        newSet.add(groupPrevId);
       }
       return newSet;
     });
@@ -295,12 +301,12 @@ export default function ChatMessages({
       (g) =>
         messageIndex >= g.startIndex && messageIndex < g.startIndex + g.count
     );
-    return group ? expandedSystemGroups.has(group.startIndex) : false;
+    return group ? expandedSystemGroups.has(group.prevId) : false;
   };
 
   // Check if the last message in a system group contains "Pls retry"
-  const shouldShowGroupRetryButton = (groupStartIndex: number): boolean => {
-    const group = systemGroups.find((g) => g.startIndex === groupStartIndex);
+  const shouldShowGroupRetryButton = (groupPrevId: string): boolean => {
+    const group = systemGroups.find((g) => g.prevId === groupPrevId);
     if (!group) return false;
 
     const lastMessageIndex = group.startIndex + group.count - 1;
@@ -366,7 +372,7 @@ export default function ChatMessages({
             if (!versions || versions.length === 0) return null;
 
             // Use the first message in the versions array as the original message
-            const originalMessage = versions[0];
+            const originalMessage = versions[versions.length - 1];
 
             // Determine which version of the message to display
             const {
@@ -384,14 +390,22 @@ export default function ChatMessages({
               message.role === "system" &&
               !shouldAlwaysShowSystemMessage(message.content);
 
+            // console.log(
+            //   "ori",
+            //   originalMessage,
+            //   isSystemGroupStart,
+            //   systemGroups,
+            //   systemGroup
+            // );
+
             return (
               <div key={`msg-${index}-${originalMessage._eventId}`}>
                 {/* Show toggle button at the start of each system message group */}
                 {isSystemGroupStart && (
                   <div className="flex justify-center items-center gap-3 mb-6">
-                    {!expandedSystemGroups.has(index) ? (
+                    {!expandedSystemGroups.has(systemGroup.prevId) ? (
                       <button
-                        onClick={() => toggleSystemGroup(index)}
+                        onClick={() => toggleSystemGroup(systemGroup.prevId)}
                         className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
                         <Eye className="w-3 h-3" />
@@ -400,7 +414,7 @@ export default function ChatMessages({
                       </button>
                     ) : (
                       <button
-                        onClick={() => toggleSystemGroup(index)}
+                        onClick={() => toggleSystemGroup(systemGroup.prevId)}
                         className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
                         <EyeOff className="w-3 h-3" />
@@ -409,10 +423,10 @@ export default function ChatMessages({
                     )}
 
                     {/* Show retry button if last message contains "Pls retry" */}
-                    {shouldShowGroupRetryButton(index) && (
+                    {shouldShowGroupRetryButton(systemGroup.prevId) && (
                       <button
                         onClick={() =>
-                          retryMessage(index + systemGroup.count - 1)
+                          retryMessage(systemGroup.startIndex + systemGroup.count - 1)
                         }
                         className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
