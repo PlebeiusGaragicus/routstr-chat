@@ -317,87 +317,55 @@ export default function ChatMessages({
     }
   };
 
-  // Function to identify system message groups
-  const getSystemMessageGroups = () => {
-    const groups: { prevId: string; count: number; startIndex: number }[] = [];
-    let currentGroupStart: number | null = null;
-    let currentGroupCount = 0;
-
-    messages.forEach((message, index) => {
-      if (
-        message.role === "system" &&
-        !shouldAlwaysShowSystemMessage(message.content)
-      ) {
-        if (currentGroupStart === null) {
-          currentGroupStart = index;
-          currentGroupCount = 1;
-        } else {
-          currentGroupCount++;
-        }
-      } else {
-        if (currentGroupStart !== null) {
-          const firstMessage = messages[currentGroupStart];
-          groups.push({
-            prevId: firstMessage._prevId || "",
-            count: currentGroupCount,
-            startIndex: currentGroupStart,
-          });
-          currentGroupStart = null;
-          currentGroupCount = 0;
-        }
-      }
-    });
-
-    // Don't forget the last group if it ends at the last message
-    if (currentGroupStart !== null) {
-      const firstMessage = messages[currentGroupStart];
-      groups.push({
-        prevId: firstMessage._prevId || "",
-        count: currentGroupCount,
-        startIndex: currentGroupStart,
-      });
-    }
-
-    return groups;
-  };
-
-  const systemGroups = getSystemMessageGroups();
   const systemGroupsMap = identifySystemGroups();
 
   // Toggle a specific system message group
-  const toggleSystemGroup = (groupPrevId: string) => {
-    console.log(
-      groupPrevId,
-      expandedSystemGroups,
-      systemGroups,
-      systemGroupsMap
-    );
+  const toggleSystemGroup = (eventId: string) => {
     setExpandedSystemGroups((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(groupPrevId)) {
-        newSet.delete(groupPrevId);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
       } else {
-        newSet.add(groupPrevId);
+        newSet.add(eventId);
       }
       return newSet;
     });
   };
 
   // Check if a message belongs to an expanded group
-  const isInExpandedGroup = (messageIndex: number): boolean => {
-    const group = systemGroups.find(
-      (g) =>
-        messageIndex >= g.startIndex && messageIndex < g.startIndex + g.count
-    );
-    return group ? expandedSystemGroups.has(group.prevId) : false;
+  const isInExpandedGroup = (eventId: string | undefined): boolean => {
+    if (!eventId) return false;
+    const messageIndex = messages.findIndex((m) => m._eventId === eventId);
+    if (messageIndex === -1) return false;
+
+    for (const [startIndex, group] of systemGroupsMap) {
+      if (
+        messageIndex >= startIndex &&
+        messageIndex < startIndex + group.count
+      ) {
+        return expandedSystemGroups.has(group.firstMessage._eventId!);
+      }
+    }
+    return false;
   };
 
   // Check if the last message in a system group contains "Pls retry"
-  const shouldShowGroupRetryButton = (groupPrevId: string): boolean => {
-    const group = systemGroups.find((g) => g.prevId === groupPrevId);
-    if (!group) return false;
+  const shouldShowGroupRetryButton = (eventId: string): boolean => {
+    // Find the group by eventId (which is the first message's eventId)
+    let group: { firstMessage: Message; count: number } | undefined;
+    let startIndex: number | undefined;
 
-    const lastMessageIndex = group.startIndex + group.count - 1;
+    for (const [idx, g] of systemGroupsMap) {
+      if (g.firstMessage._eventId === eventId) {
+        group = g;
+        startIndex = idx;
+        break;
+      }
+    }
+
+    if (!group || startIndex === undefined) return false;
+
+    const lastMessageIndex = startIndex + group.count - 1;
     const lastMessage = messages[lastMessageIndex];
 
     if (lastMessage && lastMessage.role === "system") {
@@ -471,31 +439,28 @@ export default function ChatMessages({
 
             // Check if this message represents a system message group
             // We need to match by the message itself, not by index
-            const systemGroup = systemGroups.find((g) => {
-              const firstMessageInGroup = messages[g.startIndex];
-              return firstMessageInGroup._eventId === message._eventId;
-            });
+            const messageIndex = messages.findIndex(
+              (m) => m._eventId === message._eventId
+            );
+            const systemGroup = systemGroupsMap.get(messageIndex);
+
             const isSystemGroupStart =
               systemGroup &&
               message.role === "system" &&
               !shouldAlwaysShowSystemMessage(message.content);
-
-            // console.log(
-            //   "ori",
-            //   originalMessage,
-            //   isSystemGroupStart,
-            //   systemGroups,
-            //   systemGroup
-            // );
 
             return (
               <div key={`msg-${index}-${originalMessage._eventId}`}>
                 {/* Show toggle button at the start of each system message group */}
                 {isSystemGroupStart && (
                   <div className="flex justify-center items-center gap-3 mb-6">
-                    {!expandedSystemGroups.has(systemGroup.prevId) ? (
+                    {!expandedSystemGroups.has(
+                      systemGroup.firstMessage._eventId!
+                    ) ? (
                       <button
-                        onClick={() => toggleSystemGroup(systemGroup.prevId)}
+                        onClick={() =>
+                          toggleSystemGroup(systemGroup.firstMessage._eventId!)
+                        }
                         className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
                         <Eye className="w-3 h-3" />
@@ -504,7 +469,9 @@ export default function ChatMessages({
                       </button>
                     ) : (
                       <button
-                        onClick={() => toggleSystemGroup(systemGroup.prevId)}
+                        onClick={() =>
+                          toggleSystemGroup(systemGroup.firstMessage._eventId!)
+                        }
                         className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
                         <EyeOff className="w-3 h-3" />
@@ -513,12 +480,12 @@ export default function ChatMessages({
                     )}
 
                     {/* Show retry button if last message contains "Pls retry" */}
-                    {shouldShowGroupRetryButton(systemGroup.prevId) && (
+                    {shouldShowGroupRetryButton(
+                      systemGroup.firstMessage._eventId!
+                    ) && (
                       <button
                         onClick={() =>
-                          retryMessage(
-                            systemGroup.startIndex + systemGroup.count - 1
-                          )
+                          retryMessage(messageIndex + systemGroup.count - 1)
                         }
                         className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
