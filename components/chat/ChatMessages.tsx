@@ -117,17 +117,97 @@ export default function ChatMessages({
     }
   }, [messages, streamingContent, thinkingContent, isLoading]);
 
+  // Helper: Check if a message should always be shown individually
+  const isStandaloneSystemMessage = (msg: Message): boolean => {
+    if (msg.role !== "system") return false;
+    return shouldAlwaysShowSystemMessage(msg.content);
+  };
+
+  // Helper: Identify system message groups and return group metadata
+  const identifySystemGroups = (): Map<
+    number,
+    { firstMessage: Message; count: number }
+  > => {
+    const systemGroupMap = new Map<
+      number,
+      { firstMessage: Message; count: number }
+    >();
+    let currentGroupStart: number | null = null;
+    let currentGroupCount = 0;
+
+    messages.forEach((message, index) => {
+      if (message.role === "system" && !isStandaloneSystemMessage(message)) {
+        if (currentGroupStart === null) {
+          currentGroupStart = index;
+          currentGroupCount = 1;
+        } else {
+          currentGroupCount++;
+        }
+      } else {
+        if (currentGroupStart !== null) {
+          systemGroupMap.set(currentGroupStart, {
+            firstMessage: messages[currentGroupStart],
+            count: currentGroupCount,
+          });
+          currentGroupStart = null;
+          currentGroupCount = 0;
+        }
+      }
+    });
+
+    // Handle trailing group
+    if (currentGroupStart !== null) {
+      systemGroupMap.set(currentGroupStart, {
+        firstMessage: messages[currentGroupStart],
+        count: currentGroupCount,
+      });
+    }
+
+    return systemGroupMap;
+  };
+
   // Group messages by their depth in the conversation tree
+  // System message groups are treated as a single version (represented by their first message)
   const messageVersions = useMemo(() => {
     const groups = new Map<number, Message[]>();
-    const allMessages = [...messages];
-    console.log(allMessages.map((msg) => [msg._prevId, msg._eventId]));
 
-    // Build adjacency list
+    const systemGroupMap = identifySystemGroups();
+
+    // Filter messages: exclude system messages that are part of a group (keep only first of each group)
+    const messagesToVersion: Message[] = [];
+    const messageIndexMap = new Map<Message, number>(); // Maps message to original index
+
+    let skipUntilIndex = -1;
+    messages.forEach((msg, index) => {
+      // If we're skipping (inside a system group), continue until we're past it
+      if (index <= skipUntilIndex) return;
+
+      // Check if this is the start of a system group
+      const systemGroup = systemGroupMap.get(index);
+      if (systemGroup) {
+        // Add only the first message of the group
+        messagesToVersion.push(systemGroup.firstMessage);
+        messageIndexMap.set(systemGroup.firstMessage, index);
+        // Skip the rest of the group
+        skipUntilIndex = index + systemGroup.count - 1;
+      } else {
+        // Regular message (user, assistant, or standalone system)
+        messagesToVersion.push(msg);
+        messageIndexMap.set(msg, index);
+      }
+    });
+
+    console.log(
+      "Messages to version:",
+      messagesToVersion.map((msg) => [msg._prevId, msg._eventId])
+    );
+    console.log("ALL ", messages);
+
+    // Build adjacency list for tree structure
     const childrenMap = new Map<string, Message[]>();
     const roots: Message[] = [];
 
-    allMessages.forEach((msg) => {
+    messagesToVersion.forEach((msg) => {
       if (!msg._prevId || msg._prevId === "0".repeat(64)) {
         roots.push(msg);
       } else {
@@ -138,12 +218,12 @@ export default function ChatMessages({
       }
     });
 
-    // Traverse BFS to assign depths
+    // BFS traversal to assign depth-based groups
     let currentDepth = 0;
     let currentLevel = roots;
 
     while (currentLevel.length > 0) {
-      // Sort by creation time
+      // Sort by creation time for consistent ordering
       currentLevel.sort((a, b) => (a._createdAt || 0) - (b._createdAt || 0));
       groups.set(currentDepth, currentLevel);
 
@@ -157,7 +237,8 @@ export default function ChatMessages({
       currentDepth++;
       currentLevel = nextLevel;
     }
-    console.log(groups);
+
+    console.log("Version groups:", groups);
 
     return groups;
   }, [messages]);
@@ -281,9 +362,16 @@ export default function ChatMessages({
   };
 
   const systemGroups = getSystemMessageGroups();
+  const systemGroupsMap = identifySystemGroups();
 
   // Toggle a specific system message group
   const toggleSystemGroup = (groupPrevId: string) => {
+    console.log(
+      groupPrevId,
+      expandedSystemGroups,
+      systemGroups,
+      systemGroupsMap
+    );
     setExpandedSystemGroups((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(groupPrevId)) {
@@ -381,10 +469,12 @@ export default function ChatMessages({
               totalVersions,
             } = getMessageToDisplay(originalMessage, index);
 
-            // Check if this is the start of a system message group
-            const systemGroup = systemGroups.find(
-              (g) => g.startIndex === index
-            );
+            // Check if this message represents a system message group
+            // We need to match by the message itself, not by index
+            const systemGroup = systemGroups.find((g) => {
+              const firstMessageInGroup = messages[g.startIndex];
+              return firstMessageInGroup._eventId === message._eventId;
+            });
             const isSystemGroupStart =
               systemGroup &&
               message.role === "system" &&
@@ -426,7 +516,9 @@ export default function ChatMessages({
                     {shouldShowGroupRetryButton(systemGroup.prevId) && (
                       <button
                         onClick={() =>
-                          retryMessage(systemGroup.startIndex + systemGroup.count - 1)
+                          retryMessage(
+                            systemGroup.startIndex + systemGroup.count - 1
+                          )
                         }
                         className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                       >
@@ -654,7 +746,7 @@ export default function ChatMessages({
                   ) : message.role === "system" ? (
                     // Check if this system message should always be shown or if it's in an expanded group
                     shouldAlwaysShowSystemMessage(message.content) ||
-                    isInExpandedGroup(index) ? (
+                    isInExpandedGroup(message._eventId) ? (
                       <div className="flex justify-center mb-6 group">
                         <div className="flex flex-col">
                           <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
