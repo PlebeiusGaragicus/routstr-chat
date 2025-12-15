@@ -1,4 +1,5 @@
 import { Message, MessageAttachment, MessageContent } from "@/types/chat";
+import { getFile } from "@/utils/indexedDb";
 
 /**
  * Extracts text content from a message that can be either string or multimodal content
@@ -44,14 +45,35 @@ export const getTextFromContent = (
 };
 
 /**
+ * Converts a File object to a base64 data URL
+ * @param file The file to convert
+ * @returns Promise resolving to base64 data URL string
+ */
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Failed to convert file to base64"));
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+};
+
+/**
  * Converts a Message object to the format expected by the API
  * Strips out thinking and citations from MessageContent as they're metadata, not API content
+ * Fetches images from IndexedDB if URL is empty but storageId exists
  * @param message The message to convert
- * @returns Object with role and content for API consumption
+ * @returns Promise resolving to object with role and content for API consumption
  */
-export const convertMessageForAPI = (
+export const convertMessageForAPI = async (
   message: Message
-): { role: string; content: string | MessageContent[] } => {
+): Promise<{ role: string; content: string | MessageContent[] }> => {
   // If content is a string, return as-is
   if (typeof message.content === "string") {
     return {
@@ -61,14 +83,43 @@ export const convertMessageForAPI = (
   }
 
   // If content is an array, strip thinking and citations from text items
-  const cleanedContent = message.content.map((item) => {
-    if (item.type === "text") {
-      // Create a copy without thinking and citations
-      const { thinking, citations, ...cleanItem } = item;
-      return cleanItem;
-    }
-    return item;
-  });
+  // and fetch images from IndexedDB if needed
+  const cleanedContent = await Promise.all(
+    message.content.map(async (item) => {
+      if (item.type === "text") {
+        // Create a copy without thinking and citations
+        const { thinking, citations, ...cleanItem } = item;
+        return cleanItem;
+      }
+      
+      // Handle image_url with empty URL but storageId exists
+      if (item.type === "image_url" && item.image_url) {
+        const { url, storageId } = item.image_url;
+        
+        // If URL is empty and storageId exists, fetch from IndexedDB
+        if (url === "" && storageId) {
+          try {
+            const file = await getFile(storageId);
+            if (file) {
+              const base64Url = await fileToBase64(file);
+              return {
+                ...item,
+                image_url: {
+                  ...item.image_url,
+                  url: base64Url,
+                },
+              };
+            }
+          } catch (error) {
+            console.error("Failed to fetch image from IndexedDB:", error);
+            // Return the item as-is if fetch fails
+          }
+        }
+      }
+      
+      return item;
+    })
+  );
 
   return {
     role: message.role,

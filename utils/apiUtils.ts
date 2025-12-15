@@ -200,6 +200,7 @@ async function routstrRequest(params: {
   }
 
   let response: Response;
+  let ranOutOfProviders = false;
   try {
     const body: any = {
       model: modelIdForRequest,
@@ -296,7 +297,13 @@ async function routstrRequest(params: {
         (newResponse as any).tokenBalance = tokenAmount;
         return newResponse;
       }
+      {
+        ranOutOfProviders = true;
+      }
     }
+
+    if (ranOutOfProviders)
+      throw new Error("No more providers left: " + error.message);
 
     // If not a recognized network error or no alternate provider available, rethrow
     throw error;
@@ -399,9 +406,11 @@ export const fetchAIResponse = async (
 
   // Convert messages to API format
   // Filter out system messages (error messages) before sending to API
-  const apiMessages = messageHistory
-    .filter((message) => message.role !== "system")
-    .map(convertMessageForAPI);
+  const apiMessages = await Promise.all(
+    messageHistory
+      .filter((message) => message.role !== "system")
+      .map(convertMessageForAPI)
+  );
 
   const tokenAmount = getRequiredSatsForModel(selectedModel, apiMessages);
   let tokenBalance = 0;
@@ -581,7 +590,7 @@ export const fetchAIResponse = async (
       const errorMsg =
         "Error in fetchAIReponse: " +
         error.message +
-        (isDev || isBeta ? " | " + 'error.stack' : ""); // remove for now
+        (isDev || isBeta ? " | " + "error.stack" : ""); // remove for now
       logApiError(errorMsg, onMessageAppend);
     } else {
       logApiError("An unknown error occurred", onMessageAppend);
@@ -854,9 +863,9 @@ function mergeImages(
  * @returns File object
  */
 function dataUrlToFile(dataUrl: string, filename: string): File {
-  const arr = dataUrl.split(',');
+  const arr = dataUrl.split(",");
   const mimeMatch = arr[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const mime = mimeMatch ? mimeMatch[1] : "image/png";
   const bstr = atob(arr[1]);
   let n = bstr.length;
   const u8arr = new Uint8Array(n);
@@ -871,11 +880,15 @@ function dataUrlToFile(dataUrl: string, filename: string): File {
  * @param streamingResult The result from streaming response
  * @returns Assistant message with text, images, and optional thinking
  */
-async function createAssistantMessage(streamingResult: StreamingResult): Promise<Message> {
+async function createAssistantMessage(
+  streamingResult: StreamingResult
+): Promise<Message> {
   const hasImages = streamingResult.images && streamingResult.images.length > 0;
   const hasThinking = streamingResult.thinking !== undefined;
-  const hasCitations = streamingResult.citations && streamingResult.citations.length > 0;
-  const hasAnnotations = streamingResult.annotations && streamingResult.annotations.length > 0;
+  const hasCitations =
+    streamingResult.citations && streamingResult.citations.length > 0;
+  const hasAnnotations =
+    streamingResult.annotations && streamingResult.annotations.length > 0;
 
   if (hasImages || hasThinking || hasCitations || hasAnnotations) {
     // Create multimodal message with text, images, thinking, citations, and annotations
@@ -884,9 +897,9 @@ async function createAssistantMessage(streamingResult: StreamingResult): Promise
     if (streamingResult.content) {
       const textContent: MessageContent = {
         type: "text",
-        text: streamingResult.content
+        text: streamingResult.content,
       };
-      
+
       // Add thinking, citations, and annotations to the text content
       if (hasThinking) {
         textContent.thinking = streamingResult.thinking;
@@ -897,7 +910,7 @@ async function createAssistantMessage(streamingResult: StreamingResult): Promise
       if (hasAnnotations) {
         textContent.annotations = streamingResult.annotations;
       }
-      
+
       content.push(textContent);
     }
 
@@ -906,15 +919,21 @@ async function createAssistantMessage(streamingResult: StreamingResult): Promise
       for (let i = 0; i < streamingResult.images.length; i++) {
         const img = streamingResult.images[i];
         let storageId: string | undefined;
-        
+
         try {
           // Convert base64 URL to File and save to IndexedDB
-          const file = dataUrlToFile(img.image_url.url, `ai-image-${Date.now()}-${i}.png`);
+          const file = dataUrlToFile(
+            img.image_url.url,
+            `ai-image-${Date.now()}-${i}.png`
+          );
           storageId = await saveFile(file);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
           if (errorMessage.includes("quota")) {
-            console.warn("Storage is full. Image will be available in this session but may not be saved in history.");
+            console.warn(
+              "Storage is full. Image will be available in this session but may not be saved in history."
+            );
           } else {
             console.warn("Failed to save image to storage:", errorMessage);
           }
@@ -925,7 +944,7 @@ async function createAssistantMessage(streamingResult: StreamingResult): Promise
           type: "image_url",
           image_url: {
             url: img.image_url.url,
-            storageId
+            storageId,
           },
         });
       }
@@ -1177,9 +1196,9 @@ async function processStreamingResponse(
             if (parsedData.citations) {
               citations = parsedData.citations;
             }
-            
+
             if (parsedData.annotations) {
-              annotations = parsedData.annotations
+              annotations = parsedData.annotations;
             }
 
             // Handle finish reason
@@ -1239,7 +1258,7 @@ async function processStreamingResponse(
     model,
     finish_reason,
     citations,
-    annotations
+    annotations,
   };
 }
 

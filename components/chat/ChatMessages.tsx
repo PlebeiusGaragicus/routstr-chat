@@ -239,6 +239,30 @@ export default function ChatMessages({
       }
     });
 
+    // Helper function to get the event ID of the last message in a system group
+    const getEventIdForLastMessage = (
+      eventId: string,
+      systemGroupMap: Map<number, { firstMessage: Message; count: number }>
+    ): string | undefined => {
+      if (!eventId) return eventId;
+
+      // Find the group that starts with this eventId
+      for (const [startIndex, group] of systemGroupMap) {
+        if (group.firstMessage._eventId === eventId) {
+          // Found the group, calculate the index of the last message
+          const lastMessageIndex = startIndex + group.count - 1;
+
+          // Return the eventId of the last message in this group
+          if (lastMessageIndex < messages.length) {
+            return messages[lastMessageIndex]._eventId;
+          }
+        }
+      }
+
+      // If not found in any group, return the original eventId
+      return eventId;
+    };
+
     // BFS traversal to assign depth-based groups
     let currentDepth = 0;
     let currentLevel = roots;
@@ -250,8 +274,11 @@ export default function ChatMessages({
 
       const nextLevel: Message[] = [];
       currentLevel.forEach((msg) => {
-        if (msg._eventId && childrenMap.has(msg._eventId)) {
-          nextLevel.push(...childrenMap.get(msg._eventId)!);
+        let lastEventId = msg._eventId;
+        if (msg.role === "system" && lastEventId)
+          lastEventId = getEventIdForLastMessage(lastEventId, systemGroupMap);
+        if (lastEventId && childrenMap.has(lastEventId)) {
+          nextLevel.push(...childrenMap.get(lastEventId)!);
         }
       });
 

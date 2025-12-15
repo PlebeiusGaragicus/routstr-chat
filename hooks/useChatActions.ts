@@ -86,7 +86,7 @@ export interface UseChatActionsParams {
   ) => Promise<string | null>;
   getLastNonSystemMessageEventId: (
     conversationId: string,
-    lastMessageRole?: string
+    lastMessageRole?: string | string[]
   ) => string;
   updateLastMessageSatsSpent: (
     conversationId: string,
@@ -405,10 +405,10 @@ export const useChatActions = ({
           onMessageAppend: (message) => {
             let prevId;
             if (retryMessage)
-              prevId = getLastNonSystemMessageEventId(
-                originConversationId,
-                "user"
-              );
+              prevId = getLastNonSystemMessageEventId(originConversationId, [
+                "user",
+                "assistant",
+              ]);
             else prevId = getLastNonSystemMessageEventId(originConversationId);
 
             // Update message object with prevId
