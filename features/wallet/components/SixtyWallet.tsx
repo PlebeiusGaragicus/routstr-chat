@@ -1,18 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Copy, Loader2, QrCode, Zap, ArrowRight, Info, Plus, Trash2, Eraser } from "lucide-react";
-import { getEncodedTokenV4, Proof, MeltQuoteResponse, MintQuoteResponse, getDecodedToken } from "@cashu/cashu-ts";
-import { 
-  useCashuWallet, 
-  useCreateCashuWallet, 
-  useCashuToken, 
-  useCashuStore, 
-  formatBalance, 
-  calculateBalanceByMint 
+import React, { useState, useEffect, useRef } from "react";
+import {
+  AlertCircle,
+  Copy,
+  Loader2,
+  QrCode,
+  Zap,
+  ArrowRight,
+  Info,
+  Plus,
+  Trash2,
+  Eraser,
+} from "lucide-react";
+import {
+  getEncodedTokenV4,
+  Proof,
+  MeltQuoteResponse,
+  MintQuoteResponse,
+  getDecodedToken,
+} from "@cashu/cashu-ts";
+import {
+  useCashuWallet,
+  useCreateCashuWallet,
+  useCashuToken,
+  useCashuStore,
+  formatBalance,
+  calculateBalanceByMint,
 } from "@/features/wallet";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
-import { computeTotalBalanceSats } from '@/utils/walletUtils';
-import InvoiceModal from './InvoiceModal';
+import { computeTotalBalanceSats } from "@/utils/walletUtils";
+import InvoiceModal from "./InvoiceModal";
 import {
   createLightningInvoice,
   mintTokensFromPaidInvoice,
@@ -26,20 +43,26 @@ import { getBalanceFromStoredProofs } from "@/utils/cashuUtils";
 import { useInvoiceSync } from "@/hooks/useInvoiceSync";
 import { useInvoiceChecker } from "@/hooks/useInvoiceChecker";
 import { MintQuoteState, MeltQuoteState } from "@cashu/cashu-ts";
-import InvoiceHistory from './InvoiceHistory';
-import { useCashuWithXYZ } from '@/hooks/useCashuWithXYZ';
-import { DEFAULT_MINT_URL } from '@/lib/utils';
-import dynamic from 'next/dynamic';
+import InvoiceHistory from "./InvoiceHistory";
+import { useCashuWithXYZ } from "@/hooks/useCashuWithXYZ";
+import { DEFAULT_MINT_URL } from "@/lib/utils";
+import dynamic from "next/dynamic";
 
 // Helper function to generate unique IDs
 const generateId = () => crypto.randomUUID();
 
-const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60: (usingNip60: boolean) => void}> = ({mintUrl, usingNip60, setUsingNip60}) => {
+const SixtyWallet: React.FC<{
+  mintUrl: string;
+  usingNip60: boolean;
+  setUsingNip60: (usingNip60: boolean) => void;
+}> = ({ mintUrl, usingNip60, setUsingNip60 }) => {
   // Popular amounts for quick minting
   const popularAmounts = [100, 500, 1000];
-  
+
   // Tab state
-  const [activeTab, setActiveTab] = useState<'deposit' | 'send' | 'history'>('deposit');
+  const [activeTab, setActiveTab] = useState<"deposit" | "send" | "history">(
+    "deposit"
+  );
 
   // Lightning state variables (from Chorus)
   const [receiveAmount, setReceiveAmount] = useState("");
@@ -48,12 +71,16 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   const [paymentRequest, setPaymentRequest] = useState("");
   const [sendInvoice, setSendInvoice] = useState("");
   const [invoiceAmount, setInvoiceAmount] = useState<number | null>(null);
-  const [invoiceFeeReserve, setInvoiceFeeReserve] = useState<number | null>(null);
+  const [invoiceFeeReserve, setInvoiceFeeReserve] = useState<number | null>(
+    null
+  );
   const [mintQuote, setMintQuote] = useState<MintQuoteResponse | null>(null);
   const [meltQuote, setMeltQuote] = useState<MeltQuoteResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
-  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [pendingTransactionId, setPendingTransactionId] = useState<
+    string | null
+  >(null);
   const processingInvoiceRef = useRef<string | null>(null);
 
   // Internal state for the UI elements
@@ -61,16 +88,18 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGeneratingSendToken, setIsGeneratingSendToken] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [customMintUrl, setCustomMintUrl] = useState('');
+  const [customMintUrl, setCustomMintUrl] = useState("");
   const [isAddingMint, setIsAddingMint] = useState(false);
   const [showAddMintInput, setShowAddMintInput] = useState(false);
   const [showRemoveMintMode, setShowRemoveMintMode] = useState(false);
   const [isRemovingMint, setIsRemovingMint] = useState(false);
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [isPayingWithWallet, setIsPayingWithWallet] = useState(false);
-  const [bcStatus, setBcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [bcStatus, setBcStatus] = useState<
+    "disconnected" | "connecting" | "connected"
+  >("disconnected");
   const [bcBalance, setBcBalance] = useState<number | null>(null);
-  
+
   // Migration state
   const [localWalletBalance, setLocalWalletBalance] = useState(0);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -79,16 +108,31 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   // Invoice modal state
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const handlePaidAfterWallet = async () => {
-    if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount) return;
+    if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount)
+      return;
     try {
-      const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, currentMeltQuoteId, pendingAmount);
+      const proofs = await mintTokensFromPaidInvoice(
+        cashuStore.activeMintUrl,
+        currentMeltQuoteId,
+        pendingAmount
+      );
       console.log(proofs);
       if (proofs.length > 0) {
-        await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
-        await updateInvoice(currentMeltQuoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
-        if (pendingTransactionId) transactionHistoryStore.removePendingTransaction(pendingTransactionId);
+        await updateProofs({
+          mintUrl: cashuStore.activeMintUrl,
+          proofsToAdd: proofs,
+          proofsToRemove: [],
+        });
+        await updateInvoice(currentMeltQuoteId, {
+          state: MintQuoteState.PAID,
+          paidAt: Date.now(),
+        });
+        if (pendingTransactionId)
+          transactionHistoryStore.removePendingTransaction(
+            pendingTransactionId
+          );
         setPendingTransactionId(null);
-        setSuccessMessage(`Received ${formatBalance(pendingAmount, 'sats')}!`);
+        setSuccessMessage(`Received ${formatBalance(pendingAmount, "sats")}!`);
         setInvoice("");
         setcurrentMeltQuoteId("");
         setReceiveAmount("");
@@ -106,19 +150,27 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
     (async () => {
       try {
-        const mod = await import('@getalby/bitcoin-connect-react');
+        const mod = await import("@getalby/bitcoin-connect-react");
         const fetchBalance = async (provider: any): Promise<number | null> => {
           try {
-            if (provider && typeof provider.getBalance === 'function') {
+            if (provider && typeof provider.getBalance === "function") {
               const res = await provider.getBalance();
-              if (typeof res === 'number') return res;
-              if (res && typeof res === 'object') {
-                if ('balance' in res && typeof (res as any).balance === 'number') {
-                  const unit = ((res as any).unit || '').toString().toLowerCase();
+              if (typeof res === "number") return res;
+              if (res && typeof res === "object") {
+                if (
+                  "balance" in res &&
+                  typeof (res as any).balance === "number"
+                ) {
+                  const unit = ((res as any).unit || "")
+                    .toString()
+                    .toLowerCase();
                   const n = (res as any).balance as number;
-                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                  return unit.includes("msat") ? Math.floor(n / 1000) : n;
                 }
-                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                if (
+                  "balanceMsats" in res &&
+                  typeof (res as any).balanceMsats === "number"
+                ) {
                   return Math.floor((res as any).balanceMsats / 1000);
                 }
               }
@@ -127,21 +179,21 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
           return null;
         };
 
-        unsubConnecting = mod.onConnecting?.(() => setBcStatus('connecting'));
+        unsubConnecting = mod.onConnecting?.(() => setBcStatus("connecting"));
         unsubConnect = mod.onConnected?.(async (provider: any) => {
-          setBcStatus('connected');
+          setBcStatus("connected");
           const sats = await fetchBalance(provider);
           if (sats !== null) setBcBalance(sats);
         });
         unsubDisconnect = mod.onDisconnected?.(() => {
-          setBcStatus('disconnected');
+          setBcStatus("disconnected");
           setBcBalance(null);
         });
 
         try {
           const cfg = mod.getConnectorConfig?.();
           if (cfg) {
-            setBcStatus('connected');
+            setBcStatus("connected");
             try {
               const provider = await mod.requestProvider();
               const sats = await fetchBalance(provider);
@@ -153,9 +205,15 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
     })();
 
     return () => {
-      try { unsubConnect && unsubConnect(); } catch {}
-      try { unsubDisconnect && unsubDisconnect(); } catch {}
-      try { unsubConnecting && unsubConnecting(); } catch {}
+      try {
+        unsubConnect && unsubConnect();
+      } catch {}
+      try {
+        unsubDisconnect && unsubDisconnect();
+      } catch {}
+      try {
+        unsubConnecting && unsubConnecting();
+      } catch {}
     };
   }, []);
 
@@ -163,7 +221,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
     if (!invoice) return;
     setIsPayingWithWallet(true);
     try {
-      const mod = await import('@getalby/bitcoin-connect-react');
+      const mod = await import("@getalby/bitcoin-connect-react");
       const provider = await mod.requestProvider();
       try {
         const res = await provider.sendPayment(invoice);
@@ -193,11 +251,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       return;
     }
 
-    const amount = quickMintAmount !== undefined ? quickMintAmount : parseInt(receiveAmount);
+    const amount =
+      quickMintAmount !== undefined ? quickMintAmount : parseInt(receiveAmount);
 
     if (isNaN(amount) || amount <= 0) {
-      console.log('rdlogs: ', receiveAmount);
-      console.log('rdlogs: ', isNaN(parseInt(receiveAmount)));
+      console.log("rdlogs: ", receiveAmount);
+      console.log("rdlogs: ", isNaN(parseInt(receiveAmount)));
       setError("Please enter a valid amount");
       return;
     }
@@ -219,13 +278,13 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
       // Store invoice persistently
       await addInvoice({
-        type: 'mint',
+        type: "mint",
         mintUrl: cashuStore.activeMintUrl,
         quoteId: invoiceData.quoteId,
         paymentRequest: invoiceData.paymentRequest,
         amount: amount,
         state: MintQuoteState.UNPAID,
-        expiresAt: invoiceData.expiresAt
+        expiresAt: invoiceData.expiresAt,
       });
 
       // Create pending transaction
@@ -263,22 +322,33 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
     await handleCreateInvoice(amount);
   };
 
-
   const { user } = useCurrentUser();
   const { wallet, isLoading, updateProofs } = useCashuWallet();
-  const { mutate: handleCreateWallet, isPending: isCreatingWallet, error: createWalletError } = useCreateCashuWallet();
+  const {
+    mutate: handleCreateWallet,
+    isPending: isCreatingWallet,
+    error: createWalletError,
+  } = useCreateCashuWallet();
   const cashuStore = useCashuStore();
-  const { receiveToken, cleanSpentProofs, cleanupPendingProofs, isLoading: isTokenLoading, error: hookError, addMintIfNotExists, removeMint } = useCashuToken();
+  const {
+    receiveToken,
+    cleanSpentProofs,
+    cleanupPendingProofs,
+    isLoading: isTokenLoading,
+    error: hookError,
+    addMintIfNotExists,
+    removeMint,
+  } = useCashuToken();
   const transactionHistoryStore = useTransactionHistoryStore();
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const { triggerCheck } = useInvoiceChecker();
   const { spendCashu } = useCashuWithXYZ();
 
   const [error, setError] = useState<string | null>(null);
-  const [currentMintUnit, setCurrentMintUnit] = useState<string | 'sat'>('sat');
-  const [generatedToken, setGeneratedToken] = useState(''); // For send
-  const [tokenToImport, setTokenToImport] = useState(''); // For receive
-  const [sendAmount, setSendAmount] = useState(''); // For send
+  const [currentMintUnit, setCurrentMintUnit] = useState<string | "sat">("sat");
+  const [generatedToken, setGeneratedToken] = useState(""); // For send
+  const [tokenToImport, setTokenToImport] = useState(""); // For receive
+  const [sendAmount, setSendAmount] = useState(""); // For send
 
   useEffect(() => {
     if (createWalletError) {
@@ -299,7 +369,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   }, [cashuStore.proofs, cashuStore.mints]);
 
   useEffect(() => {
-    setCurrentMintUnit(mintUnits[cashuStore.activeMintUrl??'']);
+    setCurrentMintUnit(mintUnits[cashuStore.activeMintUrl ?? ""]);
   }, [mintUnits, cashuStore.activeMintUrl]);
 
   useEffect(() => {
@@ -315,7 +385,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       // Only show migration banner if NIP-60 is enabled and there's a local balance
       setShowMigrationBanner(usingNip60 && localBalance > 0);
     };
-    
+
     checkLocalBalance();
     // Check periodically for changes
     const interval = setInterval(checkLocalBalance, 5000);
@@ -339,11 +409,17 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       setSuccessMessage(null);
 
       await addMintIfNotExists(customMintUrl);
-      setCustomMintUrl('');
-      setSuccessMessage(`Mint "${cleanMintUrl(customMintUrl)}" added and set as active.`);
+      setCustomMintUrl("");
+      setSuccessMessage(
+        `Mint "${cleanMintUrl(customMintUrl)}" added and set as active.`
+      );
     } catch (error) {
       console.error("Error adding custom mint:", error);
-      setError(`Failed to add mint: ${error instanceof Error ? error.message : String(error)}`);
+      setError(
+        `Failed to add mint: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     } finally {
       setIsAddingMint(false);
     }
@@ -354,20 +430,31 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       setIsRemovingMint(true);
       setError(null);
       setSuccessMessage(null);
+      console.log(mintUrl);
 
       await removeMint(mintUrl);
-      setSuccessMessage(`Mint "${cleanMintUrl(mintUrl)}" removed successfully.`);
-      
+      setSuccessMessage(
+        `Mint "${cleanMintUrl(mintUrl)}" removed successfully.`
+      );
+
       // If the removed mint was the active one, set a new active mint
-      if (cashuStore.activeMintUrl === mintUrl && wallet?.mints && wallet.mints.length > 0) {
-        const remainingMints = wallet.mints.filter(mint => mint !== mintUrl);
+      if (
+        cashuStore.activeMintUrl === mintUrl &&
+        wallet?.mints &&
+        wallet.mints.length > 0
+      ) {
+        const remainingMints = wallet.mints.filter((mint) => mint !== mintUrl);
         if (remainingMints.length > 0) {
           cashuStore.setActiveMintUrl(remainingMints[0]);
         }
       }
     } catch (error) {
       console.error("Error removing mint:", error);
-      setError(`Failed to remove mint: ${error instanceof Error ? error.message : String(error)}`);
+      setError(
+        `Failed to remove mint: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     } finally {
       setIsRemovingMint(false);
     }
@@ -376,7 +463,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
   const cleanMintUrl = (mintUrl: string) => {
     try {
       const url = new URL(mintUrl);
-      return url.hostname.replace(/^www\./, '');
+      return url.hostname.replace(/^www\./, "");
     } catch {
       return mintUrl;
     }
@@ -388,7 +475,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       return;
     }
 
-   try {
+    try {
       setError(null);
       setSuccessMessage(null);
 
@@ -396,7 +483,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       const proofs = await receiveToken(tokenToImport);
       const totalAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
 
-      setSuccessMessage(`Received ${formatBalance(totalAmount, unit != undefined ? unit+'s' : 'sats' )} successfully!`);
+      setSuccessMessage(
+        `Received ${formatBalance(
+          totalAmount,
+          unit != undefined ? unit + "s" : "sats"
+        )} successfully!`
+      );
       setTokenToImport("");
     } catch (error) {
       console.error("Error receiving token:", error);
@@ -415,13 +507,18 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       setSuccessMessage(null);
       setGeneratedToken("");
 
-      const amountValue = currentMintUnit === 'msat' ? parseInt(sendAmount) / 1000 : parseInt(sendAmount);
+      const amountValue =
+        currentMintUnit === "msat"
+          ? parseInt(sendAmount) / 1000
+          : parseInt(sendAmount);
       const mintUrl = cashuStore.activeMintUrl || DEFAULT_MINT_URL;
-      const result = await spendCashu(mintUrl, amountValue, '');
+      const result = await spendCashu(mintUrl, amountValue, "");
 
-      if (result.status === 'success' && result.token) {
+      if (result.status === "success" && result.token) {
         setGeneratedToken(result.token);
-        setSuccessMessage(`Token generated for ${formatBalance(amountValue, currentMintUnit)}`);
+        setSuccessMessage(
+          `Token generated for ${formatBalance(amountValue, currentMintUnit)}`
+        );
       } else {
         setError(result.error || "Failed to generate token");
       }
@@ -433,7 +530,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
   // Handle lightning send invoice input
   const handleInvoiceInput = async (value: string) => {
-    console.log('rdlogs:gm', processingInvoiceRef.current, currentMeltQuoteId);
+    console.log("rdlogs:gm", processingInvoiceRef.current, currentMeltQuoteId);
     if (!cashuStore.activeMintUrl) {
       setError(
         "No active mint selected. Please select a mint in your wallet settings."
@@ -513,8 +610,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       if (totalProofsAmount < invoiceAmount + (invoiceFeeReserve || 0)) {
         setError(
           `Insufficient balance: have ${formatBalance(
-            totalProofsAmount, 'sats'
-          )}, need ${formatBalance(invoiceAmount + (invoiceFeeReserve || 0), 'sats')}`
+            totalProofsAmount,
+            "sats"
+          )}, need ${formatBalance(
+            invoiceAmount + (invoiceFeeReserve || 0),
+            "sats"
+          )}`
         );
         setIsProcessing(false);
         return;
@@ -522,13 +623,13 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
       // Store melt invoice persistently before payment attempt
       await addInvoice({
-        type: 'melt',
+        type: "melt",
         mintUrl: mintUrl,
         quoteId: currentMeltQuoteId,
         paymentRequest: sendInvoice,
         amount: invoiceAmount,
         state: MeltQuoteState.UNPAID,
-        fee: invoiceFeeReserve || undefined
+        fee: invoiceFeeReserve || undefined,
       });
 
       // Pay the invoice
@@ -544,7 +645,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
         await updateInvoice(currentMeltQuoteId, {
           state: MeltQuoteState.PAID,
           paidAt: Date.now(),
-          fee: result.fee
+          fee: result.fee,
         });
 
         // Remove spent proofs from the store
@@ -554,7 +655,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
           proofsToRemove: selectedProofs,
         });
 
-        setSuccessMessage(`Paid ${formatBalance(invoiceAmount, `${currentMintUnit}s`)}!`);
+        setSuccessMessage(
+          `Paid ${formatBalance(invoiceAmount, `${currentMintUnit}s`)}!`
+        );
         setSendInvoice("");
         setInvoiceAmount(null);
         setInvoiceFeeReserve(null);
@@ -601,7 +704,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
     }
 
     if (!cashuStore.activeMintUrl) {
-      setError("No active mint selected. Please select a mint in your wallet settings.");
+      setError(
+        "No active mint selected. Please select a mint in your wallet settings."
+      );
       return;
     }
 
@@ -622,7 +727,10 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       }
 
       // Calculate total amount to migrate
-      const totalAmount = proofs.reduce((sum: number, proof: any) => sum + proof.amount, 0);
+      const totalAmount = proofs.reduce(
+        (sum: number, proof: any) => sum + proof.amount,
+        0
+      );
 
       // Create token from local proofs
       const token = getEncodedTokenV4({
@@ -637,17 +745,24 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
       // Step 2: Receive token to nip60 wallet (using existing receiveToken function)
       const receivedProofs = await receiveToken(token as string);
-      const receivedAmount = receivedProofs.reduce((sum, p) => sum + p.amount, 0);
+      const receivedAmount = receivedProofs.reduce(
+        (sum, p) => sum + p.amount,
+        0
+      );
 
       // Step 3: Clear local wallet proofs after successful migration
       localStorage.removeItem("cashu_proofs");
-      
+
       // Update local balance state
       setLocalWalletBalance(0);
       setShowMigrationBanner(false);
 
-      setSuccessMessage(`Successfully migrated ${formatBalance(receivedAmount, 'sats')} from local wallet to NIP-60 wallet!`);
-      
+      setSuccessMessage(
+        `Successfully migrated ${formatBalance(
+          receivedAmount,
+          "sats"
+        )} from local wallet to NIP-60 wallet!`
+      );
     } catch (error) {
       console.error("Error during migration:", error);
       setError(error instanceof Error ? error.message : "Migration failed");
@@ -673,7 +788,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       <div className="space-y-6">
         <div className="bg-white/5 border border-white/10 rounded-md p-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-white/70">You don't have a Cashu wallet yet</span>
+            <span className="text-sm text-white/70">
+              You don't have a Cashu wallet yet
+            </span>
           </div>
           <div className="mt-4">
             <button
@@ -688,9 +805,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
               <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-3 rounded-md text-sm mt-4">
                 <div className="flex items-center">
                   <AlertCircle className="h-4 w-4 mr-2" />
-                  <span>
-                    You need to log in to create a wallet
-                  </span>
+                  <span>You need to log in to create a wallet</span>
                 </div>
               </div>
             )}
@@ -713,8 +828,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                   Local Wallet Found - Migrate to Cloud Wallet
                 </h3>
                 <p className="text-xs text-white/70 mb-3">
-                  You have {formatBalance(localWalletBalance, 'sats')} in your local device wallet.
-                  Migrate to the new NIP-60 cloud-based wallet for better security and sync across devices.
+                  You have {formatBalance(localWalletBalance, "sats")} in your
+                  local device wallet. Migrate to the new NIP-60 cloud-based
+                  wallet for better security and sync across devices.
                 </p>
                 <div className="flex items-center space-x-2">
                   <button
@@ -732,7 +848,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     ) : (
                       <>
                         <ArrowRight className="h-3 w-3 mr-1" />
-                        Migrate {formatBalance(localWalletBalance, 'sats')}
+                        Migrate {formatBalance(localWalletBalance, "sats")}
                       </>
                     )}
                   </button>
@@ -754,7 +870,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
         <div className="flex justify-between items-center">
           <span className="text-sm text-white/70">Available Balance</span>
           <div className="flex flex-col items-end">
-            <span className="text-lg font-semibold text-white">{balance} sats</span>
+            <span className="text-lg font-semibold text-white">
+              {balance} sats
+            </span>
           </div>
         </div>
         {wallet.mints && wallet.mints.length > 0 && (
@@ -764,18 +882,28 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
               <div className="ml-auto flex items-center gap-1.5">
                 <button
                   onClick={() => setShowAddMintInput(!showAddMintInput)}
-                  className={`p-1.5 rounded-md border border-white/20 ${showAddMintInput ? 'bg-white/15 text-white' : 'bg-white/5 text-white/80 hover:bg-white/10'} cursor-pointer`}
+                  className={`p-1.5 rounded-md border border-white/20 ${
+                    showAddMintInput
+                      ? "bg-white/15 text-white"
+                      : "bg-white/5 text-white/80 hover:bg-white/10"
+                  } cursor-pointer`}
                   aria-label="Add new mint"
-                  title={showAddMintInput ? 'Close add mint' : 'Add new mint'}
+                  title={showAddMintInput ? "Close add mint" : "Add new mint"}
                   type="button"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setShowRemoveMintMode(!showRemoveMintMode)}
-                  className={`p-1.5 rounded-md border ${showRemoveMintMode ? 'border-red-500/40 bg-red-500/20 text-red-200' : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10' } cursor-pointer`}
+                  className={`p-1.5 rounded-md border ${
+                    showRemoveMintMode
+                      ? "border-red-500/40 bg-red-500/20 text-red-200"
+                      : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"
+                  } cursor-pointer`}
                   aria-label="Toggle remove mint mode"
-                  title={showRemoveMintMode ? 'Exit remove mode' : 'Remove mint'}
+                  title={
+                    showRemoveMintMode ? "Exit remove mode" : "Remove mint"
+                  }
                   type="button"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -786,9 +914,12 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
               {wallet.mints.map((mint) => {
                 const mintBalance = mintBalances[mint] || 0;
                 const isActive = cashuStore.activeMintUrl === mint;
-                const unit = mintUnits[mint] || 'sat';
+                const unit = mintUnits[mint] || "sat";
                 return (
-                  <div key={mint} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div
+                    key={mint}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2"
+                  >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <input
                         type="radio"
@@ -805,13 +936,24 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                         }}
                         className="form-radio h-4 w-4 text-white bg-white/10 border-white/30 focus:ring-white/50 shrink-0"
                       />
-                      <label htmlFor={`mint-${mint}`} className={cn("text-sm cursor-pointer truncate max-w-[70vw] sm:max-w-[28rem]", isActive ? "text-white" : "text-white/70")}> 
+                      <label
+                        htmlFor={`mint-${mint}`}
+                        className={cn(
+                          "text-sm cursor-pointer truncate max-w-[70vw] sm:max-w-[28rem]",
+                          isActive ? "text-white" : "text-white/70"
+                        )}
+                      >
                         {cleanMintUrl(mint)}
                       </label>
                     </div>
                     <div className="flex items-center gap-2 sm:justify-end">
-                      <span className={cn("text-sm font-medium", isActive ? "text-white" : "text-white/70")}> 
-                        {formatBalance(mintBalance, unit+'s')}
+                      <span
+                        className={cn(
+                          "text-sm font-medium",
+                          isActive ? "text-white" : "text-white/70"
+                        )}
+                      >
+                        {formatBalance(mintBalance, unit + "s")}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
@@ -826,10 +968,16 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                         {showRemoveMintMode && (
                           <button
                             onClick={() => handleRemoveMint(mint)}
-                            disabled={isRemovingMint || wallet.mints.length <= 1}
+                            disabled={
+                              isRemovingMint || wallet.mints.length <= 1
+                            }
                             className="p-1.5 rounded-md border border-red-500/30 bg-red-500/20 text-red-200 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             aria-label="Delete mint"
-                            title={wallet.mints.length <= 1 ? 'Cannot remove the last mint' : 'Remove this mint'}
+                            title={
+                              wallet.mints.length <= 1
+                                ? "Cannot remove the last mint"
+                                : "Remove this mint"
+                            }
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -843,14 +991,16 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
             </div>
             {showAddMintInput && (
               <div className="mt-4 pt-4 border-t border-white/10">
-                <h3 className="text-sm font-medium text-white/80 mb-2">Add Custom Mint</h3>
+                <h3 className="text-sm font-medium text-white/80 mb-2">
+                  Add Custom Mint
+                </h3>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={customMintUrl}
                     onChange={(e) => setCustomMintUrl(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         void handleAddCustomMint();
                       }
@@ -864,7 +1014,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
-                    {isAddingMint ? 'Adding...' : 'Add Mint'}
+                    {isAddingMint ? "Adding..." : "Add Mint"}
                   </button>
                 </div>
               </div>
@@ -872,7 +1022,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
           </div>
         )}
       </div>
-      
+
       {/* Error/Success Messages */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-3 rounded-md text-sm">
@@ -889,33 +1039,33 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
       <div className="bg-white/5 border border-white/10 rounded-md">
         <div className="flex border-b border-white/10">
           <button
-            onClick={() => setActiveTab('deposit')}
+            onClick={() => setActiveTab("deposit")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'deposit'
-                ? 'text-white bg-white/5 border-b-2 border-white/30'
-                : 'text-white/70 hover:text-white/90 hover:bg-white/5'
+              activeTab === "deposit"
+                ? "text-white bg-white/5 border-b-2 border-white/30"
+                : "text-white/70 hover:text-white/90 hover:bg-white/5"
             }`}
             type="button"
           >
             Deposit
           </button>
           <button
-            onClick={() => setActiveTab('send')}
+            onClick={() => setActiveTab("send")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'send'
-                ? 'text-white bg-white/5 border-b-2 border-white/30'
-                : 'text-white/70 hover:text-white/90 hover:bg-white/5'
+              activeTab === "send"
+                ? "text-white bg-white/5 border-b-2 border-white/30"
+                : "text-white/70 hover:text-white/90 hover:bg-white/5"
             }`}
             type="button"
           >
             Send
           </button>
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => setActiveTab("history")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'history'
-                ? 'text-white bg-white/5 border-b-2 border-white/30'
-                : 'text-white/70 hover:text-white/90 hover:bg-white/5'
+              activeTab === "history"
+                ? "text-white bg-white/5 border-b-2 border-white/30"
+                : "text-white/70 hover:text-white/90 hover:bg-white/5"
             }`}
             type="button"
           >
@@ -926,33 +1076,43 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
         {/* Tab Content Container with Fixed Height */}
         <div className="p-4 min-h-[400px]">
           {/* Deposit Tab Content */}
-          {activeTab === 'deposit' && (
+          {activeTab === "deposit" && (
             <div className="space-y-6 h-full">
               {/* Mint Tokens Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white/80">Via Lightning</h3>
+                <h3 className="text-sm font-medium text-white/80">
+                  Via Lightning
+                </h3>
 
                 {/* Bitcoin Connect: Connect Wallet */}
                 <div className="bg-white/5 border border-white/20 rounded-md p-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-white/70">Wallet (NWC)</span>
-                    {bcStatus === 'connected' ? (
+                    {bcStatus === "connected" ? (
                       <div className="flex items-center gap-2 text-xs">
                         <span className="text-green-400">Connected</span>
-                        {bcBalance !== null && <span className="text-white/70">• {bcBalance.toLocaleString()} sats</span>}
+                        {bcBalance !== null && (
+                          <span className="text-white/70">
+                            • {bcBalance.toLocaleString()} sats
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <button
                         onClick={async () => {
                           try {
-                            const mod = await import('@getalby/bitcoin-connect-react');
+                            const mod = await import(
+                              "@getalby/bitcoin-connect-react"
+                            );
                             mod.launchModal();
                           } catch {}
                         }}
                         className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
                         type="button"
                       >
-                        {bcStatus === 'connecting' ? 'Connecting…' : 'Connect wallet'}
+                        {bcStatus === "connecting"
+                          ? "Connecting…"
+                          : "Connect wallet"}
                       </button>
                     )}
                   </div>
@@ -983,7 +1143,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       value={receiveAmount}
                       onChange={(e) => setReceiveAmount(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
                           void handleCreateInvoice();
                         }
@@ -993,12 +1153,16 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     />
                     <button
                       onClick={() => handleCreateInvoice()}
-                      disabled={isProcessing || !receiveAmount || !cashuStore.activeMintUrl}
+                      disabled={
+                        isProcessing ||
+                        !receiveAmount ||
+                        !cashuStore.activeMintUrl
+                      }
                       className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
                       type="button"
                     >
                       <Zap className="h-4 w-4 mr-2 inline" />
-                      {isProcessing ? 'Creating...' : 'Create'}
+                      {isProcessing ? "Creating..." : "Create"}
                     </button>
                   </div>
                 </div>
@@ -1007,7 +1171,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                   <div className="space-y-4">
                     <div className="bg-white/5 border border-white/10 rounded-md p-4">
                       <div className="mb-2 flex justify-between items-center">
-                        <span className="text-sm text-white/70">Lightning Invoice</span>
+                        <span className="text-sm text-white/70">
+                          Lightning Invoice
+                        </span>
                         <button
                           onClick={() => setShowInvoiceModal(true)}
                           className="text-xs text-white/70 hover:text-white cursor-pointer"
@@ -1024,15 +1190,24 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     {/* Pay with connected wallet DISABLED BECAUSE IT DOENS"T WORK */}
                     <div className="bg-white/5 border border-white/20 rounded-md p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-white/70">Pay with connected wallet</span>
-                        <button onClick={() => { void payWithConnectedWallet(); }} disabled={true || isPayingWithWallet} className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" type="button">
+                        <span className="text-xs text-white/70">
+                          Pay with connected wallet
+                        </span>
+                        <button
+                          onClick={() => {
+                            void payWithConnectedWallet();
+                          }}
+                          disabled={true || isPayingWithWallet}
+                          className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+                          type="button"
+                        >
                           {isPayingWithWallet ? (
                             <>
                               <Loader2 className="h-3 w-3 mr-2 animate-spin inline" />
                               Paying...
                             </>
                           ) : (
-                            'Pay'
+                            "Pay"
                           )}
                         </button>
                       </div>
@@ -1065,7 +1240,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     className="w-full bg-white/10 border border-white/10 text-white py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
-                    {isImporting ? 'Importing...' : 'Import Token'}
+                    {isImporting ? "Importing..." : "Import Token"}
                   </button>
                 </div>
               </div>
@@ -1073,11 +1248,13 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
           )}
 
           {/* Send Tab Content */}
-          {activeTab === 'send' && (
+          {activeTab === "send" && (
             <div className="space-y-6 h-full">
               {/* Lightning Send Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white/80">Via Lightning</h3>
+                <h3 className="text-sm font-medium text-white/80">
+                  Via Lightning
+                </h3>
                 <div className="space-y-2">
                   <span className="text-sm text-white/70">Invoice</span>
                   <div className="relative">
@@ -1086,7 +1263,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                       value={sendInvoice}
                       onChange={(e) => handleInvoiceInput(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
                           void handlePayInvoice();
                         }
@@ -1104,16 +1281,20 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
 
                 {invoiceAmount && (
                   <div className="bg-white/5 border border-white/10 rounded-md p-4">
-                    <p className="text-sm font-medium text-white/80">Invoice Amount</p>
+                    <p className="text-sm font-medium text-white/80">
+                      Invoice Amount
+                    </p>
                     <p className="text-2xl font-bold text-white">
                       {formatBalance(invoiceAmount, `${currentMintUnit}s `)}
-                      {invoiceFeeReserve !== null && invoiceFeeReserve !== 0 && (
-                        <>
-                          <span className="text-xs font-bold pl-2 text-white/50">
-                            + max {formatBalance(invoiceFeeReserve, 'sats')} fee
-                          </span>
-                        </>
-                      )}
+                      {invoiceFeeReserve !== null &&
+                        invoiceFeeReserve !== 0 && (
+                          <>
+                            <span className="text-xs font-bold pl-2 text-white/50">
+                              + max {formatBalance(invoiceFeeReserve, "sats")}{" "}
+                              fee
+                            </span>
+                          </>
+                        )}
                     </p>
                   </div>
                 )}
@@ -1169,7 +1350,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     value={sendAmount}
                     onChange={(e) => setSendAmount(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         void handlesendToken();
                       }
@@ -1183,14 +1364,16 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
                     className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
-                    {isGeneratingSendToken ? 'Generating...' : 'Generate Token'}
+                    {isGeneratingSendToken ? "Generating..." : "Generate Token"}
                   </button>
                 </div>
 
                 {generatedToken && (
                   <div className="bg-white/5 border border-white/10 rounded-md p-4">
                     <div className="mb-2 flex justify-between items-center">
-                      <span className="text-sm text-white/70">Generated Token</span>
+                      <span className="text-sm text-white/70">
+                        Generated Token
+                      </span>
                       <button
                         onClick={copyTokenToClipboard}
                         className="text-xs text-white/70 hover:text-white cursor-pointer"
@@ -1213,7 +1396,7 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
           )}
 
           {/* History Tab Content */}
-          {activeTab === 'history' && (
+          {activeTab === "history" && (
             <div className="h-full">
               <InvoiceHistory mintUrl={cashuStore.activeMintUrl} />
             </div>
@@ -1236,7 +1419,9 @@ const SixtyWallet: React.FC<{mintUrl:string, usingNip60: boolean, setUsingNip60:
         countdownIntervalRef={{ current: null }}
         setIsAutoChecking={() => {}}
         checkMintQuote={() => Promise.resolve()}
-        onPayWithWallet={async () => { await payWithConnectedWallet(); }}
+        onPayWithWallet={async () => {
+          await payWithConnectedWallet();
+        }}
         isPayingWithWallet={isPayingWithWallet}
         showWalletConnect
       />

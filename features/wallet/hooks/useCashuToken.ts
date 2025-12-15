@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react';
-import { useCashuStore } from '../state/cashuStore';
-import { useCashuWallet } from './useCashuWallet';
-import { useCashuHistory } from './useCashuHistory';
-import { Mint, Wallet, Proof, getDecodedToken, CheckStateEnum, getEncodedTokenV4 } from '@cashu/cashu-ts';
-import { selectProofsAdvanced } from '../core/utils/change-making';
-import { calculateFees } from '../core/utils/fees';
-import { MintService } from '../core/services/MintService';
+import { useState, useEffect } from "react";
+import { useCashuStore } from "../state/cashuStore";
+import { useCashuWallet } from "./useCashuWallet";
+import { useCashuHistory } from "./useCashuHistory";
+import {
+  Mint,
+  Wallet,
+  Proof,
+  getDecodedToken,
+  CheckStateEnum,
+  getEncodedTokenV4,
+} from "@cashu/cashu-ts";
+import { selectProofsAdvanced } from "../core/utils/change-making";
+import { calculateFees } from "../core/utils/fees";
+import { MintService } from "../core/services/MintService";
 import { hashToCurve } from "@cashu/crypto/modules/common";
-import { hexToBytes } from '@noble/hashes/utils';
+import { hexToBytes } from "@noble/hashes/utils";
 
 // Global flag to track if recovery has been initiated in this session
 let recoveryInitiated = false;
@@ -30,45 +37,54 @@ export function useCashuToken() {
    */
   const recoverPendingProofs = async () => {
     try {
-      const keys = Object.keys(localStorage).filter(key => key.startsWith('pending_send_proofs_'));
-      
+      const keys = Object.keys(localStorage).filter((key) =>
+        key.startsWith("pending_send_proofs_")
+      );
+
       for (const key of keys) {
         try {
           // Check if this specific proof has already been processed
           const recoveryKey = `recovery_processed_${key}`;
           if (sessionStorage.getItem(recoveryKey)) {
-            console.log('rdlogs: Skipping already processed pending proof:', key);
+            console.log(
+              "rdlogs: Skipping already processed pending proof:",
+              key
+            );
             continue;
           }
-          
-          const pendingData = JSON.parse(localStorage.getItem(key) || '{}');
+
+          const pendingData = JSON.parse(localStorage.getItem(key) || "{}");
           const { mintUrl, proofsToSend, timestamp } = pendingData;
-          
+
           // Only recover proofs that are less than 1 hour old to avoid stale data
-          if (Date.now() - timestamp < 60 * 60 * 1000 && mintUrl && proofsToSend) {
-            console.log('rdlogs: Recovering pending proofs:', key);
-            
+          if (
+            Date.now() - timestamp < 60 * 60 * 1000 &&
+            mintUrl &&
+            proofsToSend
+          ) {
+            console.log("rdlogs: Recovering pending proofs:", key);
+
             // Mark this proof as being processed
-            sessionStorage.setItem(recoveryKey, 'true');
-            
+            sessionStorage.setItem(recoveryKey, "true");
+
             // Add the proofs back to the wallet
             await updateProofs({
               mintUrl,
               proofsToAdd: proofsToSend,
-              proofsToRemove: []
+              proofsToRemove: [],
             });
           }
-          
+
           // Clean up the pending entry regardless
           localStorage.removeItem(key);
         } catch (error) {
-          console.error('Error recovering pending proofs for key:', key, error);
+          console.error("Error recovering pending proofs for key:", key, error);
           // Clean up corrupted entries
           localStorage.removeItem(key);
         }
       }
     } catch (error) {
-      console.error('Error during pending proofs recovery:', error);
+      console.error("Error during pending proofs recovery:", error);
     }
   };
 
@@ -80,23 +96,23 @@ export function useCashuToken() {
         await recoveryPromise;
         return;
       }
-      
+
       // If recovery has already been initiated in this session, skip
       if (recoveryInitiated) {
         return;
       }
-      
+
       // Mark recovery as initiated and create the promise
       recoveryInitiated = true;
       recoveryPromise = recoverPendingProofs();
-      
+
       try {
         await recoveryPromise;
       } finally {
         recoveryPromise = null;
       }
     };
-    
+
     initRecovery();
   }, []);
 
@@ -107,28 +123,36 @@ export function useCashuToken() {
    * @param p2pkPubkey The P2PK pubkey to lock the proofs to
    * @returns Encoded token string
    */
-  const sendToken = async (mintUrl: string, amount: number, p2pkPubkey?: string, unit?: string): Promise<string> => {
+  const sendToken = async (
+    mintUrl: string,
+    amount: number,
+    p2pkPubkey?: string,
+    unit?: string
+  ): Promise<string> => {
     setIsLoading(true);
     setError(null);
     try {
       const mint = new Mint(mintUrl);
       const normalizedMintUrl = await addMintIfNotExists(mintUrl);
-      const mintDetails = cashuStore.getMint(normalizedMintUrl)
+      const mintDetails = cashuStore.getMint(normalizedMintUrl);
       const keysets = mintDetails?.keysets;
-      
+
       // Get preferred unit: msat over sat if both are active
-      const activeKeysets = keysets?.filter(k => k.active);
+      const activeKeysets = keysets?.filter((k) => k.active);
       if (!activeKeysets)
-        throw new Error('No active keysets found for mint: ' + mintUrl)
-      let preferredUnit = 'not supported';
+        throw new Error("No active keysets found for mint: " + mintUrl);
+      let preferredUnit = "not supported";
       if (unit) {
-        preferredUnit = unit as 'sat' | 'msat';
+        preferredUnit = unit as "sat" | "msat";
+      } else {
+        const units = [...new Set(activeKeysets.map((k) => k.unit))];
+        preferredUnit = units.includes("msat")
+          ? "msat"
+          : ((units.includes("sat") ? "sat" : "not supported") as
+              | "sat"
+              | "msat");
       }
-      else {
-        const units = [...new Set(activeKeysets.map(k => k.unit))];
-        preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported') as 'sat' | 'msat';
-      }
-      
+
       const wallet = new Wallet(mint, { unit: preferredUnit });
 
       // Load mint keysets
@@ -136,15 +160,15 @@ export function useCashuToken() {
 
       // Get all proofs from store
       let proofs = await cashuStore.getMintProofs(normalizedMintUrl);
-      
+
       const proofsAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
       const denominationCounts = proofs.reduce((acc, p) => {
         acc[p.amount] = (acc[p.amount] || 0) + 1;
         return acc;
       }, {} as Record<number, number>);
       // console.log('rdlogs: Proof denomination groups:', denominationCounts);
-      amount = preferredUnit == 'msat' ? amount * 1000 : amount;
-      console.log('amount being sent', amount);
+      amount = preferredUnit == "msat" ? amount * 1000 : amount;
+      console.log("amount being sent", amount);
       if (proofsAmount < amount) {
         throw new Error(`Not enough funds on mint ${normalizedMintUrl}`);
       }
@@ -158,35 +182,51 @@ export function useCashuToken() {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
 
-        if(message.includes("Not enough funds available") || message.includes("Token already spent") || message.includes("Not enough balance to send")) {
-          console.log('rdlogs: wallet.send() failed with insufficient funds, trying exact change with tolerance');
-          
+        if (
+          message.includes("Not enough funds available") ||
+          message.includes("Token already spent") ||
+          message.includes("Not enough balance to send")
+        ) {
+          console.log(
+            "rdlogs: wallet.send() failed with insufficient funds, trying exact change with tolerance"
+          );
+
           // Clean spent proofs
           await cleanSpentProofs(normalizedMintUrl);
 
           // Get fresh proofs after cleanup
           proofs = await cashuStore.getMintProofs(normalizedMintUrl);
-          
+
           // Check if we still have enough funds after cleanup
           const newProofsAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
           if (newProofsAmount < amount) {
-            throw new Error(`Not enough funds on mint ${normalizedMintUrl} after cleaning spent proofs`);
+            throw new Error(
+              `Not enough funds on mint ${normalizedMintUrl} after cleaning spent proofs`
+            );
           }
 
-          try {          
-            const result = selectProofsAdvanced(amount, proofs, activeKeysets, normalizedMintUrl);
+          try {
+            const result = selectProofsAdvanced(
+              amount,
+              proofs,
+              activeKeysets,
+              normalizedMintUrl
+            );
             // Use advanced proof selection with tolerance fallback
             proofsToKeep = result.proofsToKeep;
             proofsToSend = result.proofsToSend;
-            console.log('rdlogs: proofsToSend', proofsToSend);
+            console.log("rdlogs: proofsToSend", proofsToSend);
           } catch (error) {
             try {
               const result = await wallet.send(amount, proofs);
               proofsToKeep = result.keep;
               proofsToSend = result.send;
             } catch (error2) {
-              const message = error2 instanceof Error ? error2.message : String(error2);
-              throw new Error(`Having issues with the mint ${normalizedMintUrl}, please refresh your app try again. `);
+              const message =
+                error2 instanceof Error ? error2.message : String(error2);
+              throw new Error(
+                `Having issues with the mint ${normalizedMintUrl}, please refresh your app try again. `
+              );
             }
           }
         } else {
@@ -197,32 +237,39 @@ export function useCashuToken() {
 
       // Store proofs temporarily before updating wallet state
       const pendingProofsKey = `pending_send_proofs_${Date.now()}`;
-      localStorage.setItem(pendingProofsKey, JSON.stringify({
-        normalizedMintUrl,
-        proofsToSend: proofsToSend.map(p => ({
-          id: p.id || '',
-          amount: p.amount,
-          secret: p.secret || '',
-          C: p.C || ''
-        })),
-        timestamp: Date.now(),
-        tokenAmount: amount
-      }));
+      localStorage.setItem(
+        pendingProofsKey,
+        JSON.stringify({
+          normalizedMintUrl,
+          proofsToSend: proofsToSend.map((p) => ({
+            id: p.id || "",
+            amount: p.amount,
+            secret: p.secret || "",
+            C: p.C || "",
+          })),
+          timestamp: Date.now(),
+          tokenAmount: amount,
+        })
+      );
       const sendFees = calculateFees(proofsToSend, activeKeysets);
       // console.log('rdlogs: fees to send ', amount, ' is ', sendFees)
 
       // Create new token for the proofs we're keeping
       if (proofsToKeep.length > 0) {
         // update proofs
-        await updateProofs({ mintUrl: normalizedMintUrl, proofsToAdd: proofsToKeep, proofsToRemove: [...proofsToSend, ...proofs] });
+        await updateProofs({
+          mintUrl: normalizedMintUrl,
+          proofsToAdd: proofsToKeep,
+          proofsToRemove: [...proofsToSend, ...proofs],
+        });
 
         // Create history event
         await createHistory({
-          direction: 'out',
+          direction: "out",
           amount: amount.toString(),
         });
       }
-      
+
       // Create encoded token from proofs
       const token = getEncodedTokenV4({
         mint: normalizedMintUrl,
@@ -232,31 +279,36 @@ export function useCashuToken() {
           secret: p.secret || "",
           C: p.C || "",
         })),
-        unit: preferredUnit
+        unit: preferredUnit,
       });
-      console.log('rdlogs: token', token);
+      console.log("rdlogs: token", token);
       // Clean up pending proofs after successful token creation
       localStorage.removeItem(pendingProofsKey);
-      
+
       return token;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setError(`Failed to generate token: ${message}`);
-      console.log('rdlogs: amount adn error', amount, message)
+      console.log("rdlogs: amount adn error", amount, message);
       throw error;
     } finally {
       setIsLoading(false);
     }
-
   };
 
-  const normalizeMintUrl = (url: string) => url.replace(/\/+$/, '');
+  const normalizeMintUrl = (url: string) => url.replace(/\/+$/, "");
 
   const ensureMintInitialized = async (mintUrl: string) => {
     const normalizedMintUrl = normalizeMintUrl(mintUrl);
-    const existingMint = cashuStore.mints.find((mint) => mint.url === normalizedMintUrl);
-    const needsActivation = !existingMint || !existingMint.mintInfo || !existingMint.keysets?.length || !existingMint.keys?.length || !existingMint.keysets[0].id;
-
+    const existingMint = cashuStore.mints.find(
+      (mint) => mint.url === normalizedMintUrl
+    );
+    const needsActivation =
+      !existingMint ||
+      !existingMint.mintInfo ||
+      !existingMint.keysets?.length ||
+      !existingMint.keys?.length ||
+      !existingMint.keysets[0].id;
 
     if (!existingMint) {
       cashuStore.addMint(normalizedMintUrl);
@@ -265,12 +317,14 @@ export function useCashuToken() {
     if (needsActivation) {
       try {
         const mintService = new MintService();
-        const { mintInfo, keysets, keys } = await mintService.activateMint(normalizedMintUrl);
+        const { mintInfo, keysets, keys } = await mintService.activateMint(
+          normalizedMintUrl
+        );
         cashuStore.setMintInfo(normalizedMintUrl, mintInfo);
         cashuStore.setKeysets(normalizedMintUrl, keysets);
         cashuStore.setKeys(normalizedMintUrl, keys);
       } catch (err) {
-        console.error('Failed to initialize mint data:', err);
+        console.error("Failed to initialize mint data:", err);
       }
     }
 
@@ -283,11 +337,14 @@ export function useCashuToken() {
     try {
       new URL(normalizedMintUrl);
     } catch (err) {
-      throw new Error('Invalid mint URL: ' + mintUrl);
+      throw new Error("Invalid mint URL: " + mintUrl);
     }
 
     if (!wallet) {
-      console.warn('Wallet not loaded when trying to add mint URL:', normalizedMintUrl);
+      console.warn(
+        "Wallet not loaded when trying to add mint URL:",
+        normalizedMintUrl
+      );
       return normalizedMintUrl;
     }
 
@@ -298,7 +355,7 @@ export function useCashuToken() {
           mints: [...wallet.mints, normalizedMintUrl],
         });
       } catch (err) {
-        console.error('Failed to persist mint URL to wallet:', err);
+        console.error("Failed to persist mint URL to wallet:", err);
       }
     }
 
@@ -306,21 +363,21 @@ export function useCashuToken() {
   };
 
   const removeMint = async (mintUrl: string) => {
-    // Validate URL
-    new URL(mintUrl);
     if (!wallet) {
-      throw new Error('Wallet not found, trying to remove mint URL: ' + mintUrl);
+      throw new Error(
+        "Wallet not found, trying to remove mint URL: " + mintUrl
+      );
     }
     // Check if mint exists in wallet
     if (!wallet.mints.includes(mintUrl)) {
-      throw new Error('Mint URL not found in wallet: ' + mintUrl);
+      throw new Error("Mint URL not found in wallet: " + mintUrl);
     }
     // Remove mint from wallet
     createWallet({
       ...wallet,
-      mints: wallet.mints.filter(mint => mint !== mintUrl),
+      mints: wallet.mints.filter((mint) => mint !== mintUrl),
     });
-  }
+  };
 
   /**
    * Receive a token
@@ -335,7 +392,7 @@ export function useCashuToken() {
       // Decode token
       const decodedToken = getDecodedToken(token);
       if (!decodedToken) {
-        throw new Error('Invalid token format');
+        throw new Error("Invalid token format");
       }
 
       const { mint: mintUrl, proofs: tokenProofs, unit: unit } = decodedToken;
@@ -348,12 +405,16 @@ export function useCashuToken() {
       const mint = new Mint(normalizedMintUrl);
       const keysets = mintDetails?.keysets;
 
-      const activeKeysets = keysets?.filter(k => (k as any)._active);
-      const units = [...new Set(activeKeysets?.map(k => (k as any)._unit))];
-      const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
+      const activeKeysets = keysets?.filter((k) => (k as any)._active);
+      const units = [...new Set(activeKeysets?.map((k) => (k as any)._unit))];
+      const preferredUnit = units?.includes("msat")
+        ? "msat"
+        : units?.includes("sat")
+        ? "sat"
+        : units?.[0];
 
-      console.log(activeKeysets, units, preferredUnit)
-      
+      console.log(activeKeysets, units, preferredUnit);
+
       const wallet = new Wallet(mint, { unit: preferredUnit });
 
       // Load mint keysets
@@ -364,15 +425,19 @@ export function useCashuToken() {
       // Create token event in Nostr
       try {
         // Attempt to create token in Nostr, but don't rely on the return value
-        await updateProofs({ mintUrl: normalizedMintUrl, proofsToAdd: receivedProofs, proofsToRemove: [] });
+        await updateProofs({
+          mintUrl: normalizedMintUrl,
+          proofsToAdd: receivedProofs,
+          proofsToRemove: [],
+        });
       } catch (err) {
-        console.error('Error storing token in Nostr:', err);
+        console.error("Error storing token in Nostr:", err);
       }
 
       // Create history event
       const totalAmount = receivedProofs.reduce((sum, p) => sum + p.amount, 0);
       await createHistory({
-        direction: 'in',
+        direction: "in",
         amount: totalAmount.toString(),
       });
 
@@ -380,7 +445,7 @@ export function useCashuToken() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setError(`Failed to receive token: ${message}`);
-      
+
       // Check if it's a network error and add mintUrl to the error
       if (message.includes("NetworkError when attempting to fetch resource.")) {
         // Get the mintUrl from the decoded token
@@ -388,13 +453,12 @@ export function useCashuToken() {
         if (decodedToken && error instanceof Error) {
           (error as any).mintUrl = decodedToken.mint;
         }
-      }
-      else if (message.includes("Wallet not found")) {
+      } else if (message.includes("Wallet not found")) {
         if (error instanceof Error) {
           (error as any).token = token;
-        } 
+        }
       }
-      
+
       throw error;
     } finally {
       setIsLoading(false);
@@ -403,14 +467,14 @@ export function useCashuToken() {
 
   const cleanSpentProofs = async (mintUrl: string) => {
     // Normalize the mint URL first to ensure consistent cache keys
-    const normalizedMintUrl = mintUrl.replace(/\/+$/, '');
-    
+    const normalizedMintUrl = mintUrl.replace(/\/+$/, "");
+
     // If there's already an active cleanup for this mint, return that promise
     const existingPromise = activeCleanupPromises.get(normalizedMintUrl);
     if (existingPromise) {
       return existingPromise;
     }
-    
+
     // Create a new cleanup promise
     const cleanupPromise = (async () => {
       setIsLoading(true);
@@ -420,21 +484,28 @@ export function useCashuToken() {
         const finalMintUrl = await addMintIfNotExists(normalizedMintUrl);
         const mintDetails = cashuStore.getMint(finalMintUrl);
         const mint = new Mint(finalMintUrl);
-        
+
         // Get preferred unit: msat over sat if both are active
         let keysets = mintDetails?.keysets;
 
-        const activeKeysets = keysets?.filter(k => k.active);
-        const units = [...new Set(activeKeysets?.map(k => k.unit))];
-        const preferredUnit = units?.includes('msat') ? 'msat' : (units?.includes('sat') ? 'sat' : units?.[0]);
+        const activeKeysets = keysets?.filter((k) => k.active);
+        const units = [...new Set(activeKeysets?.map((k) => k.unit))];
+        const preferredUnit = units?.includes("msat")
+          ? "msat"
+          : units?.includes("sat")
+          ? "sat"
+          : units?.[0];
 
-        const wallet = new Wallet(mint, { unit: preferredUnit, keysets: keysets, mintInfo: mintDetails?.mintInfo });
+        const wallet = new Wallet(mint, {
+          unit: preferredUnit,
+          keysets: keysets,
+          mintInfo: mintDetails?.mintInfo,
+        });
 
         try {
           await wallet.loadMint();
-        }
-        catch(err) {
-          console.log(activeKeysets, units)
+        } catch (err) {
+          console.log(activeKeysets, units);
           console.log(err, finalMintUrl, keysets, preferredUnit);
         }
 
@@ -452,7 +523,11 @@ export function useCashuToken() {
         );
         // console.log('rdlogs pd', spentProofs)
 
-        await updateProofs({ mintUrl: finalMintUrl, proofsToAdd: [], proofsToRemove: spentProofs });
+        await updateProofs({
+          mintUrl: finalMintUrl,
+          proofsToAdd: [],
+          proofsToRemove: spentProofs,
+        });
 
         return spentProofs;
       } catch (error) {
@@ -465,12 +540,12 @@ export function useCashuToken() {
         activeCleanupPromises.delete(normalizedMintUrl);
       }
     })();
-    
+
     // Store the promise in the map
     activeCleanupPromises.set(normalizedMintUrl, cleanupPromise);
-    
+
     return cleanupPromise;
-  }
+  };
 
   /**
    * Clean up pending proofs after successful token creation
@@ -480,7 +555,7 @@ export function useCashuToken() {
     try {
       localStorage.removeItem(pendingProofsKey);
     } catch (error) {
-      console.error('Error cleaning up pending proofs:', error);
+      console.error("Error cleaning up pending proofs:", error);
     }
   };
 
@@ -492,8 +567,10 @@ export function useCashuToken() {
     recoveryInitiated = false;
     recoveryPromise = null;
     // Clear all recovery processed flags from sessionStorage
-    const keys = Object.keys(sessionStorage).filter(key => key.startsWith('recovery_processed_'));
-    keys.forEach(key => sessionStorage.removeItem(key));
+    const keys = Object.keys(sessionStorage).filter((key) =>
+      key.startsWith("recovery_processed_")
+    );
+    keys.forEach((key) => sessionStorage.removeItem(key));
   };
 
   return {
@@ -505,6 +582,6 @@ export function useCashuToken() {
     removeMint,
     resetRecoveryState,
     isLoading,
-    error
+    error,
   };
 }
