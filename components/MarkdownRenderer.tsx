@@ -20,7 +20,7 @@ export default function MarkdownRenderer({
 }: MarkdownRendererProps) {
   return (
     <div
-      className={`prose prose-invert max-w-none text-[1rem] leading-relaxed ${
+      className={`prose prose-invert max-w-none text-[1rem] leading-loose ${
         className || ""
       }`}
     >
@@ -72,7 +72,7 @@ export default function MarkdownRenderer({
 
           // Paragraphs
           p: ({ children }) => (
-            <p className="text-white/90 mb-4 leading-relaxed last:mb-0">
+            <p className="text-white/90 mb-4 leading-loose last:mb-0">
               {children}
             </p>
           ),
@@ -89,7 +89,7 @@ export default function MarkdownRenderer({
             </ol>
           ),
           li: ({ children }) => (
-            <li className="text-white/90 leading-relaxed">{children}</li>
+            <li className="text-white/90 leading-loose">{children}</li>
           ),
 
           // Links

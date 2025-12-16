@@ -88,6 +88,10 @@ export default function ChatMessages({
     new Map()
   );
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastUserMessageRef = useRef<HTMLDivElement | null>(null);
+  const prevMessageCountRef = useRef<number>(0);
+  const prevLastMessageRoleRef = useRef<string | null>(null);
+  const [needsScrollSpace, setNeedsScrollSpace] = useState(false);
 
   // Helper function to check if a system message should always be shown
   const shouldAlwaysShowSystemMessage = (
@@ -97,23 +101,36 @@ export default function ChatMessages({
     return textContent.trim().startsWith("ATTENTION");
   };
 
-  // Auto-scroll to bottom when messages change or content is streaming
+  // Scroll user message to top when a new user message is added
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer) return;
+    if (!scrollContainer || messages.length === 0) return;
 
-    // Check if user is near the bottom (within 150px)
-    const isNearBottom =
-      scrollContainer.scrollHeight -
-        scrollContainer.scrollTop -
-        scrollContainer.clientHeight <
-      150;
+    const lastMessage = messages[messages.length - 1];
+    const isNewUserMessage =
+      messages.length > prevMessageCountRef.current &&
+      lastMessage?.role === "user" &&
+      prevLastMessageRoleRef.current !== "user";
 
-    // Auto-scroll if user is near the bottom or if loading (new content coming)
-    if (isNearBottom || isLoading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Update refs for next comparison
+    prevMessageCountRef.current = messages.length;
+    prevLastMessageRoleRef.current = lastMessage?.role || null;
+
+    // When a new user message is sent, enable scroll space and scroll to top
+    if (isNewUserMessage) {
+      setNeedsScrollSpace(true);
+      // Small delay to ensure DOM has updated with the spacer
+      setTimeout(() => {
+        if (lastUserMessageRef.current) {
+          // Scroll the message to the very top of the viewport
+          lastUserMessageRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }, 50);
     }
-  }, [messages, streamingContent, thinkingContent, isLoading]);
+  }, [messages]);
 
   // Reset selectedVersions if any selected eventId is not in the messages list
   useEffect(() => {
@@ -497,8 +514,18 @@ export default function ChatMessages({
               message.role === "system" &&
               !shouldAlwaysShowSystemMessage(message.content);
 
+            // Check if this is the last user message for scroll targeting
+            const isLastUserMessage =
+              message.role === "user" && index === messageVersions.size - 1;
+
             return (
-              <div key={`msg-${index}-${originalMessage._eventId}`}>
+              <div
+                key={`msg-${index}-${originalMessage._eventId}`}
+                ref={isLastUserMessage ? lastUserMessageRef : null}
+                style={
+                  isLastUserMessage ? { scrollMarginTop: "80px" } : undefined
+                }
+              >
                 <div className="mb-8 last:mb-0">
                   {message.role === "user" ? (
                     <>
@@ -1001,6 +1028,9 @@ export default function ChatMessages({
             </div>
           </div>
         )}
+
+        {/* Dynamic spacer to allow scrolling user message to top */}
+        {needsScrollSpace && <div style={{ height: "calc(100vh - 200px)" }} />}
 
         <div ref={messagesEndRef} />
       </div>
