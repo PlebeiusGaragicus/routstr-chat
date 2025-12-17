@@ -86,7 +86,7 @@ export interface UseChatActionsParams {
   ) => Promise<string | null>;
   getLastNonSystemMessageEventId: (
     conversationId: string,
-    lastMessageRole?: string | string[]
+    lastMessageRole?: string[]
   ) => string;
   updateLastMessageSatsSpent: (
     conversationId: string,

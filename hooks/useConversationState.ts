@@ -66,7 +66,10 @@ export interface UseConversationStateReturn {
     message: Message
   ) => void;
   getActiveConversationId: () => string | null;
-  getLastNonSystemMessageEventId: (conversationId: string) => string;
+  getLastNonSystemMessageEventId: (
+    conversationId: string,
+    lastMessageRole?: string[]
+  ) => string;
   updateLastMessageSatsSpent: (
     conversationId: string,
     satsSpent: number
@@ -563,7 +566,7 @@ export const useConversationState = (): UseConversationStateReturn => {
   );
 
   const getLastNonSystemMessageEventId = useCallback(
-    (conversationId: string, lastMessageRole?: string): string => {
+    (conversationId: string, lastMessageRole?: string[]): string => {
       // Create a string of 64 zeros (empty Nostr event ID)
       const emptyEventId = "0".repeat(64);
 
@@ -577,9 +580,9 @@ export const useConversationState = (): UseConversationStateReturn => {
       for (let i = conversation.messages.length - 1; i >= 0; i--) {
         const message = conversation.messages[i];
 
-        if (lastMessageRole) {
+        if (lastMessageRole !== undefined && lastMessageRole.length > 0) {
           // If lastMessageRole is specified, only consider messages of that type
-          if (message.role === lastMessageRole) {
+          if (lastMessageRole.includes(message.role)) {
             return message._eventId || emptyEventId;
           }
         } else {

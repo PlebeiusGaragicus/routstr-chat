@@ -409,6 +409,7 @@ export function useCashuWithXYZ() {
     // If totalBalance is 0, refetch latest balances from store and recalculate
     if (totalBalance === 0) {
       const proofs = await cashuStore.getAllProofs();
+      console.log(proofs);
       latestMintBalances = calculateBalanceByMint(
         proofs,
         cashuStore.mints
