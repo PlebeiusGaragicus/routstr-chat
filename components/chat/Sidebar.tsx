@@ -1,5 +1,14 @@
-import { ChevronDown, PlusCircle, Settings, Trash2, X, Key, SquarePen, RefreshCw } from 'lucide-react';
-import { Conversation } from '@/types/chat';
+import {
+  ChevronDown,
+  PlusCircle,
+  Settings,
+  Trash2,
+  X,
+  Key,
+  SquarePen,
+  RefreshCw,
+} from "lucide-react";
+import { Conversation } from "@/types/chat";
 
 interface SidebarProps {
   isAuthenticated: boolean;
@@ -14,7 +23,9 @@ interface SidebarProps {
   loadConversation: (id: string) => void;
   deleteConversation: (id: string, e: React.MouseEvent) => Promise<void>;
   setIsSettingsOpen: (isOpen: boolean) => void;
-  setInitialSettingsTab: (tab: 'settings' | 'wallet' | 'history' | 'api-keys') => void;
+  setInitialSettingsTab: (
+    tab: "settings" | "wallet" | "history" | "api-keys"
+  ) => void;
   balance: number;
   syncWithNostr: () => Promise<void>;
   isSyncing: boolean;
@@ -36,15 +47,23 @@ export default function Sidebar({
   setInitialSettingsTab,
   balance,
   syncWithNostr,
-  isSyncing
+  isSyncing,
 }: SidebarProps) {
   return (
     <div className="relative h-full flex-shrink-0 z-50">
       {/* Sidebar */}
       <div
-        className={`${isMobile
-          ? (isSidebarOpen ? 'fixed inset-0 z-50 w-72 translate-x-0' : 'fixed inset-0 z-50 w-72 -translate-x-full')
-          : `fixed top-0 left-0 h-full w-72 ${isSidebarCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}
+        className={`${
+          isMobile
+            ? isSidebarOpen
+              ? "fixed inset-0 z-50 w-72 translate-x-0"
+              : "fixed inset-0 z-50 w-72 -translate-x-full"
+            : `fixed top-0 left-0 h-full w-72 ${
+                isSidebarCollapsed
+                  ? "-translate-x-full opacity-0 pointer-events-none"
+                  : "translate-x-0 opacity-100"
+              }`
+        }
           bg-[#0f0f0f] flex flex-col transition-all duration-300 ease-in-out shadow-lg`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -93,33 +112,40 @@ export default function Sidebar({
             <button
               onClick={() => syncWithNostr()}
               disabled={isSyncing}
-              className={`p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ${isSyncing ? 'animate-spin' : ''}`}
+              className={`p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ${
+                isSyncing ? "animate-spin" : ""
+              }`}
               title="Sync with Nostr"
             >
               <RefreshCw className="h-3 w-3" />
             </button>
           </div>
           {conversations.length === 0 ? (
-            <p className="text-xs text-white/50 text-center py-2">No saved conversations</p>
+            <p className="text-xs text-white/50 text-center py-2">
+              No saved conversations
+            </p>
           ) : (
-            [...conversations].map(conversation => (
+            [...conversations].map((conversation) => (
               <div
                 key={conversation.id}
                 onClick={() => {
                   loadConversation(conversation.id);
                   if (isMobile) setIsSidebarOpen(false);
                 }}
-                className={`p-2 rounded text-sm cursor-pointer flex justify-between items-center group ${activeConversationId === conversation.id
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/70 hover:bg-white/5'
-                  }`}
+                className={`p-2 rounded text-sm cursor-pointer flex justify-between items-center group ${
+                  activeConversationId === conversation.id
+                    ? "bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/5"
+                }`}
               >
                 <div className="flex items-center gap-2 flex-1 truncate">
                   <span className="truncate">{conversation.title}</span>
                 </div>
                 <button
-                  onClick={async (e) => await deleteConversation(conversation.id, e)}
-                  className="text-white/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={async (e) =>
+                    await deleteConversation(conversation.id, e)
+                  }
+                  className="text-white/40 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -135,7 +161,7 @@ export default function Sidebar({
             <button
               onClick={() => {
                 setIsSettingsOpen(true);
-                setInitialSettingsTab('settings');
+                setInitialSettingsTab("settings");
               }}
               className="flex items-center gap-2 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
               data-tutorial="settings-button"
@@ -148,7 +174,7 @@ export default function Sidebar({
             <button
               onClick={() => {
                 setIsSettingsOpen(true);
-                setInitialSettingsTab('api-keys');
+                setInitialSettingsTab("api-keys");
               }}
               className="flex items-center gap-2 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
             >
@@ -171,4 +197,4 @@ export default function Sidebar({
       )}
     </div>
   );
-} 
+}
