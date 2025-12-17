@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "npx --yes serve -s out -l 3000",
     "lint": "next lint",
+    "format": "prettier --write .",
     "static": "next build && npx serve out",
     "docker:build": "docker build -f docker/Dockerfile -t routstr-chat .",
     "docker:run": "docker run -d -p 3000:80 --name routstr-chat routstr-chat",
@@ -94,6 +95,7 @@
     "eslint-config-prettier": "^10.1.8",
     "msw": "^2.11.3",
     "playwright": "^1.56.1",
+    "prettier": "^3.7.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
