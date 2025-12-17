@@ -1,14 +1,14 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { SpendingHistoryEntry } from '../core/domain/Transaction';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { SpendingHistoryEntry } from "../core/domain/Transaction";
 
 // Define a pending transaction interface for lightning invoices
 export interface PendingTransaction {
   id: string;
-  direction: 'in' | 'out';
+  direction: "in" | "out";
   amount: string;
   timestamp: number;
-  status: 'pending';
+  status: "pending";
   mintUrl: string;
   quoteId: string;
   paymentRequest: string;
@@ -31,10 +31,15 @@ interface TransactionHistoryStore {
   getPendingTransactions: () => PendingTransaction[];
 
   // Get history entries, optionally filtered by direction
-  getHistoryEntries: (direction?: 'in' | 'out') => (SpendingHistoryEntry & { id: string })[];
+  getHistoryEntries: (
+    direction?: "in" | "out"
+  ) => (SpendingHistoryEntry & { id: string })[];
 
   // Get combined history - both confirmed and pending
-  getCombinedHistory: () => (SpendingHistoryEntry & { id: string } | PendingTransaction)[];
+  getCombinedHistory: () => (
+    | (SpendingHistoryEntry & { id: string })
+    | PendingTransaction
+  )[];
 
   // Clear history entries for a specific user
   clearHistory: (pubkey?: string) => void;
@@ -48,27 +53,31 @@ export const useTransactionHistoryStore = create<TransactionHistoryStore>()(
 
       addHistoryEntry(entry) {
         // Check if entry already exists
-        const exists = get().history.some(item => item.id === entry.id);
+        const exists = get().history.some((item) => item.id === entry.id);
         if (!exists) {
-          set(state => ({
-            history: [entry, ...state.history]
+          set((state) => ({
+            history: [entry, ...state.history],
           }));
         }
       },
 
       addPendingTransaction(transaction) {
         // Check if transaction already exists
-        const exists = get().pendingTransactions.some(item => item.id === transaction.id);
+        const exists = get().pendingTransactions.some(
+          (item) => item.id === transaction.id
+        );
         if (!exists) {
-          set(state => ({
-            pendingTransactions: [transaction, ...state.pendingTransactions]
+          set((state) => ({
+            pendingTransactions: [transaction, ...state.pendingTransactions],
           }));
         }
       },
 
       removePendingTransaction(id) {
-        set(state => ({
-          pendingTransactions: state.pendingTransactions.filter(tx => tx.id !== id)
+        set((state) => ({
+          pendingTransactions: state.pendingTransactions.filter(
+            (tx) => tx.id !== id
+          ),
         }));
       },
 
@@ -81,12 +90,14 @@ export const useTransactionHistoryStore = create<TransactionHistoryStore>()(
 
         if (!direction) {
           // Return all entries sorted by timestamp (newest first)
-          return [...history].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          return [...history].sort(
+            (a, b) => (b.timestamp || 0) - (a.timestamp || 0)
+          );
         }
 
         // Return filtered entries sorted by timestamp
         return history
-          .filter(entry => entry.direction === direction)
+          .filter((entry) => entry.direction === direction)
           .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       },
 
@@ -95,7 +106,9 @@ export const useTransactionHistoryStore = create<TransactionHistoryStore>()(
         const pending = get().pendingTransactions;
 
         // Combine and sort by timestamp (newest first)
-        return [...history, ...pending].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        return [...history, ...pending].sort(
+          (a, b) => (b.timestamp || 0) - (a.timestamp || 0)
+        );
       },
 
       clearHistory(pubkey) {
@@ -104,6 +117,6 @@ export const useTransactionHistoryStore = create<TransactionHistoryStore>()(
         set({ history: [], pendingTransactions: [] });
       },
     }),
-    { name: 'cashu-history' },
-  ),
-) 
+    { name: "cashu-history" }
+  )
+);

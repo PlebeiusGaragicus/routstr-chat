@@ -5,7 +5,7 @@ This project is Routstr's frontend chat application built with React 18.x, nextJ
 ## Stack
 
 -React**: Stable version of React with hooks, concurrent rendering, and improved performance
--NextJs**: NextJs framework. 
+-NextJs**: NextJs framework.
 -Nostrify**: Nostr protocol framework for Deno and web
 -React Router**: For client-side routing
 -TanStack Query**: For data fetching, caching, and state management
@@ -23,16 +23,17 @@ This comes with custom hooks for querying and publishing events on the Nostr net
 
 ### `useNostr` Hook
 
-The ` hook returns an object containing a `nostr` property, with `.query()` and `.event()` methods for querying and publishing Nostr events respectively.
+The `hook returns an object containing a`nostr`property, with`.query()`and`.event()` methods for querying and publishing Nostr events respectively.
 
 ``
 import useNostr } from '@nostrify/react';
 
 function() {
-  const nostr } = useNostr();
+const nostr } = useNostr();
 
-  //
+//
 }
+
 ### Nostr Data with `useNostr` and Tanstack Query
 
 When Nostr, the best practice is to create custom hooks that combine `useNostr` and `useQuery` to get the required data.
@@ -42,18 +43,19 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/query';
 
 function usePosts() {
-  const { nostr } = useNostr();
+const { nostr } = useNostr();
 
-  return useQuery({
-    queryKey: ['posts'],
-    queryFn: async (c) => {
-      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(1500)]);
-      const events = await nostr.query([{ kinds: [1], limit: 20 }], { signal });
-      return events; // these events could be transformed into another format
-    },
-  });
+return useQuery({
+queryKey: ['posts'],
+queryFn: async (c) => {
+const signal = AbortSignal.any([c.signal, AbortSignal.timeout(1500)]);
+const events = await nostr.query([{ kinds: [1], limit: 20 }], { signal });
+return events; // these events could be transformed into another format
+},
+});
 }
-```
+
+````
 
 The data may be transformed into a more appropriate format if needed, and multiple calls to `nostr.query()` may be made in a single queryFn.
 
@@ -74,7 +76,7 @@ function Post({ event }: { event: NostrEvent }) {
 
   // ...render elements with this data
 }
-```
+````
 
 #### `NostrMetadata` type
 
@@ -109,13 +111,13 @@ interface NostrMetadata {
 To publish events, use the `useNostrPublish` hook in this project.
 
 ```tsx
-import { useState } from 'react';
+import { useState } from "react";
 
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useNostrPublish } from "@/hooks/useNostrPublish";
 
 export function MyComponent() {
-  const [ data, setData] = useState<Record<string, string>>({});
+  const [data, setData] = useState<Record<string, string>>({});
 
   const { user } = useCurrentUser();
   const { mutate: createEvent } = useNostrPublish();
@@ -178,24 +180,21 @@ The base Nostr protocol uses hex string identifiers when filtering by event IDs 
 
 ```ts
 // ❌ Wrong: naddr is not decoded
-const events = await nostr.query(
-  [{ ids: [naddr] }],
-  { signal }
-);
+const events = await nostr.query([{ ids: [naddr] }], { signal });
 ```
 
 Corrected example:
 
 ```ts
 // Import nip19 from nostr-tools
-import { nip19 } from 'nostr-tools';
+import { nip19 } from "nostr-tools";
 
 // Decode a NIP-19 identifier
 const decoded = nip19.decode(value);
 
 // Optional: guard certain types (depending on the use-case)
-if (decoded.type !== 'naddr') {
-  throw new Error('Unsupported Nostr identifier');
+if (decoded.type !== "naddr") {
+  throw new Error("Unsupported Nostr identifier");
 }
 
 // Get the addr object
@@ -203,11 +202,13 @@ const naddr = decoded.data;
 
 // ✅ Correct: naddr is expanded into the correct filter
 const events = await nostr.query(
-  [{
-    kinds: [naddr.kind],
-    authors: [naddr.pubkey],
-    '#d': [naddr.identifier],
-  }],
+  [
+    {
+      kinds: [naddr.kind],
+      authors: [naddr.pubkey],
+      "#d": [naddr.identifier],
+    },
+  ],
   { signal }
 );
 ```
@@ -269,13 +270,15 @@ const { user } = useCurrentUser();
 
 // Optional guard to check that nip44 is available
 if (!user.signer.nip44) {
-  throw new Error("Please upgrade your signer extension to a version that supports NIP-44 encryption");
+  throw new Error(
+    "Please upgrade your signer extension to a version that supports NIP-44 encryption"
+  );
 }
 
 // Encrypt message to self
 const encrypted = await user.signer.nip44.encrypt(user.pubkey, "hello world");
 // Decrypt message to self
-const decrypted = await user.signer.nip44.decrypt(user.pubkey, encrypted) // "hello world"
+const decrypted = await user.signer.nip44.decrypt(user.pubkey, encrypted); // "hello world"
 ```
 
 ## Development Practices

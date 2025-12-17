@@ -1,4 +1,4 @@
-import { Proof } from './Proof';
+import { Proof } from "./Proof";
 
 /**
  * Cashu Token Domain Model
@@ -32,4 +32,3 @@ export interface TokenWithMetadata {
   /** Optional: Nostr event ID if stored via NIP-60 */
   eventId?: string;
 }
-

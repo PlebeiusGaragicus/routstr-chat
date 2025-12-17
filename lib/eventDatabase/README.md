@@ -51,7 +51,7 @@ function MyComponent() {
 The eventDatabase is automatically integrated with the global `eventStore`:
 
 ```typescript
-import { eventStore, eventDatabase } from '@/lib/applesauce-core';
+import { eventStore, eventDatabase } from "@/lib/applesauce-core";
 
 // EventStore now uses the Zustand database for persistence
 eventStore.add(event);
@@ -66,8 +66,8 @@ const chatEvents = eventDatabase.getByFilters({
 ### Direct Instance Usage
 
 ```typescript
-import { getEventDatabaseInstance } from '@/lib/eventDatabase';
-import { EventStore } from 'applesauce-core';
+import { getEventDatabaseInstance } from "@/lib/eventDatabase";
+import { EventStore } from "applesauce-core";
 
 // Get a plain object implementing IEventDatabase
 const eventDatabase = getEventDatabaseInstance();
@@ -80,35 +80,35 @@ const myEventStore = new EventStore(eventDatabase);
 
 ### Core Methods
 
-| Method | Description |
-|--------|-------------|
-| `add(event)` | Add an event to the database |
+| Method          | Description                           |
+| --------------- | ------------------------------------- |
+| `add(event)`    | Add an event to the database          |
 | `remove(event)` | Remove an event by ID or event object |
-| `hasEvent(id)` | Check if an event exists |
-| `getEvent(id)` | Get an event by ID |
+| `hasEvent(id)`  | Check if an event exists              |
+| `getEvent(id)`  | Get an event by ID                    |
 
 ### Replaceable Events
 
-| Method | Description |
-|--------|-------------|
-| `hasReplaceable(kind, pubkey, identifier?)` | Check if a replaceable event exists |
-| `getReplaceable(kind, pubkey, identifier?)` | Get the latest version of a replaceable event |
-| `getReplaceableHistory(kind, pubkey, identifier?)` | Get all versions of a replaceable event |
+| Method                                             | Description                                   |
+| -------------------------------------------------- | --------------------------------------------- |
+| `hasReplaceable(kind, pubkey, identifier?)`        | Check if a replaceable event exists           |
+| `getReplaceable(kind, pubkey, identifier?)`        | Get the latest version of a replaceable event |
+| `getReplaceableHistory(kind, pubkey, identifier?)` | Get all versions of a replaceable event       |
 
 ### Filtering
 
-| Method | Description |
-|--------|-------------|
-| `getByFilters(filters)` | Get events matching the filter(s) |
-| `getTimeline(filters)` | Get events sorted by created_at (descending) |
-| `removeByFilters(filters)` | Remove all events matching the filter(s) |
+| Method                     | Description                                  |
+| -------------------------- | -------------------------------------------- |
+| `getByFilters(filters)`    | Get events matching the filter(s)            |
+| `getTimeline(filters)`     | Get events sorted by created_at (descending) |
+| `removeByFilters(filters)` | Remove all events matching the filter(s)     |
 
 ### Utility
 
-| Method | Description |
-|--------|-------------|
+| Method         | Description                         |
+| -------------- | ----------------------------------- |
 | `clearStore()` | Remove all events from the database |
-| `getStats()` | Get statistics about stored events |
+| `getStats()`   | Get statistics about stored events  |
 
 ## Filter Examples
 
@@ -116,22 +116,22 @@ const myEventStore = new EventStore(eventDatabase);
 // Single filter
 const events = getByFilters({
   kinds: [1, 6],
-  authors: ['pubkey1', 'pubkey2'],
+  authors: ["pubkey1", "pubkey2"],
   since: Math.floor(Date.now() / 1000) - 86400, // Last 24 hours
   limit: 100,
 });
 
 // Multiple filters (union - events matching ANY filter)
 const events = getByFilters([
-  { kinds: [1], authors: ['alice'] },
-  { kinds: [1], authors: ['bob'] },
+  { kinds: [1], authors: ["alice"] },
+  { kinds: [1], authors: ["bob"] },
 ]);
 
 // Tag filters
 const events = getByFilters({
   kinds: [1],
-  '#e': ['event-id'], // Events referencing this event
-  '#p': ['pubkey'],   // Events mentioning this pubkey
+  "#e": ["event-id"], // Events referencing this event
+  "#p": ["pubkey"], // Events mentioning this pubkey
 });
 ```
 
@@ -202,7 +202,7 @@ The eventDatabase is used by the chat sync functionality:
 
 ```typescript
 // In useChatSync.ts
-import { eventStore } from '@/lib/applesauce-core';
+import { eventStore } from "@/lib/applesauce-core";
 
 // Events added to eventStore are now persisted
 eventStore.add(pnsEvent);
@@ -211,7 +211,7 @@ eventStore.add(pnsEvent);
 ## Testing
 
 ```typescript
-import { useEventDatabase } from '@/lib/eventDatabase';
+import { useEventDatabase } from "@/lib/eventDatabase";
 
 // Clear before tests
 beforeEach(() => {
@@ -219,11 +219,12 @@ beforeEach(() => {
 });
 
 // Test adding events
-test('adds event correctly', () => {
+test("adds event correctly", () => {
   const { add, getEvent } = useEventDatabase.getState();
-  
-  const event = { id: 'test', kind: 1, /* ... */ };
+
+  const event = { id: "test", kind: 1 /* ... */ };
   add(event);
-  
-  expect(getEvent('test')).toEqual(event);
+
+  expect(getEvent("test")).toEqual(event);
 });
+```

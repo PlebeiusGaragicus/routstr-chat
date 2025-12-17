@@ -1,6 +1,13 @@
-import { Mint, Wallet, MintQuoteState, MeltQuoteState, MeltQuoteResponse, Proof } from '@cashu/cashu-ts';
-import { MintQuote, MeltQuote } from '../domain/Mint';
-import { normalizeMintUrl } from '../utils/formatting';
+import {
+  Mint,
+  Wallet,
+  MintQuoteState,
+  MeltQuoteState,
+  MeltQuoteResponse,
+  Proof,
+} from "@cashu/cashu-ts";
+import { MintQuote, MeltQuote } from "../domain/Mint";
+import { normalizeMintUrl } from "../utils/formatting";
 
 /**
  * LightningService
@@ -16,9 +23,13 @@ export class LightningService {
     const keysets = await mint.getKeySets();
 
     // Get preferred unit: msat over sat if both are active
-    const activeKeysets = keysets.keysets.filter(k => k.active);
-    const units = [...new Set(activeKeysets.map(k => k.unit))];
-    const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
+    const activeKeysets = keysets.keysets.filter((k) => k.active);
+    const units = [...new Set(activeKeysets.map((k) => k.unit))];
+    const preferredUnit = units.includes("msat")
+      ? "msat"
+      : units.includes("sat")
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
     await wallet.loadMint();
@@ -48,9 +59,13 @@ export class LightningService {
     const mint = new Mint(normalizedUrl);
     const keysets = await mint.getKeySets();
 
-    const activeKeysets = keysets.keysets.filter(k => k.active);
-    const units = [...new Set(activeKeysets.map(k => k.unit))];
-    const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
+    const activeKeysets = keysets.keysets.filter((k) => k.active);
+    const units = [...new Set(activeKeysets.map((k) => k.unit))];
+    const preferredUnit = units.includes("msat")
+      ? "msat"
+      : units.includes("sat")
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
     await wallet.loadMint();
@@ -69,19 +84,19 @@ export class LightningService {
 
         attempts++;
         if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise((resolve) => setTimeout(resolve, 3000));
         }
       } catch (error) {
-        console.error('Error checking mint quote:', error);
+        console.error("Error checking mint quote:", error);
         attempts++;
         if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise((resolve) => setTimeout(resolve, 3000));
         }
       }
     }
 
     if (attempts === maxAttempts) {
-      throw new Error('Failed to confirm payment after multiple attempts');
+      throw new Error("Failed to confirm payment after multiple attempts");
     }
 
     // Mint proofs using the paid quote
@@ -92,14 +107,21 @@ export class LightningService {
   /**
    * Create a melt quote for a Lightning invoice (prepare to pay)
    */
-  async createMeltQuote(mintUrl: string, paymentRequest: string): Promise<MeltQuoteResponse> {
+  async createMeltQuote(
+    mintUrl: string,
+    paymentRequest: string
+  ): Promise<MeltQuoteResponse> {
     const normalizedUrl = normalizeMintUrl(mintUrl);
     const mint = new Mint(normalizedUrl);
     const keysets = await mint.getKeySets();
 
-    const activeKeysets = keysets.keysets.filter(k => k.active);
-    const units = [...new Set(activeKeysets.map(k => k.unit))];
-    const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
+    const activeKeysets = keysets.keysets.filter((k) => k.active);
+    const units = [...new Set(activeKeysets.map((k) => k.unit))];
+    const preferredUnit = units.includes("msat")
+      ? "msat"
+      : units.includes("sat")
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
     await wallet.loadMint();
@@ -123,16 +145,16 @@ export class LightningService {
 
       // Convert to satoshis based on unit
       switch (unit) {
-        case 'p': // pico
+        case "p": // pico
           amount = Math.floor(amount / 10);
           break;
-        case 'n': // nano
+        case "n": // nano
           amount = Math.floor(amount);
           break;
-        case 'u': // micro
+        case "u": // micro
           amount = amount * 100;
           break;
-        case 'm': // milli
+        case "m": // milli
           amount = amount * 100000;
           break;
         default:
@@ -141,9 +163,8 @@ export class LightningService {
 
       return amount;
     } catch (error) {
-      console.error('Error parsing invoice amount:', error);
+      console.error("Error parsing invoice amount:", error);
       return null;
     }
   }
 }
-

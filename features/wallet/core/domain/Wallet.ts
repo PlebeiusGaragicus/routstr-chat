@@ -30,6 +30,5 @@ export interface WalletConfig {
   /** Whether to use NIP-60 for storage */
   useNip60: boolean;
   /** Preferred unit (sat, msat, etc.) */
-  preferredUnit?: 'sat' | 'msat';
+  preferredUnit?: "sat" | "msat";
 }
-

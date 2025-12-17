@@ -49,8 +49,8 @@ export async function createLightningInvoice(
     const preferredUnit = units.includes("msat")
       ? "msat"
       : units.includes("sat")
-      ? "sat"
-      : "not supported";
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
 
@@ -111,8 +111,8 @@ export async function mintTokensFromPaidInvoice(
     const preferredUnit = units.includes("msat")
       ? "msat"
       : units.includes("sat")
-      ? "sat"
-      : "not supported";
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
 
@@ -186,8 +186,8 @@ export async function createMeltQuote(
     const preferredUnit = units.includes("msat")
       ? "msat"
       : units.includes("sat")
-      ? "sat"
-      : "not supported";
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
 
@@ -231,8 +231,8 @@ export async function payMeltQuote(
     const preferredUnit = units.includes("msat")
       ? "msat"
       : units.includes("sat")
-      ? "sat"
-      : "not supported";
+        ? "sat"
+        : "not supported";
 
     const wallet = new Wallet(mint, { unit: preferredUnit });
 
@@ -284,10 +284,13 @@ export async function payMeltQuote(
         }
 
         // Check exact change again with fresh proofs
-        const freshDenominationCounts = proofs.reduce((acc, p) => {
-          acc[p.amount] = (acc[p.amount] || 0) + 1;
-          return acc;
-        }, {} as Record<number, number>);
+        const freshDenominationCounts = proofs.reduce(
+          (acc, p) => {
+            acc[p.amount] = (acc[p.amount] || 0) + 1;
+            return acc;
+          },
+          {} as Record<number, number>
+        );
 
         const exactChangeRetryResult = canMakeExactChange(
           amountToSend,
@@ -344,10 +347,13 @@ export async function payMeltQuote(
         );
 
         // Get denomination counts for exact change attempts
-        const denominationCounts = proofs.reduce((acc, p) => {
-          acc[p.amount] = (acc[p.amount] || 0) + 1;
-          return acc;
-        }, {} as Record<number, number>);
+        const denominationCounts = proofs.reduce(
+          (acc, p) => {
+            acc[p.amount] = (acc[p.amount] || 0) + 1;
+            return acc;
+          },
+          {} as Record<number, number>
+        );
         console.log("rdlogs:", denominationCounts);
 
         // Try with 0% error tolerance first

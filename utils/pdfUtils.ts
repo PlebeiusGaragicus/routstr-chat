@@ -11,9 +11,8 @@ const resolveWorkerSrc = async (pdfjs: PdfJsLib) => {
   if (pdfjs.GlobalWorkerOptions.workerSrc) return;
 
   try {
-    const workerModule = await import(
-      "pdfjs-dist/legacy/build/pdf.worker.min?url"
-    );
+    const workerModule =
+      await import("pdfjs-dist/legacy/build/pdf.worker.min?url");
     pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
   } catch (error) {
     console.warn("Falling back to CDN worker for pdf.js", error);

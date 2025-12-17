@@ -1,4 +1,4 @@
-import { NostrEvent } from 'nostr-tools';
+import { NostrEvent } from "nostr-tools";
 
 /**
  * Filter type for querying events
@@ -33,9 +33,17 @@ export interface IEventDatabase {
   /** Check if the event store has a replaceable event */
   hasReplaceable(kind: number, pubkey: string, identifier?: string): boolean;
   /** Get a replaceable event */
-  getReplaceable(kind: number, pubkey: string, identifier?: string): NostrEvent | undefined;
+  getReplaceable(
+    kind: number,
+    pubkey: string,
+    identifier?: string
+  ): NostrEvent | undefined;
   /** Get the history of a replaceable event */
-  getReplaceableHistory(kind: number, pubkey: string, identifier?: string): NostrEvent[] | undefined;
+  getReplaceableHistory(
+    kind: number,
+    pubkey: string,
+    identifier?: string
+  ): NostrEvent[] | undefined;
   /** Get all events that match the filters */
   getByFilters(filters: Filter | Filter[]): NostrEvent[];
   /** Get a timeline of events that match the filters */
@@ -48,13 +56,13 @@ export interface IEventDatabase {
 export interface EventStoreState extends IEventDatabase {
   // Primary storage: event ID -> NostrEvent
   events: Record<string, NostrEvent>;
-  
+
   // Replaceable event index: "kind:pubkey:identifier" -> latest event ID
   replaceableIndex: Record<string, string>;
-  
+
   // Replaceable history: "kind:pubkey:identifier" -> event ID array (newest first)
   replaceableHistory: Record<string, string[]>;
-  
+
   // Utility methods
   clearStore: () => void;
   getStats: () => { totalEvents: number; replaceableCount: number };

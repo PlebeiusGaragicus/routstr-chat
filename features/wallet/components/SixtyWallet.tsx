@@ -1111,9 +1111,8 @@ const SixtyWallet: React.FC<{
                       <button
                         onClick={async () => {
                           try {
-                            const mod = await import(
-                              "@getalby/bitcoin-connect-react"
-                            );
+                            const mod =
+                              await import("@getalby/bitcoin-connect-react");
                             mod.launchModal();
                           } catch {}
                         }}

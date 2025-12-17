@@ -22,7 +22,8 @@ import type { NostrEvent } from "nostr-tools";
 import { userPubkey$, userSigner$ } from "@/hooks/useChatSync1081";
 
 interface ChatContextType
-  extends UseConversationStateReturn,
+  extends
+    UseConversationStateReturn,
     UseApiStateReturn,
     UseUiStateReturn,
     UseModelStateReturn,

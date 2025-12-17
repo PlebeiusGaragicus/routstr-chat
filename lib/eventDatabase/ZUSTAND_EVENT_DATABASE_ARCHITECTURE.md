@@ -17,18 +17,18 @@ This document outlines the architecture for implementing an `IEventDatabase` int
 
 ### ✅ Feasible Features
 
-| Method | Implementation | Notes |
-|--------|---------------|-------|
-| `add(event)` | O(1) map insertion | Straightforward |
-| `remove(event)` | O(1) map deletion | Direct lookup |
-| `hasEvent(id)` | O(1) existence check | Simple map lookup |
-| `getEvent(id)` | O(1) retrieval | Direct access |
-| `hasReplaceable(...)` | O(1) index lookup | Composite key index |
-| `getReplaceable(...)` | O(1) retrieval | Index-based |
-| `getReplaceableHistory(...)` | O(h) where h=history size | Array iteration |
-| `getByFilters(filters)` | O(n) linear scan | No SQL indexing |
-| `getTimeline(filters)` | O(n log n) with sort | Filter + sort |
-| `removeByFilters(filters)` | O(n) scan + delete | Batch removal |
+| Method                       | Implementation            | Notes               |
+| ---------------------------- | ------------------------- | ------------------- |
+| `add(event)`                 | O(1) map insertion        | Straightforward     |
+| `remove(event)`              | O(1) map deletion         | Direct lookup       |
+| `hasEvent(id)`               | O(1) existence check      | Simple map lookup   |
+| `getEvent(id)`               | O(1) retrieval            | Direct access       |
+| `hasReplaceable(...)`        | O(1) index lookup         | Composite key index |
+| `getReplaceable(...)`        | O(1) retrieval            | Index-based         |
+| `getReplaceableHistory(...)` | O(h) where h=history size | Array iteration     |
+| `getByFilters(filters)`      | O(n) linear scan          | No SQL indexing     |
+| `getTimeline(filters)`       | O(n log n) with sort      | Filter + sort       |
+| `removeByFilters(filters)`   | O(n) scan + delete        | Batch removal       |
 
 ### ⚠️ Limitations
 
@@ -46,29 +46,41 @@ This document outlines the architecture for implementing an `IEventDatabase` int
 interface EventStoreState {
   // Primary storage: event ID -> NostrEvent
   events: Record<string, NostrEvent>;
-  
+
   // Replaceable event index: "kind:pubkey:identifier" -> latest event ID
   replaceableIndex: Record<string, string>;
-  
+
   // Replaceable history: "kind:pubkey:identifier" -> event ID array (newest first)
   replaceableHistory: Record<string, string[]>;
-  
+
   // Optional: Tag index for common queries
   // Format: "tagName:tagValue" -> event ID array
   tagIndex?: Record<string, string[]>;
-  
+
   // Methods (IEventDatabase interface)
   add: (event: NostrEvent) => NostrEvent;
   remove: (event: string | NostrEvent) => boolean;
   removeByFilters: (filters: Filter | Filter[]) => number;
   hasEvent: (id: string) => boolean;
   getEvent: (id: string) => NostrEvent | undefined;
-  hasReplaceable: (kind: number, pubkey: string, identifier?: string) => boolean;
-  getReplaceable: (kind: number, pubkey: string, identifier?: string) => NostrEvent | undefined;
-  getReplaceableHistory: (kind: number, pubkey: string, identifier?: string) => NostrEvent[] | undefined;
+  hasReplaceable: (
+    kind: number,
+    pubkey: string,
+    identifier?: string
+  ) => boolean;
+  getReplaceable: (
+    kind: number,
+    pubkey: string,
+    identifier?: string
+  ) => NostrEvent | undefined;
+  getReplaceableHistory: (
+    kind: number,
+    pubkey: string,
+    identifier?: string
+  ) => NostrEvent[] | undefined;
   getByFilters: (filters: Filter | Filter[]) => NostrEvent[];
   getTimeline: (filters: Filter | Filter[]) => NostrEvent[];
-  
+
   // Utility methods
   clearStore: () => void;
   getStats: () => { totalEvents: number; replaceableCount: number };
@@ -97,7 +109,11 @@ function isParameterized(kind: number): boolean {
   return kind >= 30000 && kind < 40000;
 }
 
-function getReplaceableKey(kind: number, pubkey: string, identifier: string = ''): string {
+function getReplaceableKey(
+  kind: number,
+  pubkey: string,
+  identifier: string = ""
+): string {
   return `${kind}:${pubkey}:${identifier}`;
 }
 ```
@@ -118,10 +134,10 @@ function getReplaceableKey(kind: number, pubkey: string, identifier: string = ''
 
 ```typescript
 function getIdentifier(event: NostrEvent, kind: number): string {
-  if (!isParameterized(kind)) return '';
-  
-  const dTag = event.tags.find(t => t[0] === 'd');
-  return dTag && dTag[1] ? dTag[1] : '';
+  if (!isParameterized(kind)) return "";
+
+  const dTag = event.tags.find((t) => t[0] === "d");
+  return dTag && dTag[1] ? dTag[1] : "";
 }
 ```
 
@@ -133,35 +149,36 @@ function getIdentifier(event: NostrEvent, kind: number): string {
 function matchesFilter(event: NostrEvent, filter: Filter): boolean {
   // 1. Match IDs (prefix matching)
   if (filter.ids) {
-    if (!filter.ids.some(id => event.id.startsWith(id))) return false;
+    if (!filter.ids.some((id) => event.id.startsWith(id))) return false;
   }
-  
+
   // 2. Match authors (prefix matching)
   if (filter.authors) {
-    if (!filter.authors.some(author => event.pubkey.startsWith(author))) return false;
+    if (!filter.authors.some((author) => event.pubkey.startsWith(author)))
+      return false;
   }
-  
+
   // 3. Match kinds (exact match)
   if (filter.kinds) {
     if (!filter.kinds.includes(event.kind)) return false;
   }
-  
+
   // 4. Match time range
   if (filter.since && event.created_at < filter.since) return false;
   if (filter.until && event.created_at > filter.until) return false;
-  
+
   // 5. Match tags (#e, #p, etc.)
   for (const [key, values] of Object.entries(filter)) {
-    if (key.startsWith('#')) {
+    if (key.startsWith("#")) {
       const tagName = key.slice(1);
       const eventTagValues = event.tags
-        .filter(t => t[0] === tagName)
-        .map(t => t[1]);
-      
-      if (!values.some(v => eventTagValues.includes(v))) return false;
+        .filter((t) => t[0] === tagName)
+        .map((t) => t[1]);
+
+      if (!values.some((v) => eventTagValues.includes(v))) return false;
     }
   }
-  
+
   return true;
 }
 ```
@@ -172,21 +189,19 @@ function matchesFilter(event: NostrEvent, filter: Filter): boolean {
 function getByFilters(filters: Filter | Filter[]): NostrEvent[] {
   const filterArray = Array.isArray(filters) ? filters : [filters];
   const allEvents = Object.values(this.events);
-  
+
   // Union: event matches if it matches ANY filter
-  const matchingEvents = allEvents.filter(event =>
-    filterArray.some(filter => matchesFilter(event, filter))
+  const matchingEvents = allEvents.filter((event) =>
+    filterArray.some((filter) => matchesFilter(event, filter))
   );
-  
+
   // Apply limit if specified (use smallest limit across all filters)
-  const limit = Math.min(
-    ...filterArray.map(f => f.limit || Infinity)
-  );
-  
+  const limit = Math.min(...filterArray.map((f) => f.limit || Infinity));
+
   if (limit !== Infinity) {
     return matchingEvents.slice(0, limit);
   }
-  
+
   return matchingEvents;
 }
 ```
@@ -196,7 +211,7 @@ function getByFilters(filters: Filter | Filter[]): NostrEvent[] {
 ### Zustand Persist Middleware
 
 ```typescript
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from "zustand/middleware";
 
 const useEventStore = create<EventStoreState>()(
   persist(
@@ -204,20 +219,20 @@ const useEventStore = create<EventStoreState>()(
       events: {},
       replaceableIndex: {},
       replaceableHistory: {},
-      
+
       // ... methods
     }),
     {
-      name: 'nostr-event-store',
+      name: "nostr-event-store",
       storage: createJSONStorage(() => localStorage),
-      
+
       // Only persist data, not methods
       partialize: (state) => ({
         events: state.events,
         replaceableIndex: state.replaceableIndex,
         replaceableHistory: state.replaceableHistory,
       }),
-      
+
       // Optional: Merge strategy for hydration
       merge: (persistedState, currentState) => ({
         ...currentState,
@@ -276,8 +291,8 @@ const store = new EventStore();
 ### After Implementation
 
 ```typescript
-import { useEventStore } from '@/lib/eventDatabase';
-import { EventStore } from 'applesauce-core';
+import { useEventStore } from "@/lib/eventDatabase";
+import { EventStore } from "applesauce-core";
 
 // Get the event database instance
 const eventDatabase = useEventStore.getState();
@@ -308,53 +323,60 @@ export function getEventStore(): EventStore {
 ### For 1000-5000 Events
 
 1. **Batch Operations**
+
    ```typescript
    function addBatch(events: NostrEvent[]): void {
      set((state) => {
        const newEvents = { ...state.events };
        const newIndex = { ...state.replaceableIndex };
        const newHistory = { ...state.replaceableHistory };
-       
+
        for (const event of events) {
          // Batch process all events
          // Update structures
        }
-       
-       return { events: newEvents, replaceableIndex: newIndex, replaceableHistory: newHistory };
+
+       return {
+         events: newEvents,
+         replaceableIndex: newIndex,
+         replaceableHistory: newHistory,
+       };
      });
    }
    ```
 
 2. **Lazy Tag Indexing**
+
    ```typescript
    // Build tag index only when needed
    function buildTagIndex(tagName: string): void {
      const index: Record<string, string[]> = {};
-     
+
      for (const event of Object.values(this.events)) {
        event.tags
-         .filter(t => t[0] === tagName)
-         .forEach(t => {
+         .filter((t) => t[0] === tagName)
+         .forEach((t) => {
            const value = t[1];
            if (!index[value]) index[value] = [];
            index[value].push(event.id);
          });
      }
-     
+
      set({ tagIndex: { ...this.tagIndex, [`${tagName}:*`]: index } });
    }
    ```
 
 3. **Memoized Filter Results**
+
    ```typescript
    const filterCache = new Map<string, NostrEvent[]>();
-   
+
    function getByFiltersCached(filters: Filter | Filter[]): NostrEvent[] {
      const key = JSON.stringify(filters);
      if (filterCache.has(key)) {
        return filterCache.get(key)!;
      }
-     
+
      const results = getByFilters(filters);
      filterCache.set(key, results);
      return results;
@@ -422,27 +444,29 @@ export function getEventStore(): EventStore {
 
 ## Known Limitations & Workarounds
 
-| Limitation | Impact | Severity | Workaround |
-|------------|--------|----------|------------|
-| No SQL indexing | O(n) filter queries | Medium | Pre-build tag indexes for common queries |
-| LocalStorage size (~10MB) | Max ~5000-10000 events | Low | Implement event pruning/archival |
-| No transactions | Potential race conditions | Low | Zustand updates are atomic per operation |
-| O(n) filter matching | Scales linearly with events | Low | Acceptable for <5000 events (~5-10ms) |
-| No real-time cross-tab | State not synced across tabs | Low | Use storage event listeners |
-| No FTS | Can't search event content | N/A | Skipped per requirements |
+| Limitation                | Impact                       | Severity | Workaround                               |
+| ------------------------- | ---------------------------- | -------- | ---------------------------------------- |
+| No SQL indexing           | O(n) filter queries          | Medium   | Pre-build tag indexes for common queries |
+| LocalStorage size (~10MB) | Max ~5000-10000 events       | Low      | Implement event pruning/archival         |
+| No transactions           | Potential race conditions    | Low      | Zustand updates are atomic per operation |
+| O(n) filter matching      | Scales linearly with events  | Low      | Acceptable for <5000 events (~5-10ms)    |
+| No real-time cross-tab    | State not synced across tabs | Low      | Use storage event listeners              |
+| No FTS                    | Can't search event content   | N/A      | Skipped per requirements                 |
 
 ## Usage Examples
 
 ### Basic Usage
 
 ```typescript
-import { useEventStore } from '@/lib/eventDatabase';
+import { useEventStore } from "@/lib/eventDatabase";
 
 // In a component or hook
 const { add, getEvent, getByFilters } = useEventStore();
 
 // Add an event
-const event: NostrEvent = { /* ... */ };
+const event: NostrEvent = {
+  /* ... */
+};
 add(event);
 
 // Get an event by ID
@@ -450,7 +474,7 @@ const retrieved = getEvent(event.id);
 
 // Query events
 const chatEvents = getByFilters({
-  kinds: [1080],  // PNS events
+  kinds: [1080], // PNS events
   authors: [pubkey],
 });
 ```
@@ -458,7 +482,7 @@ const chatEvents = getByFilters({
 ### With EventStore
 
 ```typescript
-import { getEventStore } from '@/lib/eventDatabase';
+import { getEventStore } from "@/lib/eventDatabase";
 
 // Get the singleton EventStore instance
 const eventStore = getEventStore();
@@ -467,8 +491,8 @@ const eventStore = getEventStore();
 eventStore.add(event);
 
 // Subscribe to events
-eventStore.event(eventId).subscribe(event => {
-  console.log('Event updated:', event);
+eventStore.event(eventId).subscribe((event) => {
+  console.log("Event updated:", event);
 });
 ```
 
@@ -490,9 +514,9 @@ const events = useEventStore.getState().getByFilters([
 
 // Get replaceable event
 const profile = useEventStore.getState().getReplaceable(
-  0,      // kind: metadata
+  0, // kind: metadata
   pubkey, // author
-  ''      // no identifier for kind 0
+  "" // no identifier for kind 0
 );
 ```
 

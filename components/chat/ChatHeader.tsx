@@ -64,8 +64,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         isMobile || !isAuthenticated
           ? "left-0 right-0"
           : isSidebarCollapsed
-          ? "left-0 right-0"
-          : "left-72 right-0"
+            ? "left-0 right-0"
+            : "left-72 right-0"
       }`}
     >
       <div
@@ -118,8 +118,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             isMobile
               ? "pl-20"
               : isAuthenticated && isSidebarCollapsed
-              ? "pl-20"
-              : ""
+                ? "pl-20"
+                : ""
           }`}
         >
           <ModelSelector

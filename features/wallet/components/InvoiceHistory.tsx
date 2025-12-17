@@ -160,8 +160,8 @@ const InvoiceHistory: React.FC<InvoiceHistoryProps> = ({ mintUrl }) => {
                       getStatusText(invoice) === "Paid"
                         ? "bg-green-500/20 text-green-600 dark:text-green-400"
                         : getStatusText(invoice) === "Expired"
-                        ? "bg-red-500/20 text-red-600 dark:text-red-400"
-                        : "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+                          ? "bg-red-500/20 text-red-600 dark:text-red-400"
+                          : "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
                     }`}
                   >
                     {getStatusText(invoice)}

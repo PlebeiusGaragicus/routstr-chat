@@ -1,6 +1,6 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { NostrEvent } from 'nostr-tools'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { NostrEvent } from "nostr-tools";
 
 export interface NutzapInformationalEvent {
   event: NostrEvent;
@@ -32,11 +32,11 @@ export const useNutzapStore = create<NutzapStore>()(
       nutzapInfo: {},
 
       setNutzapInfo(pubkey, info) {
-        set(state => ({
+        set((state) => ({
           nutzapInfo: {
             ...state.nutzapInfo,
-            [pubkey]: info
-          }
+            [pubkey]: info,
+          },
         }));
       },
 
@@ -45,13 +45,13 @@ export const useNutzapStore = create<NutzapStore>()(
       },
 
       deleteNutzapInfo(pubkey) {
-        set(state => {
+        set((state) => {
           const nutzapInfo = { ...state.nutzapInfo };
           delete nutzapInfo[pubkey];
           return { nutzapInfo };
         });
-      }
+      },
     }),
-    { name: 'nutzap' },
-  ),
-) 
+    { name: "nutzap" }
+  )
+);

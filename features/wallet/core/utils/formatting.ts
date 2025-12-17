@@ -6,7 +6,7 @@
  * Add thousands separator to a number
  */
 export function addThousandsSeparator(num: number): string {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /**
@@ -27,8 +27,8 @@ export function formatBalance(balance: number, unit: string): string {
  */
 export function formatAmountWithPlural(amount: number, unit: string): string {
   const formatted = formatBalance(amount, unit);
-  if (formatted.endsWith(' sat')) return formatted.replace(/ sat$/, ' sats');
-  if (formatted.endsWith(' msat')) return formatted.replace(/ msat$/, ' msats');
+  if (formatted.endsWith(" sat")) return formatted.replace(/ sat$/, " sats");
+  if (formatted.endsWith(" msat")) return formatted.replace(/ msat$/, " msats");
   return formatted;
 }
 
@@ -38,7 +38,7 @@ export function formatAmountWithPlural(amount: number, unit: string): string {
 export function formatSatsVerbose(amount: number): string {
   try {
     const whole = Math.round(amount);
-    return `${new Intl.NumberFormat('en-US').format(whole)} sats`;
+    return `${new Intl.NumberFormat("en-US").format(whole)} sats`;
   } catch {
     return `${amount} sats`;
   }
@@ -47,7 +47,11 @@ export function formatSatsVerbose(amount: number): string {
 /**
  * Truncate a mint URL to a short, readable domain or substring
  */
-export function truncateMintUrl(url: string, maxDomainLen = 20, shortLen = 15): string {
+export function truncateMintUrl(
+  url: string,
+  maxDomainLen = 20,
+  shortLen = 15
+): string {
   try {
     const urlObj = new URL(url);
     const domain = urlObj.hostname;
@@ -62,6 +66,5 @@ export function truncateMintUrl(url: string, maxDomainLen = 20, shortLen = 15): 
  * Normalize mint URL (remove trailing slashes)
  */
 export function normalizeMintUrl(url: string): string {
-  return url.replace(/\/+$/, '');
+  return url.replace(/\/+$/, "");
 }
-

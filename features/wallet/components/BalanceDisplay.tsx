@@ -1059,8 +1059,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       (usingNip60
         ? utilGetCurrentMintBalance(cashuStore.activeMintUrl, mintBalances)
         : currentMintUnit === "msat"
-        ? balance * 1000
-        : balance);
+          ? balance * 1000
+          : balance);
   const isValidReceiveAmount = mintAmount && parseInt(mintAmount) > 0;
 
   const getTabTitle = () => {
@@ -1512,8 +1512,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                               mintBalances
                             )
                           : currentMintUnit === "msat"
-                          ? balance * 1000
-                          : balance) && (
+                            ? balance * 1000
+                            : balance) && (
                         <p className="text-red-600 dark:text-red-400 text-xs mt-1">
                           Amount exceeds available balance
                         </p>
@@ -1533,8 +1533,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                                 mintBalances
                               )
                             : currentMintUnit === "msat"
-                            ? balance * 1000
-                            : balance)
+                              ? balance * 1000
+                              : balance)
                         }
                         className="py-1.5 px-2 bg-muted/50 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed border border-border rounded-md text-muted-foreground text-xs transition-colors cursor-pointer"
                       >
@@ -1550,8 +1550,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                                 mintBalances
                               )
                             : currentMintUnit === "msat"
-                            ? balance * 1000
-                            : balance
+                              ? balance * 1000
+                              : balance
                           ).toString()
                         )
                       }
@@ -1777,9 +1777,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       <button
                         onClick={async () => {
                           try {
-                            const mod = await import(
-                              "@getalby/bitcoin-connect-react"
-                            );
+                            const mod =
+                              await import("@getalby/bitcoin-connect-react");
                             mod.launchModal();
                           } catch {}
                         }}
@@ -1997,9 +1996,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   <button
                     onClick={async () => {
                       try {
-                        const mod = await import(
-                          "@getalby/bitcoin-connect-react"
-                        );
+                        const mod =
+                          await import("@getalby/bitcoin-connect-react");
                         mod.launchModal();
                       } catch {}
                     }}
@@ -2106,8 +2104,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             : mintInvoice
                           ).slice(-40)}`
                         : usingNip60
-                        ? nip60Invoice
-                        : mintInvoice}
+                          ? nip60Invoice
+                          : mintInvoice}
                     </div>
                     <button
                       onClick={() =>

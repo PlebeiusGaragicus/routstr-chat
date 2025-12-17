@@ -451,8 +451,8 @@ export default function ChatInput({
             isMobile || !isAuthenticated
               ? "inset-x-0"
               : isSidebarCollapsed
-              ? "inset-x-0"
-              : "left-72 right-0"
+                ? "inset-x-0"
+                : "left-72 right-0"
           }`}
           style={{
             top: "50%",
@@ -477,8 +477,8 @@ export default function ChatInput({
                 !isAuthenticated
                   ? "inset-x-0"
                   : isSidebarCollapsed
-                  ? "inset-x-0"
-                  : "left-72 right-0"
+                    ? "inset-x-0"
+                    : "left-72 right-0"
               }`
             : `${
                 isMobile
@@ -487,8 +487,8 @@ export default function ChatInput({
                     (!isAuthenticated
                       ? "left-0 right-0 pb-4 pt-0"
                       : isSidebarCollapsed
-                      ? "left-0 right-0 pb-4 pt-0"
-                      : "left-72 right-0 pb-4 pt-0")
+                        ? "left-0 right-0 pb-4 pt-0"
+                        : "left-72 right-0 pb-4 pt-0")
               }`
         }`}
         style={{
@@ -682,8 +682,8 @@ export default function ChatInput({
             !isAuthenticated
               ? "left-0 right-0"
               : isSidebarCollapsed
-              ? "left-0 right-0"
-              : "left-72 right-0"
+                ? "left-0 right-0"
+                : "left-72 right-0"
           } ${isMobile ? "h-3" : "h-4"} ${unifiedBgClass}`}
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         />

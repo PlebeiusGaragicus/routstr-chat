@@ -396,7 +396,7 @@ export const modelSelectionStrategy = async (
       const list =
         allByProvider?.[normalized] || allByProvider?.[lastUsedModelId] || [];
       modelToSelect = Array.isArray(list)
-        ? list.find((m: Model) => m.id === id) ?? null
+        ? (list.find((m: Model) => m.id === id) ?? null)
         : null;
       if (!modelToSelect) {
         const res = await fetch(`${normalized}v1/models`);

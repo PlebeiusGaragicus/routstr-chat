@@ -1,9 +1,9 @@
-import React from 'react';
-import SixtyWallet from './SixtyWallet';
-import WalletTab from './WalletTab';
+import React from "react";
+import SixtyWallet from "./SixtyWallet";
+import WalletTab from "./WalletTab";
 
-import { TransactionHistory } from '@/types/chat';
-import { useCashuStore } from '../state/cashuStore';
+import { TransactionHistory } from "@/types/chat";
+import { useCashuStore } from "../state/cashuStore";
 
 interface UnifiedWalletProps {
   // WalletTab props
@@ -12,8 +12,11 @@ interface UnifiedWalletProps {
   mintUrl: string;
   baseUrl: string;
   transactionHistory: TransactionHistory[];
-  setTransactionHistory: (transactionHistory: TransactionHistory[] | ((prevTransactionHistory: TransactionHistory[]) => TransactionHistory[])) => void;
-  
+  setTransactionHistory: (
+    transactionHistory:
+      | TransactionHistory[]
+      | ((prevTransactionHistory: TransactionHistory[]) => TransactionHistory[])
+  ) => void;
 }
 
 const UnifiedWallet: React.FC<UnifiedWalletProps> = ({
@@ -52,10 +55,10 @@ const UnifiedWallet: React.FC<UnifiedWalletProps> = ({
       </div> */}
 
       {usingNip60 ? (
-        <SixtyWallet 
-          mintUrl={mintUrl} 
-          usingNip60={usingNip60} 
-          setUsingNip60={setUsingNip60} 
+        <SixtyWallet
+          mintUrl={mintUrl}
+          usingNip60={usingNip60}
+          setUsingNip60={setUsingNip60}
         />
       ) : (
         <WalletTab

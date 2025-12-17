@@ -22,29 +22,28 @@ export interface Transaction {
 }
 
 export enum TransactionType {
-  MINT = 'mint',
-  MELT = 'melt',
-  SEND = 'send',
-  RECEIVE = 'receive',
-  IMPORT = 'import',
-  SPENT = 'spent',
+  MINT = "mint",
+  MELT = "melt",
+  SEND = "send",
+  RECEIVE = "receive",
+  IMPORT = "import",
+  SPENT = "spent",
 }
 
 export enum TransactionStatus {
-  SUCCESS = 'success',
-  PENDING = 'pending',
-  FAILED = 'failed',
+  SUCCESS = "success",
+  PENDING = "pending",
+  FAILED = "failed",
 }
 
 /**
  * Spending history entry (NIP-60)
  */
 export interface SpendingHistoryEntry {
-  direction: 'in' | 'out';
+  direction: "in" | "out";
   amount: string;
   createdTokens?: string[];
   destroyedTokens?: string[];
   redeemedTokens?: string[];
   timestamp?: number;
 }
-

@@ -7,6 +7,7 @@
 The wallet feature provides a complete Cashu ecash wallet implementation with Lightning Network support and optional Nostr NIP-60 storage.
 
 **Key Features:**
+
 - ✅ Send and receive Cashu tokens
 - ✅ Lightning Network integration (mint/melt)
 - ✅ Multi-mint support
@@ -56,7 +57,7 @@ function MyWalletComponent() {
 ### Using Services Directly (No React)
 
 ```typescript
-import { MintService, TokenService, LightningService } from '@/features/wallet';
+import { MintService, TokenService, LightningService } from "@/features/wallet";
 
 // Create service instances
 const mintService = new MintService();
@@ -64,31 +65,44 @@ const tokenService = new TokenService();
 const lightningService = new LightningService();
 
 // Activate a mint
-const { mintInfo, keysets } = await mintService.activateMint('https://mint.example.com');
+const { mintInfo, keysets } = await mintService.activateMint(
+  "https://mint.example.com"
+);
 
 // Create a Lightning invoice
-const quote = await lightningService.createMintQuote('https://mint.example.com', 1000);
-console.log('Pay this invoice:', quote.paymentRequest);
+const quote = await lightningService.createMintQuote(
+  "https://mint.example.com",
+  1000
+);
+console.log("Pay this invoice:", quote.paymentRequest);
 
 // Decode a token
-const token = 'cashuA...';
+const token = "cashuA...";
 const decoded = tokenService.decodeToken(token);
-console.log('Token amount:', tokenService.getTokenAmount(token));
+console.log("Token amount:", tokenService.getTokenAmount(token));
 ```
 
 ### Using Utilities
 
 ```typescript
-import { formatBalance, calculateProofsBalance, canMakeExactChange } from '@/features/wallet';
+import {
+  formatBalance,
+  calculateProofsBalance,
+  canMakeExactChange,
+} from "@/features/wallet";
 
 // Format balance
-const formatted = formatBalance(100000, 'sat'); // "100k sat"
+const formatted = formatBalance(100000, "sat"); // "100k sat"
 
 // Calculate balance from proofs
 const balance = calculateProofsBalance(proofs);
 
 // Check if exact change is possible
-const { canMake, selectedProofs } = canMakeExactChange(1000, denomCounts, proofs);
+const { canMake, selectedProofs } = canMakeExactChange(
+  1000,
+  denomCounts,
+  proofs
+);
 ```
 
 ## Core Services
@@ -121,10 +135,10 @@ Handles token encoding/decoding and parsing.
 const tokenService = new TokenService();
 
 // Decode a token
-const decoded = tokenService.decodeToken('cashuA...');
+const decoded = tokenService.decodeToken("cashuA...");
 
 // Encode proofs into a token
-const token = tokenService.encodeToken(mintUrl, proofs, 'sat');
+const token = tokenService.encodeToken(mintUrl, proofs, "sat");
 
 // Get token amount
 const amount = tokenService.getTokenAmount(token);
@@ -162,7 +176,7 @@ const amount = lightningService.parseInvoiceAmount(invoice);
 The wallet uses Zustand for state management:
 
 ```typescript
-import { useCashuStore, useNutzapStore } from '@/features/wallet';
+import { useCashuStore, useNutzapStore } from "@/features/wallet";
 
 // Access store
 const cashuStore = useCashuStore();
@@ -170,7 +184,7 @@ const mints = cashuStore.mints;
 const proofs = cashuStore.proofs;
 
 // Add a mint
-cashuStore.addMint('https://mint.example.com');
+cashuStore.addMint("https://mint.example.com");
 
 // Add proofs
 cashuStore.addProofs(proofs, eventId);
@@ -200,6 +214,7 @@ const mintProofs = await cashuStore.getMintProofs(mintUrl);
 ## Domain Models
 
 ### Proof
+
 ```typescript
 interface Proof {
   id: string;
@@ -210,6 +225,7 @@ interface Proof {
 ```
 
 ### CashuToken
+
 ```typescript
 interface CashuToken {
   mint: string;
@@ -220,6 +236,7 @@ interface CashuToken {
 ```
 
 ### Wallet
+
 ```typescript
 interface Wallet {
   privkey: string;
@@ -228,6 +245,7 @@ interface Wallet {
 ```
 
 ### Transaction
+
 ```typescript
 interface Transaction {
   type: TransactionType;
@@ -286,21 +304,21 @@ import { MintService, TokenService } from './wallet/core/services';
 
 ```typescript
 // Test core services (no React needed)
-import { TokenService } from '@/features/wallet';
+import { TokenService } from "@/features/wallet";
 
-describe('TokenService', () => {
-  it('should decode token correctly', () => {
+describe("TokenService", () => {
+  it("should decode token correctly", () => {
     const service = new TokenService();
     const decoded = service.decodeToken(mockToken);
-    expect(decoded.mint).toBe('https://mint.example.com');
+    expect(decoded.mint).toBe("https://mint.example.com");
   });
 });
 
 // Test React hooks
-import { renderHook } from '@testing-library/react';
-import { useCashuWallet } from '@/features/wallet';
+import { renderHook } from "@testing-library/react";
+import { useCashuWallet } from "@/features/wallet";
 
-it('should fetch wallet', async () => {
+it("should fetch wallet", async () => {
   const { result } = renderHook(() => useCashuWallet());
   await waitFor(() => expect(result.current.isSuccess).toBe(true));
 });
@@ -309,23 +327,27 @@ it('should fetch wallet', async () => {
 ## Configuration
 
 Default mints:
+
 ```typescript
-import { defaultMints } from '@/features/wallet';
+import { defaultMints } from "@/features/wallet";
 // ['https://mint.minibits.cash/Bitcoin']
 ```
 
 ## Dependencies
 
 **Required:**
+
 - `@cashu/cashu-ts` - Cashu protocol implementation
 - `@cashu/crypto` - Cryptographic primitives
 - `zustand` - State management
 
 **Optional (for React):**
+
 - `react`
 - `@tanstack/react-query`
 
 **Optional (for Nostr):**
+
 - `nostr-tools`
 - `@nostrify/nostrify`
 
@@ -349,4 +371,3 @@ When contributing to the wallet feature:
 ## License
 
 Same as the parent project.
-

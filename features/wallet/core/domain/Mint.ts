@@ -1,4 +1,10 @@
-import { GetInfoResponse, MintKeys, MintQuoteState as CashuMintQuoteState, MeltQuoteState as CashuMeltQuoteState, Keyset } from '@cashu/cashu-ts';
+import {
+  GetInfoResponse,
+  MintKeys,
+  MintQuoteState as CashuMintQuoteState,
+  MeltQuoteState as CashuMeltQuoteState,
+  Keyset,
+} from "@cashu/cashu-ts";
 
 /**
  * Mint Domain Model
@@ -53,5 +59,7 @@ export interface MeltQuote {
 }
 
 // Re-export the enums from cashu-ts for convenience
-export { CashuMintQuoteState as MintQuoteState, CashuMeltQuoteState as MeltQuoteState };
-
+export {
+  CashuMintQuoteState as MintQuoteState,
+  CashuMeltQuoteState as MeltQuoteState,
+};

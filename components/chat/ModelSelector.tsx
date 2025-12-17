@@ -630,8 +630,8 @@ export default function ModelSelector({
     const providerMatches = isFixedProvider
       ? Boolean(
           currentSelectedBaseUrl &&
-            itemBaseForSelection &&
-            currentSelectedBaseUrl === itemBaseForSelection
+          itemBaseForSelection &&
+          currentSelectedBaseUrl === itemBaseForSelection
         )
       : true;
     const isSelectedItem = Boolean(idMatches && providerMatches);
@@ -642,8 +642,8 @@ export default function ModelSelector({
           !isAvailable
             ? "opacity-40 cursor-not-allowed"
             : isSelectedItem
-            ? "bg-muted cursor-pointer"
-            : "hover:bg-muted/50 cursor-pointer"
+              ? "bg-muted cursor-pointer"
+              : "hover:bg-muted/50 cursor-pointer"
         }`}
         onMouseEnter={() => setHoveredModelId(model.id)}
       >

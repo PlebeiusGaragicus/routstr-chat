@@ -1,11 +1,11 @@
-import { useNostr } from '@/hooks/useNostr';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CASHU_EVENT_KINDS } from '@/lib/cashu';
-import { Wallet as CashuWalletStruct } from '../core/domain/Wallet';
-import { NostrEvent } from 'nostr-tools';
-import { useNutzapStore, NutzapInformationalEvent } from '../state/nutzapStore';
-import { useCashuStore } from '../state/cashuStore';
+import { useNostr } from "@/hooks/useNostr";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CASHU_EVENT_KINDS } from "@/lib/cashu";
+import { Wallet as CashuWalletStruct } from "../core/domain/Wallet";
+import { NostrEvent } from "nostr-tools";
+import { useNutzapStore, NutzapInformationalEvent } from "../state/nutzapStore";
+import { useCashuStore } from "../state/cashuStore";
 
 /**
  * Hook to fetch a nutzap informational event for a specific pubkey
@@ -15,9 +15,9 @@ export function useNutzapInfo(pubkey?: string) {
   const nutzapStore = useNutzapStore();
 
   return useQuery({
-    queryKey: ['nutzap', 'info', pubkey],
+    queryKey: ["nutzap", "info", pubkey],
     queryFn: async ({ signal }) => {
-      if (!pubkey) throw new Error('Pubkey is required');
+      if (!pubkey) throw new Error("Pubkey is required");
 
       // First check if we have it in the store
       const storedInfo = nutzapStore.getNutzapInfo(pubkey);
@@ -26,9 +26,10 @@ export function useNutzapInfo(pubkey?: string) {
       }
 
       // Otherwise fetch it from the network
-      const events = await nostr.query([
-        { kinds: [CASHU_EVENT_KINDS.ZAPINFO], authors: [pubkey], limit: 1 }
-      ], { signal });
+      const events = await nostr.query(
+        [{ kinds: [CASHU_EVENT_KINDS.ZAPINFO], authors: [pubkey], limit: 1 }],
+        { signal }
+      );
 
       if (events.length === 0) {
         return null;
@@ -38,20 +39,22 @@ export function useNutzapInfo(pubkey?: string) {
 
       // Parse the nutzap informational event
       const relays = event.tags
-        .filter(tag => tag[0] === 'relay')
-        .map(tag => tag[1]);
+        .filter((tag) => tag[0] === "relay")
+        .map((tag) => tag[1]);
 
       const mints = event.tags
-        .filter(tag => tag[0] === 'mint')
-        .map(tag => {
+        .filter((tag) => tag[0] === "mint")
+        .map((tag) => {
           const url = tag[1];
           const units = tag.slice(2); // Get additional unit markers if any
           return { url, units: units.length > 0 ? units : undefined };
         });
 
-      const p2pkPubkeyTag = event.tags.find(tag => tag[0] === 'pubkey');
+      const p2pkPubkeyTag = event.tags.find((tag) => tag[0] === "pubkey");
       if (!p2pkPubkeyTag) {
-        throw new Error('No pubkey tag found in the nutzap informational event');
+        throw new Error(
+          "No pubkey tag found in the nutzap informational event"
+        );
       }
 
       const p2pkPubkey = p2pkPubkeyTag[1];
@@ -60,7 +63,7 @@ export function useNutzapInfo(pubkey?: string) {
         event,
         relays,
         mints,
-        p2pkPubkey
+        p2pkPubkey,
       };
 
       // Store the info for future use
@@ -68,7 +71,7 @@ export function useNutzapInfo(pubkey?: string) {
 
       return nutzapInfo;
     },
-    enabled: !!pubkey
+    enabled: !!pubkey,
   });
 }
 
@@ -87,43 +90,45 @@ export function useNutzaps() {
     mutationFn: async ({
       relays,
       mintOverrides,
-      p2pkPubkey
+      p2pkPubkey,
     }: {
       relays?: string[];
-      mintOverrides?: Array<{ url: string, units?: string[] }>;
+      mintOverrides?: Array<{ url: string; units?: string[] }>;
       p2pkPubkey: string;
     }) => {
-      if (!user) throw new Error('User not logged in');
+      if (!user) throw new Error("User not logged in");
 
       // Get mints from store or override
-      const mintsToUse = mintOverrides || cashuStore.mints.map(mint => ({
-        url: mint.url,
-        units: ['sat'] // Default unit
-      }));
+      const mintsToUse =
+        mintOverrides ||
+        cashuStore.mints.map((mint) => ({
+          url: mint.url,
+          units: ["sat"], // Default unit
+        }));
 
       // Create tags
       const tags = [
         // Add relay tags
-        ...(relays || []).map(relay => ['relay', relay]),
+        ...(relays || []).map((relay) => ["relay", relay]),
 
         // Add mint tags
-        ...mintsToUse.map(mint => {
+        ...mintsToUse.map((mint) => {
           if (mint.units && mint.units.length > 0) {
-            return ['mint', mint.url, ...mint.units];
+            return ["mint", mint.url, ...mint.units];
           }
-          return ['mint', mint.url];
+          return ["mint", mint.url];
         }),
 
         // Add pubkey tag for P2PK locking
-        ['pubkey', p2pkPubkey]
+        ["pubkey", p2pkPubkey],
       ];
 
       // Create nutzap informational event
       const event = await user.signer.signEvent({
         kind: CASHU_EVENT_KINDS.ZAPINFO,
-        content: '',
+        content: "",
         tags,
-        created_at: Math.floor(Date.now() / 1000)
+        created_at: Math.floor(Date.now() / 1000),
       });
 
       // Publish event
@@ -134,25 +139,27 @@ export function useNutzaps() {
         event,
         relays: relays || [],
         mints: mintsToUse,
-        p2pkPubkey
+        p2pkPubkey,
       };
 
       // Store in nutzapStore
       nutzapStore.setNutzapInfo(user.pubkey, nutzapInfo);
 
-      console.log('Nutzap info created', nutzapInfo);
+      console.log("Nutzap info created", nutzapInfo);
 
       return event;
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: ['nutzap', 'info', user.pubkey] });
+        queryClient.invalidateQueries({
+          queryKey: ["nutzap", "info", user.pubkey],
+        });
       }
-    }
+    },
   });
 
   return {
     createNutzapInfo: createNutzapInfoMutation.mutate,
     isCreatingNutzapInfo: createNutzapInfoMutation.isPending,
   };
-} 
+}

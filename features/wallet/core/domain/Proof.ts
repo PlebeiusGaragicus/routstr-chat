@@ -24,9 +24,9 @@ export interface ProofWithEventId extends Proof {
  * Proof state as returned by mint
  */
 export enum ProofState {
-  UNSPENT = 'UNSPENT',
-  SPENT = 'SPENT',
-  PENDING = 'PENDING',
+  UNSPENT = "UNSPENT",
+  SPENT = "SPENT",
+  PENDING = "PENDING",
 }
 
 /**
@@ -36,4 +36,3 @@ export interface ProofWithState extends Proof {
   state: ProofState;
   witness?: string;
 }
-

@@ -222,8 +222,8 @@ export const storeCashuToken = async (
   const preferredUnit = units.includes("msat")
     ? "msat"
     : units.includes("sat")
-    ? "sat"
-    : "not supported";
+      ? "sat"
+      : "not supported";
 
   const wallet = new Wallet(mint, { unit: preferredUnit });
   await wallet.loadMint();

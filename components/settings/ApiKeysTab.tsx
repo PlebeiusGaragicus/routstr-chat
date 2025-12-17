@@ -1116,8 +1116,8 @@ const ApiKeysTab = ({
                       {keyData.isInvalid
                         ? "Invalid"
                         : keyData.balance !== null
-                        ? `${(keyData.balance / 1000).toFixed(2)} sats`
-                        : "N/A"}
+                          ? `${(keyData.balance / 1000).toFixed(2)} sats`
+                          : "N/A"}
                     </span>
                     <button
                       onClick={(e) => {

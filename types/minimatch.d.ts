@@ -17,9 +17,19 @@ declare module "minimatch" {
     flipNegate?: boolean;
   }
 
-  export function minimatch(path: string, pattern: string, options?: IMinimatchOptions): boolean;
-  export function filter(pattern: string, options?: IMinimatchOptions): (path: string) => boolean;
-  export function makeRe(pattern: string, options?: IMinimatchOptions): RegExp | null;
+  export function minimatch(
+    path: string,
+    pattern: string,
+    options?: IMinimatchOptions
+  ): boolean;
+  export function filter(
+    pattern: string,
+    options?: IMinimatchOptions
+  ): (path: string) => boolean;
+  export function makeRe(
+    pattern: string,
+    options?: IMinimatchOptions
+  ): RegExp | null;
 
   export class Minimatch {
     constructor(pattern: string, options?: IMinimatchOptions);

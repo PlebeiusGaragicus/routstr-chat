@@ -25,6 +25,7 @@ npm run test:invoices
 ## CI/CD
 
 Tests run automatically on PRs that modify:
+
 - Lightning/Cashu code
 - Invoice hooks
 - Store files

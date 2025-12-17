@@ -1,8 +1,13 @@
-import { Keys, MeltQuoteResponse, MintQuoteResponse, type Proof } from '@cashu/cashu-ts'
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { GetInfoResponse, Keyset, MintKeys } from '@cashu/cashu-ts'
-import { CashuToken } from '../core/domain/Token';
+import {
+  Keys,
+  MeltQuoteResponse,
+  MintQuoteResponse,
+  type Proof,
+} from "@cashu/cashu-ts";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { GetInfoResponse, Keyset, MintKeys } from "@cashu/cashu-ts";
+import { CashuToken } from "../core/domain/Token";
 
 interface ProofWithEventId extends Proof {
   eventId: string;
@@ -15,7 +20,16 @@ export interface Nip60TokenEvent {
 }
 
 interface CashuStore {
-  mints: { url: string, mintInfo?: GetInfoResponse, keysets?: Keyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number}[];
+  mints: {
+    url: string;
+    mintInfo?: GetInfoResponse;
+    keysets?: Keyset[];
+    keys?: Record<string, MintKeys>[];
+    events?: Nip60TokenEvent[];
+    mintQuotes?: Record<string, MintQuoteResponse>;
+    meltQuotes?: Record<string, MeltQuoteResponse>;
+    lastUpdate?: number;
+  }[];
   proofs: ProofWithEventId[];
   privkey?: string;
   activeMintUrl?: string;
@@ -26,7 +40,20 @@ interface CashuStore {
   setUsingNip60: (usingNip60: boolean) => void;
   getUsingNip60: () => boolean;
   addMint: (url: string) => void;
-  getMint: (url: string) => { url: string, mintInfo?: GetInfoResponse, keysets?: Keyset[], keys?: Record<string, MintKeys>[], events?: Nip60TokenEvent[], mintQuotes?: Record<string, MintQuoteResponse>, meltQuotes?: Record<string, MeltQuoteResponse>, lastUpdate?: number } | undefined;
+  getMint: (
+    url: string
+  ) =>
+    | {
+        url: string;
+        mintInfo?: GetInfoResponse;
+        keysets?: Keyset[];
+        keys?: Record<string, MintKeys>[];
+        events?: Nip60TokenEvent[];
+        mintQuotes?: Record<string, MintQuoteResponse>;
+        meltQuotes?: Record<string, MeltQuoteResponse>;
+        lastUpdate?: number;
+      }
+    | undefined;
   clearMint: (url: string) => void;
   setMintInfo: (url: string, mintInfo: GetInfoResponse) => void;
   setKeysets: (url: string, keysets: Keyset[]) => void;
@@ -45,8 +72,16 @@ interface CashuStore {
   getMeltQuotes: (mintUrl: string) => Record<string, MeltQuoteResponse>;
   addMintQuote: (mintUrl: string, quote: MintQuoteResponse) => void;
   addMeltQuote: (mintUrl: string, quote: MeltQuoteResponse) => void;
-  updateMintQuote: (mintUrl: string, quoteId: string, quote: MintQuoteResponse) => void;
-  updateMeltQuote: (mintUrl: string, quoteId: string, quote: MeltQuoteResponse) => void;
+  updateMintQuote: (
+    mintUrl: string,
+    quoteId: string,
+    quote: MintQuoteResponse
+  ) => void;
+  updateMeltQuote: (
+    mintUrl: string,
+    quoteId: string,
+    quote: MeltQuoteResponse
+  ) => void;
   getMintQuote: (mintUrl: string, quoteId: string) => MintQuoteResponse;
   getMeltQuote: (mintUrl: string, quoteId: string) => MeltQuoteResponse;
   setActiveMintUrl: (url: string) => void;
@@ -82,12 +117,12 @@ export const useCashuStore = create<CashuStore>()(
       },
 
       addMint(url) {
-        const existingMints = get().mints.map((mint) => mint.url)
+        const existingMints = get().mints.map((mint) => mint.url);
         if (!existingMints.includes(url)) {
-          set({ mints: [...get().mints, { url }] })
+          set({ mints: [...get().mints, { url }] });
           // Set as active if it's the first mint
           if (get().mints.length === 0) {
-            set({ activeMintUrl: url })
+            set({ activeMintUrl: url });
           }
         }
       },
@@ -107,24 +142,40 @@ export const useCashuStore = create<CashuStore>()(
             mint.url === url
               ? { ...mint, keysets: undefined, keys: undefined }
               : mint
-          )
+          ),
         });
       },
 
       setMintInfo(url, mintInfo) {
-        set({ mints: get().mints.map((mint) => mint.url === url ? { ...mint, mintInfo } : mint) })
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === url ? { ...mint, mintInfo } : mint
+          ),
+        });
       },
 
       setKeysets(url, keysets) {
-        set({ mints: get().mints.map((mint) => mint.url === url ? { ...mint, keysets } : mint) })
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === url ? { ...mint, keysets } : mint
+          ),
+        });
       },
 
       setKeys(url, keys) {
-        set({ mints: get().mints.map((mint) => mint.url === url ? { ...mint, keys } : mint) })
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === url ? { ...mint, keys } : mint
+          ),
+        });
       },
 
       setLastUpdate(url, lastUpdate) {
-        set({ mints: get().mints.map((mint) => mint.url === url ? { ...mint, lastUpdate } : mint) })
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === url ? { ...mint, lastUpdate } : mint
+          ),
+        });
       },
 
       getLastUpdate(url: string) {
@@ -139,47 +190,57 @@ export const useCashuStore = create<CashuStore>()(
       },
 
       addProofs(proofs, eventId) {
-        const existingProofs = get().proofs.map((p) => p.secret)
+        const existingProofs = get().proofs.map((p) => p.secret);
         for (const proof of proofs) {
           if (!existingProofs.includes(proof.secret)) {
-            set({ proofs: [...get().proofs, { ...proof, eventId }] })
+            set({ proofs: [...get().proofs, { ...proof, eventId }] });
           }
         }
       },
 
       removeProofs(proofs: Proof[]) {
         set((state) => ({
-          proofs: state.proofs.filter((proof) => !proofs.some((p) => p.secret === proof.secret))
+          proofs: state.proofs.filter(
+            (proof) => !proofs.some((p) => p.secret === proof.secret)
+          ),
         }));
       },
 
       setPrivkey(privkey) {
-        set({ privkey })
+        set({ privkey });
       },
 
       async getMintProofs(mintUrl: string): Promise<Proof[]> {
         // get all active keysets for the mint
-        const keysets = get().mints.find((mint) => mint.url === mintUrl)?.keysets;
+        const keysets = get().mints.find(
+          (mint) => mint.url === mintUrl
+        )?.keysets;
         if (!keysets) {
-          throw new Error('No keysets found for mint');
+          throw new Error("No keysets found for mint");
         }
         // filter only active keysets
         // const activeKeysets = keysets.filter((keyset) => keyset.active);
         // get all proofs for the keysets from store
-        const proofs = get().proofs.filter((proof) => keysets.some((keyset) => keyset.id === proof.id));
+        const proofs = get().proofs.filter((proof) =>
+          keysets.some((keyset) => keyset.id === proof.id)
+        );
         return proofs;
       },
 
       async getAllProofs(): Promise<Proof[]> {
         const proofs = get().proofs;
         if (!proofs) {
-          throw new Error('No proofs found');
+          throw new Error("No proofs found");
         }
         return proofs;
       },
 
       setProofEventId(proof, eventId) {
-        set({ proofs: get().proofs.map((p) => p.secret === proof.secret ? { ...p, eventId } : p) });
+        set({
+          proofs: get().proofs.map((p) =>
+            p.secret === proof.secret ? { ...p, eventId } : p
+          ),
+        });
       },
 
       getProofEventId(proof) {
@@ -191,49 +252,99 @@ export const useCashuStore = create<CashuStore>()(
       },
 
       getMintQuotes(mintUrl: string) {
-        const quotes = get().mints.find((mint) => mint.url === mintUrl)?.mintQuotes;
+        const quotes = get().mints.find(
+          (mint) => mint.url === mintUrl
+        )?.mintQuotes;
         if (!quotes) {
-          throw new Error('No mint quotes found for mint');
+          throw new Error("No mint quotes found for mint");
         }
         return quotes;
       },
 
       getMeltQuotes(mintUrl: string) {
-        const quotes = get().mints.find((mint) => mint.url === mintUrl)?.meltQuotes;
+        const quotes = get().mints.find(
+          (mint) => mint.url === mintUrl
+        )?.meltQuotes;
         if (!quotes) {
-          throw new Error('No melt quotes found for mint');
+          throw new Error("No melt quotes found for mint");
         }
         return quotes;
       },
 
       addMintQuote(mintUrl: string, quote: MintQuoteResponse) {
-        set({ mints: get().mints.map((mint) => mint.url === mintUrl ? { ...mint, mintQuotes: { ...mint.mintQuotes, [quote.quote]: quote } } : mint) });
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === mintUrl
+              ? {
+                  ...mint,
+                  mintQuotes: { ...mint.mintQuotes, [quote.quote]: quote },
+                }
+              : mint
+          ),
+        });
       },
 
       addMeltQuote(mintUrl: string, quote: MeltQuoteResponse) {
-        set({ mints: get().mints.map((mint) => mint.url === mintUrl ? { ...mint, meltQuotes: { ...mint.meltQuotes, [quote.quote]: quote } } : mint) });
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === mintUrl
+              ? {
+                  ...mint,
+                  meltQuotes: { ...mint.meltQuotes, [quote.quote]: quote },
+                }
+              : mint
+          ),
+        });
       },
 
-      updateMintQuote(mintUrl: string, quoteId: string, quote: MintQuoteResponse) {
-        set({ mints: get().mints.map((mint) => mint.url === mintUrl ? { ...mint, mintQuotes: { ...mint.mintQuotes, [quoteId]: quote } } : mint) });
+      updateMintQuote(
+        mintUrl: string,
+        quoteId: string,
+        quote: MintQuoteResponse
+      ) {
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === mintUrl
+              ? {
+                  ...mint,
+                  mintQuotes: { ...mint.mintQuotes, [quoteId]: quote },
+                }
+              : mint
+          ),
+        });
       },
 
-      updateMeltQuote(mintUrl: string, quoteId: string, quote: MeltQuoteResponse) {
-        set({ mints: get().mints.map((mint) => mint.url === mintUrl ? { ...mint, meltQuotes: { ...mint.meltQuotes, [quoteId]: quote } } : mint) });
+      updateMeltQuote(
+        mintUrl: string,
+        quoteId: string,
+        quote: MeltQuoteResponse
+      ) {
+        set({
+          mints: get().mints.map((mint) =>
+            mint.url === mintUrl
+              ? {
+                  ...mint,
+                  meltQuotes: { ...mint.meltQuotes, [quoteId]: quote },
+                }
+              : mint
+          ),
+        });
       },
 
       getMintQuote(mintUrl: string, quoteId: string) {
-        const quote = get().mints.find((mint) => mint.url === mintUrl)?.mintQuotes?.[quoteId];
+        const quote = get().mints.find((mint) => mint.url === mintUrl)
+          ?.mintQuotes?.[quoteId];
         if (!quote) {
-          throw new Error('No mint quote found for mint');
+          throw new Error("No mint quote found for mint");
         }
         return quote;
       },
 
       getMeltQuote(mintUrl: string, quoteId: string) {
-        const quote = get().mints.find((mint) => mint.url === mintUrl)?.meltQuotes?.[quoteId];
+        const quote = get().mints.find((mint) => mint.url === mintUrl)
+          ?.meltQuotes?.[quoteId];
         if (!quote) {
-          throw new Error('No melt quote found for mint');
+          throw new Error("No melt quote found for mint");
         }
         return quote;
       },
@@ -263,9 +374,15 @@ export const useCashuStore = create<CashuStore>()(
       },
 
       clearStore() {
-        set({ mints: [], proofs: [], privkey: undefined, activeMintUrl: undefined, pendingOnboardingToken: undefined });
+        set({
+          mints: [],
+          proofs: [],
+          privkey: undefined,
+          activeMintUrl: undefined,
+          pendingOnboardingToken: undefined,
+        });
       },
     }),
-    { name: 'cashu' },
-  ),
-)
+    { name: "cashu" }
+  )
+);

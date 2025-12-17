@@ -1490,8 +1490,8 @@ function logApiError(
       error instanceof Error
         ? error.message
         : typeof error === "string"
-        ? error
-        : "Failed to process your request";
+          ? error
+          : "Failed to process your request";
   }
 
   onMessageAppend(createTextMessage("system", errorMessage));

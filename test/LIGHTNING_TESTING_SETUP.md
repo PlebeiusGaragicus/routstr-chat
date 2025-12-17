@@ -28,6 +28,7 @@ Provides Bitcoin regtest, 3 LND nodes, 2 CLN nodes.
 ### 2. Initialize Bitcoin (first time only)
 
 After starting fresh regtest:
+
 ```bash
 # Create wallet and mine blocks for LND sync
 docker exec cashu-regtest-bitcoind-1 bitcoin-cli -regtest -rpcuser=cashu -rpcpassword=cashu createwallet "test"
@@ -61,7 +62,7 @@ In browser console at http://localhost:3000:
 ```javascript
 // Set mint URL
 localStorage.clear();
-localStorage.setItem('mint_url', 'http://localhost:3338');
+localStorage.setItem("mint_url", "http://localhost:3338");
 location.reload();
 ```
 
@@ -72,6 +73,7 @@ location.reload();
 3. Close browser tab
 
 4. Pay invoice:
+
    ```bash
    ./test/pay-invoice.sh <invoice>
    ```
@@ -79,13 +81,15 @@ location.reload();
 5. Reopen app - invoice should be marked paid, balance updated
 
 Check stored invoices:
+
 ```javascript
-JSON.parse(localStorage.getItem('lightning_invoices') || '[]')
+JSON.parse(localStorage.getItem("lightning_invoices") || "[]");
 ```
 
 ## Commands
 
 ### Start
+
 ```bash
 cd ~/cashu-regtest && ./start.sh    # Start regtest
 ./test/setup-regtest-mint.sh        # Start mint
@@ -93,12 +97,14 @@ npm run dev                          # Start app
 ```
 
 ### Stop
+
 ```bash
 cd ~/cashu-regtest && ./stop.sh     # Stop regtest
 docker stop cashu-regtest-mint      # Stop mint
 ```
 
 ### Status
+
 ```bash
 docker ps | grep cashu               # View running containers
 docker logs -f cashu-regtest-mint   # View mint logs
@@ -124,14 +130,17 @@ test/
 ## Troubleshooting
 
 ### Port 8081 in use
+
 - The regtest uses port 8082 for lnd-2 instead
 
 ### Invoice not detected
+
 - Check mint is running: `curl http://localhost:3338/v1/info`
 - Verify invoice in localStorage
 - Check 5-second interval is active (test mode)
 
 ### Payment fails
+
 - Ensure lnd-1 has balance: `./test/fund-lnd.sh`
 - Check channel exists: `./test/check-channels.sh`
 

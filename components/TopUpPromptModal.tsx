@@ -770,9 +770,8 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({
                     onClick={async () => {
                       try {
                         createNsecForLogin();
-                        const mod = await import(
-                          "@getalby/bitcoin-connect-react"
-                        );
+                        const mod =
+                          await import("@getalby/bitcoin-connect-react");
                         mod.launchModal();
                       } catch {}
                     }}

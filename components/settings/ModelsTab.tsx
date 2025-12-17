@@ -368,10 +368,10 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     disabledProviders.length === 0
                       ? "Disable all providers"
                       : disabledProviders.length === allProviders.length
-                      ? "Enable all providers"
-                      : `Enable all providers (${
-                          allProviders.length - disabledProviders.length
-                        }/${allProviders.length} enabled)`
+                        ? "Enable all providers"
+                        : `Enable all providers (${
+                            allProviders.length - disabledProviders.length
+                          }/${allProviders.length} enabled)`
                   }
                 />
               )}

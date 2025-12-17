@@ -202,7 +202,7 @@ export function useCashuWithXYZ() {
 
     const activeUrl =
       cashuStore.getActiveMintUrl?.() ?? cashuStore.activeMintUrl;
-    const activeBalance = activeUrl ? mintBalances[activeUrl] ?? 0 : 0;
+    const activeBalance = activeUrl ? (mintBalances[activeUrl] ?? 0) : 0;
 
     // Respect user manual selection, even if empty
     if (

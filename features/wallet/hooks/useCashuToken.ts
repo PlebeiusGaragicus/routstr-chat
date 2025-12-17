@@ -162,10 +162,13 @@ export function useCashuToken() {
       let proofs = await cashuStore.getMintProofs(normalizedMintUrl);
 
       const proofsAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
-      const denominationCounts = proofs.reduce((acc, p) => {
-        acc[p.amount] = (acc[p.amount] || 0) + 1;
-        return acc;
-      }, {} as Record<number, number>);
+      const denominationCounts = proofs.reduce(
+        (acc, p) => {
+          acc[p.amount] = (acc[p.amount] || 0) + 1;
+          return acc;
+        },
+        {} as Record<number, number>
+      );
       // console.log('rdlogs: Proof denomination groups:', denominationCounts);
       amount = preferredUnit == "msat" ? amount * 1000 : amount;
       console.log("amount being sent", amount);
@@ -317,9 +320,8 @@ export function useCashuToken() {
     if (needsActivation) {
       try {
         const mintService = new MintService();
-        const { mintInfo, keysets, keys } = await mintService.activateMint(
-          normalizedMintUrl
-        );
+        const { mintInfo, keysets, keys } =
+          await mintService.activateMint(normalizedMintUrl);
         cashuStore.setMintInfo(normalizedMintUrl, mintInfo);
         cashuStore.setKeysets(normalizedMintUrl, keysets);
         cashuStore.setKeys(normalizedMintUrl, keys);
@@ -410,8 +412,8 @@ export function useCashuToken() {
       const preferredUnit = units?.includes("msat")
         ? "msat"
         : units?.includes("sat")
-        ? "sat"
-        : units?.[0];
+          ? "sat"
+          : units?.[0];
 
       console.log(activeKeysets, units, preferredUnit);
 
@@ -493,8 +495,8 @@ export function useCashuToken() {
         const preferredUnit = units?.includes("msat")
           ? "msat"
           : units?.includes("sat")
-          ? "sat"
-          : units?.[0];
+            ? "sat"
+            : units?.[0];
 
         const wallet = new Wallet(mint, {
           unit: preferredUnit,

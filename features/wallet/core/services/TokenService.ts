@@ -1,6 +1,10 @@
-import { getDecodedToken, getEncodedTokenV4, Proof as CashuProof } from '@cashu/cashu-ts';
-import { CashuToken, EncodedToken } from '../domain/Token';
-import { Proof } from '../domain/Proof';
+import {
+  getDecodedToken,
+  getEncodedTokenV4,
+  Proof as CashuProof,
+} from "@cashu/cashu-ts";
+import { CashuToken, EncodedToken } from "../domain/Token";
+import { Proof } from "../domain/Proof";
 
 /**
  * TokenService
@@ -16,10 +20,10 @@ export class TokenService {
       return {
         mint: decoded.mint,
         proofs: decoded.proofs as Proof[],
-        unit: decoded.unit
+        unit: decoded.unit,
       };
     } catch (error) {
-      console.error('Failed to decode token:', error);
+      console.error("Failed to decode token:", error);
       return null;
     }
   }
@@ -27,16 +31,20 @@ export class TokenService {
   /**
    * Encode proofs into a Cashu token string (V4 format)
    */
-  encodeToken(mintUrl: string, proofs: Proof[], unit: string = 'sat'): EncodedToken {
+  encodeToken(
+    mintUrl: string,
+    proofs: Proof[],
+    unit: string = "sat"
+  ): EncodedToken {
     return getEncodedTokenV4({
       mint: mintUrl,
-      proofs: proofs.map(p => ({
-        id: p.id || '',
+      proofs: proofs.map((p) => ({
+        id: p.id || "",
         amount: p.amount,
-        secret: p.secret || '',
-        C: p.C || '',
+        secret: p.secret || "",
+        C: p.C || "",
       })),
-      unit
+      unit,
     });
   }
 
@@ -73,9 +81,8 @@ export class TokenService {
    */
   createLegacyToken(mintUrl: string, proofs: Proof[]): EncodedToken {
     const tokenObj = {
-      token: [{ mint: mintUrl, proofs }]
+      token: [{ mint: mintUrl, proofs }],
     };
     return `cashuA${btoa(JSON.stringify(tokenObj))}`;
   }
 }
-
