@@ -410,7 +410,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     autoDeleteAttemptedRef.current = true;
 
     // const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const sevenDaysMs = 42 * 1000;
+    const sevenDaysMs = 2 * 60 * 1000;
     const now = Date.now();
     const idsToDelete: string[] = [];
 

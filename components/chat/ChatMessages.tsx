@@ -98,7 +98,11 @@ export default function ChatMessages({
     content: string | MessageContent[]
   ): boolean => {
     const textContent = getTextFromContent(content);
-    return textContent.trim().startsWith("ATTENTION");
+    return (
+      textContent.trim().startsWith("ATTENTION") ||
+      textContent.trim().startsWith("Uncaught Error") ||
+      textContent.trim().startsWith("Unknown Error")
+    );
   };
 
   // Scroll user message to top when a new user message is added
@@ -743,150 +747,117 @@ export default function ChatMessages({
                               Hide Errors
                             </button>
                           )}
-
-                          {/* Show retry button if last message contains "Pls retry" */}
-                          {showRetry && (
-                            <button
-                              onClick={() =>
-                                retryMessage(
-                                  messageIndex + systemGroup.count - 1
-                                )
-                              }
-                              className="flex items-center gap-2 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
-                            >
-                              <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="rotate-45"
-                              >
-                                <path
-                                  d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                                <path
-                                  d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              Retry
-                            </button>
-                          )}
                         </div>
                       )}
 
                       {/* Check if this system message should always be shown or if it's in an expanded group */}
-                      {
-                        shouldAlwaysShowSystemMessage(message.content) ||
-                        isInExpandedGroup(message._eventId)
-                          ? (() => {
-                              // Determine which messages to render
-                              const messagesToRender: Array<{
-                                msg: Message;
-                                idx: number;
-                              }> =
-                                systemGroup &&
-                                systemGroup.count > 1 &&
-                                expandedSystemGroups.has(
-                                  systemGroup.firstMessage._eventId!
-                                )
-                                  ? Array.from(
-                                      { length: systemGroup.count },
-                                      (_, i) => ({
-                                        msg: messages[messageIndex + i],
-                                        idx: messageIndex + i,
-                                      })
-                                    ).filter((item) => item.msg)
-                                  : [{ msg: message, idx: index }];
+                      {(() => {
+                        // Determine which messages to render
+                        const messagesToRender: Array<{
+                          msg: Message;
+                          idx: number;
+                        }> =
+                          systemGroup &&
+                          systemGroup.count > 1 &&
+                          expandedSystemGroups.has(
+                            systemGroup.firstMessage._eventId!
+                          )
+                            ? Array.from(
+                                { length: systemGroup.count },
+                                (_, i) => ({
+                                  msg: messages[messageIndex + i],
+                                  idx: messageIndex + i,
+                                })
+                              ).filter((item) => item.msg)
+                            : [{ msg: message, idx: index }];
 
-                              return messagesToRender.map(
-                                ({ msg, idx }, renderIdx) => (
-                                  <div
-                                    key={`system-${messageIndex}-${renderIdx}`}
-                                    className="flex justify-center mb-6 group"
-                                  >
-                                    <div className="flex flex-col">
-                                      <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
-                                        <div className="flex items-start gap-2 min-w-0">
-                                          <svg
-                                            width="16"
-                                            height="16"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="text-red-300 mt-0.5 flex-shrink-0"
+                        // Check if we should render - either if any message should always be shown or if in expanded group
+                        const shouldRender =
+                          messagesToRender.some(({ msg }) =>
+                            shouldAlwaysShowSystemMessage(msg.content)
+                          ) || isInExpandedGroup(message._eventId);
+
+                        if (!shouldRender) return null;
+
+                        return messagesToRender.map(
+                          ({ msg, idx }, renderIdx) => (
+                            <div
+                              key={`system-${messageIndex}-${renderIdx}`}
+                              className="flex justify-center mb-6 group"
+                            >
+                              <div className="flex flex-col">
+                                <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
+                                  <div className="flex items-start gap-2 min-w-0">
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="text-red-300 mt-0.5 flex-shrink-0"
+                                    >
+                                      <path
+                                        d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                    <div className="text-sm font-medium min-w-0">
+                                      {getTextFromContent(msg.content)
+                                        .split("\n")
+                                        .map((line, lineIdx) => (
+                                          <div
+                                            key={lineIdx}
+                                            className="break-words break-all"
                                           >
-                                            <path
-                                              d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
-                                              stroke="currentColor"
-                                              strokeWidth="2"
-                                              strokeLinecap="round"
-                                            />
-                                          </svg>
-                                          <div className="text-sm font-medium min-w-0">
-                                            {getTextFromContent(msg.content)
-                                              .split("\n")
-                                              .map((line, lineIdx) => (
-                                                <div
-                                                  key={lineIdx}
-                                                  className="break-words break-all"
-                                                >
-                                                  {line}
-                                                </div>
-                                              ))}
+                                            {line}
                                           </div>
-                                        </div>
-                                      </div>
-                                      <div
-                                        className={`mt-1.5 ${
-                                          isMobile
-                                            ? "opacity-100"
-                                            : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                                        } transition-opacity duration-200`}
-                                      >
-                                        <button
-                                          onClick={() => retryMessage(idx)}
-                                          className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
-                                        >
-                                          <svg
-                                            width="12"
-                                            height="12"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="rotate-45"
-                                          >
-                                            <path
-                                              d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
-                                              stroke="currentColor"
-                                              strokeWidth="2"
-                                              strokeLinecap="round"
-                                            />
-                                            <path
-                                              d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
-                                              stroke="currentColor"
-                                              strokeWidth="2"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                            />
-                                          </svg>
-                                          Retry
-                                        </button>
-                                      </div>
+                                        ))}
                                     </div>
                                   </div>
-                                )
-                              );
-                            })()
-                          : null /* Don't render if system message is hidden */
-                      }
+                                </div>
+                                <div
+                                  className={`mt-1.5 ${
+                                    isMobile
+                                      ? "opacity-100"
+                                      : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                  } transition-opacity duration-200`}
+                                >
+                                  <button
+                                    onClick={() => retryMessage(idx)}
+                                    className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                                  >
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="rotate-45"
+                                    >
+                                      <path
+                                        d="M21.168 8A10.003 10.003 0 0 0 12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                      />
+                                      <path
+                                        d="M17 8h4.4a.6.6 0 0 0 .6-.6V3"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                    Retry
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        );
+                      })()}
                     </>
                   ) : (
                     <>

@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useChat } from '@/context/ChatProvider';
-import { useAuth } from '@/context/AuthProvider';
-import ChatMessages from './ChatMessages';
-import ChatInput from './ChatInput';
-import { getTextFromContent } from '@/utils/messageUtils';
+import React from "react";
+import { useChat } from "@/context/ChatProvider";
+import { useAuth } from "@/context/AuthProvider";
+import ChatMessages from "./ChatMessages";
+import ChatInput from "./ChatInput";
+import { getTextFromContent } from "@/utils/messageUtils";
 
 /**
  * Central chat interface component
@@ -30,7 +30,7 @@ const MainChatArea: React.FC = () => {
     startEditingMessage,
     cancelEditing,
     messagesEndRef,
-    
+
     // Chat Actions
     inputMessage,
     setInputMessage,
@@ -39,25 +39,25 @@ const MainChatArea: React.FC = () => {
     isLoading,
     textareaHeight,
     setTextareaHeight,
-    
+
     // UI State
     isSidebarCollapsed,
     isMobile,
     setIsLoginModalOpen,
-    
+
     // Conversation State
     activeConversationId,
     createNewConversationHandler,
     getActiveConversationId,
-    
+
     // API State
     selectedModel,
     baseUrl,
-    
+
     // Actions
     sendMessage,
     saveInlineEdit,
-    retryMessage
+    retryMessage,
   } = useChat();
 
   const handleSendMessage = async () => {
