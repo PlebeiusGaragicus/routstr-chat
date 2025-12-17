@@ -113,7 +113,10 @@ export default function MarkdownRenderer({
 
           // Tables
           table: ({ children }) => (
-            <div className="overflow-x-auto mb-4">
+            <div
+              className="overflow-x-auto mb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               <table className="min-w-full border border-white/10 rounded-lg overflow-hidden">
                 {children}
               </table>
