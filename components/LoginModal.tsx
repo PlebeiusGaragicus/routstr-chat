@@ -449,7 +449,9 @@ export default function LoginModal({
         {/* Error Message */}
         {error && (
           <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            <p className="text-sm text-red-400 text-center">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 text-center">
+              {error}
+            </p>
           </div>
         )}
       </div>

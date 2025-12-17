@@ -728,7 +728,7 @@ export default function ChatMessages({
                                   systemGroup.firstMessage._eventId!,
                                 )
                               }
-                              className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
+                              className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 border border-red-200 dark:border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                             >
                               <Eye className="w-3 h-3" />
                               Show {systemGroup.count} Error
@@ -741,7 +741,7 @@ export default function ChatMessages({
                                   systemGroup.firstMessage._eventId!,
                                 )
                               }
-                              className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
+                              className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 border border-red-200 dark:border-red-500/30 rounded-md px-3 py-1.5 transition-colors"
                             >
                               <EyeOff className="w-3 h-3" />
                               Hide Errors
@@ -786,7 +786,7 @@ export default function ChatMessages({
                               className="flex justify-center mb-6 group"
                             >
                               <div className="flex flex-col">
-                                <div className="bg-red-500/20 border border-red-500/30 rounded-lg py-3 px-4 text-red-200 max-w-full overflow-x-hidden">
+                                <div className="bg-red-100 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-lg py-3 px-4 text-red-800 dark:text-red-200 max-w-full overflow-x-hidden">
                                   <div className="flex items-start gap-2 min-w-0">
                                     <svg
                                       width="16"
@@ -794,7 +794,7 @@ export default function ChatMessages({
                                       viewBox="0 0 24 24"
                                       fill="none"
                                       xmlns="http://www.w3.org/2000/svg"
-                                      className="text-red-300 mt-0.5 flex-shrink-0"
+                                      className="text-red-600 dark:text-red-300 mt-0.5 flex-shrink-0"
                                     >
                                       <path
                                         d="M12 9v4M12 21h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
@@ -824,10 +824,7 @@ export default function ChatMessages({
                                       : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                   } transition-opacity duration-200`}
                                 >
-                                  <button
-                                    onClick={() => retryMessage(idx)}
-                                    className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
-                                  >
+                                  <button className="flex items-center gap-1.5 text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-200 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 border border-red-200 dark:border-red-500/30 rounded-md px-3 py-1.5 transition-colors cursor-pointer">
                                     <svg
                                       width="12"
                                       height="12"
