@@ -97,7 +97,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
         const sorted = filteredList
           .slice()
           .sort((a, b) =>
-            (a.name || a.endpoint_url).localeCompare(b.name || b.endpoint_url),
+            (a.name || a.endpoint_url).localeCompare(b.name || b.endpoint_url)
           );
         // Store all providers for Disable Providers section
         setAllProviders(sorted);
@@ -246,7 +246,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
     if (fetchModels) {
       setTimeout(() => {
         fetchModels(0).catch((err) =>
-          console.error("Failed to refresh models:", err),
+          console.error("Failed to refresh models:", err)
         );
       }, 0);
     }
@@ -290,7 +290,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="h-3.5 w-3.5 text-yellow-500 dark:text-yellow-400 flex-shrink-0"
+                          className="h-3.5 w-3.5 text-yellow-500 dark:text-yellow-400 shrink-0"
                         >
                           <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.401 8.167L12 18.896l-7.335 3.868 1.401-8.167L.132 9.21l8.2-1.192L12 .587z" />
                         </svg>
@@ -348,7 +348,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     } else {
                       // Disable all providers
                       const allDisabled = allProviders.map((p) =>
-                        normalizeProviderUrl(p.endpoint_url),
+                        normalizeProviderUrl(p.endpoint_url)
                       );
                       setDisabledProviders(allDisabled);
                       saveDisabledProviders(allDisabled);
@@ -358,7 +358,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     if (fetchModels) {
                       setTimeout(() => {
                         fetchModels(0).catch((err) =>
-                          console.error("Failed to refresh models:", err),
+                          console.error("Failed to refresh models:", err)
                         );
                       }, 0);
                     }
@@ -389,7 +389,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
               ) : allProviders.length > 0 ? (
                 allProviders.map((provider) => {
                   const normalized = normalizeProviderUrl(
-                    provider.endpoint_url,
+                    provider.endpoint_url
                   );
                   const isDisabled = isProviderDisabled(provider.endpoint_url);
                   if (normalized.includes("http://")) return null;
@@ -428,12 +428,12 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
           </div>
         </div>
 
-        <div className="bg-muted/50 border border-border rounded-md p-3 flex flex-col h-full min-h-0">
+        <div className="bg-muted/50 border border-border rounded-md p-3 flex flex-col h-[500px] md:h-full min-h-0">
           <h4 className="text-sm font-medium text-foreground mb-2">
             All Models
           </h4>
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground flex-shrink-0">
+            <span className="text-[11px] text-muted-foreground shrink-0">
               Provider
             </span>
             {isLoadingProviders ? (
@@ -467,12 +467,12 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                             : selectedProvider || "Select provider";
                         })()}
                       </span>
-                      <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
-                    className="bg-card border border-border text-foreground p-2 w-96 rounded-md shadow-lg z-[9999]"
+                    className="bg-card border border-border text-foreground p-2 w-[calc(100vw-40px)] sm:w-96 rounded-md shadow-lg z-[9999]"
                   >
                     <div className="mb-2 relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -492,7 +492,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                               const am = an.includes(q) ? 0 : 1;
                               const bm = bn.includes(q) ? 0 : 1;
                               return am - bm || an.localeCompare(bn);
-                            }),
+                            })
                           );
                         }}
                       />
