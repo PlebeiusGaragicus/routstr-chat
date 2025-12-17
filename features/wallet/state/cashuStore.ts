@@ -40,9 +40,7 @@ interface CashuStore {
   setUsingNip60: (usingNip60: boolean) => void;
   getUsingNip60: () => boolean;
   addMint: (url: string) => void;
-  getMint: (
-    url: string
-  ) =>
+  getMint: (url: string) =>
     | {
         url: string;
         mintInfo?: GetInfoResponse;
@@ -75,12 +73,12 @@ interface CashuStore {
   updateMintQuote: (
     mintUrl: string,
     quoteId: string,
-    quote: MintQuoteResponse
+    quote: MintQuoteResponse,
   ) => void;
   updateMeltQuote: (
     mintUrl: string,
     quoteId: string,
-    quote: MeltQuoteResponse
+    quote: MeltQuoteResponse,
   ) => void;
   getMintQuote: (mintUrl: string, quoteId: string) => MintQuoteResponse;
   getMeltQuote: (mintUrl: string, quoteId: string) => MeltQuoteResponse;
@@ -141,7 +139,7 @@ export const useCashuStore = create<CashuStore>()(
           mints: get().mints.map((mint) =>
             mint.url === url
               ? { ...mint, keysets: undefined, keys: undefined }
-              : mint
+              : mint,
           ),
         });
       },
@@ -149,7 +147,7 @@ export const useCashuStore = create<CashuStore>()(
       setMintInfo(url, mintInfo) {
         set({
           mints: get().mints.map((mint) =>
-            mint.url === url ? { ...mint, mintInfo } : mint
+            mint.url === url ? { ...mint, mintInfo } : mint,
           ),
         });
       },
@@ -157,7 +155,7 @@ export const useCashuStore = create<CashuStore>()(
       setKeysets(url, keysets) {
         set({
           mints: get().mints.map((mint) =>
-            mint.url === url ? { ...mint, keysets } : mint
+            mint.url === url ? { ...mint, keysets } : mint,
           ),
         });
       },
@@ -165,7 +163,7 @@ export const useCashuStore = create<CashuStore>()(
       setKeys(url, keys) {
         set({
           mints: get().mints.map((mint) =>
-            mint.url === url ? { ...mint, keys } : mint
+            mint.url === url ? { ...mint, keys } : mint,
           ),
         });
       },
@@ -173,7 +171,7 @@ export const useCashuStore = create<CashuStore>()(
       setLastUpdate(url, lastUpdate) {
         set({
           mints: get().mints.map((mint) =>
-            mint.url === url ? { ...mint, lastUpdate } : mint
+            mint.url === url ? { ...mint, lastUpdate } : mint,
           ),
         });
       },
@@ -201,7 +199,7 @@ export const useCashuStore = create<CashuStore>()(
       removeProofs(proofs: Proof[]) {
         set((state) => ({
           proofs: state.proofs.filter(
-            (proof) => !proofs.some((p) => p.secret === proof.secret)
+            (proof) => !proofs.some((p) => p.secret === proof.secret),
           ),
         }));
       },
@@ -213,7 +211,7 @@ export const useCashuStore = create<CashuStore>()(
       async getMintProofs(mintUrl: string): Promise<Proof[]> {
         // get all active keysets for the mint
         const keysets = get().mints.find(
-          (mint) => mint.url === mintUrl
+          (mint) => mint.url === mintUrl,
         )?.keysets;
         if (!keysets) {
           throw new Error("No keysets found for mint");
@@ -222,7 +220,7 @@ export const useCashuStore = create<CashuStore>()(
         // const activeKeysets = keysets.filter((keyset) => keyset.active);
         // get all proofs for the keysets from store
         const proofs = get().proofs.filter((proof) =>
-          keysets.some((keyset) => keyset.id === proof.id)
+          keysets.some((keyset) => keyset.id === proof.id),
         );
         return proofs;
       },
@@ -238,7 +236,7 @@ export const useCashuStore = create<CashuStore>()(
       setProofEventId(proof, eventId) {
         set({
           proofs: get().proofs.map((p) =>
-            p.secret === proof.secret ? { ...p, eventId } : p
+            p.secret === proof.secret ? { ...p, eventId } : p,
           ),
         });
       },
@@ -253,7 +251,7 @@ export const useCashuStore = create<CashuStore>()(
 
       getMintQuotes(mintUrl: string) {
         const quotes = get().mints.find(
-          (mint) => mint.url === mintUrl
+          (mint) => mint.url === mintUrl,
         )?.mintQuotes;
         if (!quotes) {
           throw new Error("No mint quotes found for mint");
@@ -263,7 +261,7 @@ export const useCashuStore = create<CashuStore>()(
 
       getMeltQuotes(mintUrl: string) {
         const quotes = get().mints.find(
-          (mint) => mint.url === mintUrl
+          (mint) => mint.url === mintUrl,
         )?.meltQuotes;
         if (!quotes) {
           throw new Error("No melt quotes found for mint");
@@ -279,7 +277,7 @@ export const useCashuStore = create<CashuStore>()(
                   ...mint,
                   mintQuotes: { ...mint.mintQuotes, [quote.quote]: quote },
                 }
-              : mint
+              : mint,
           ),
         });
       },
@@ -292,7 +290,7 @@ export const useCashuStore = create<CashuStore>()(
                   ...mint,
                   meltQuotes: { ...mint.meltQuotes, [quote.quote]: quote },
                 }
-              : mint
+              : mint,
           ),
         });
       },
@@ -300,7 +298,7 @@ export const useCashuStore = create<CashuStore>()(
       updateMintQuote(
         mintUrl: string,
         quoteId: string,
-        quote: MintQuoteResponse
+        quote: MintQuoteResponse,
       ) {
         set({
           mints: get().mints.map((mint) =>
@@ -309,7 +307,7 @@ export const useCashuStore = create<CashuStore>()(
                   ...mint,
                   mintQuotes: { ...mint.mintQuotes, [quoteId]: quote },
                 }
-              : mint
+              : mint,
           ),
         });
       },
@@ -317,7 +315,7 @@ export const useCashuStore = create<CashuStore>()(
       updateMeltQuote(
         mintUrl: string,
         quoteId: string,
-        quote: MeltQuoteResponse
+        quote: MeltQuoteResponse,
       ) {
         set({
           mints: get().mints.map((mint) =>
@@ -326,7 +324,7 @@ export const useCashuStore = create<CashuStore>()(
                   ...mint,
                   meltQuotes: { ...mint.meltQuotes, [quoteId]: quote },
                 }
-              : mint
+              : mint,
           ),
         });
       },
@@ -383,6 +381,6 @@ export const useCashuStore = create<CashuStore>()(
         });
       },
     }),
-    { name: "cashu" }
-  )
+    { name: "cashu" },
+  ),
 );

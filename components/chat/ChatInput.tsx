@@ -127,7 +127,7 @@ export default function ChatInput({
   };
 
   const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = event.target.files;
     if (!files) return;
@@ -143,7 +143,7 @@ export default function ChatInput({
       // Validate file type
       if (!isImage && !isAcceptedFile) {
         alert(
-          `File type "${file.type}" is not supported. Please upload images or PDF files.`
+          `File type "${file.type}" is not supported. Please upload images or PDF files.`,
         );
         continue;
       }
@@ -151,7 +151,7 @@ export default function ChatInput({
       // Validate file size
       if (file.size > MAX_FILE_SIZE_BYTES) {
         alert(
-          `File "${file.name}" is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`
+          `File "${file.name}" is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`,
         );
         continue;
       }
@@ -168,7 +168,7 @@ export default function ChatInput({
             error instanceof Error ? error.message : "Unknown error";
           if (errorMessage.includes("quota")) {
             alert(
-              "Storage is full. Your file will be available in this session but may not be saved in history."
+              "Storage is full. Your file will be available in this session but may not be saved in history.",
             );
           } else {
             console.warn("Failed to save file to storage:", errorMessage);
@@ -208,14 +208,14 @@ export default function ChatInput({
                 prev.map((item) =>
                   item.id === attachment.id
                     ? { ...item, textContent: text }
-                    : item
-                )
+                    : item,
+                ),
               );
             })
             .catch((error) => {
               console.warn(
                 "Failed to extract text from PDF attachment, continuing without text content.",
-                error
+                error,
               );
             });
         }
@@ -241,7 +241,7 @@ export default function ChatInput({
   };
 
   const handlePaste = async (
-    event: React.ClipboardEvent<HTMLTextAreaElement>
+    event: React.ClipboardEvent<HTMLTextAreaElement>,
   ) => {
     const items = event.clipboardData?.items;
     if (!items) return;
@@ -270,7 +270,7 @@ export default function ChatInput({
       // Validate file size
       if (file.size > MAX_FILE_SIZE_BYTES) {
         alert(
-          `Pasted image is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`
+          `Pasted image is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`,
         );
         continue;
       }
@@ -287,7 +287,7 @@ export default function ChatInput({
             error instanceof Error ? error.message : "Unknown error";
           if (errorMessage.includes("quota")) {
             alert(
-              "Storage is full. Your image will be available in this session but may not be saved in history."
+              "Storage is full. Your image will be available in this session but may not be saved in history.",
             );
           }
           // Continue without storageId
@@ -367,7 +367,7 @@ export default function ChatInput({
     // Validate file size
     if (file.size > MAX_FILE_SIZE_BYTES) {
       alert(
-        `File "${file.name}" is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`
+        `File "${file.name}" is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`,
       );
       return;
     }
@@ -384,7 +384,7 @@ export default function ChatInput({
           error instanceof Error ? error.message : "Unknown error";
         if (errorMessage.includes("quota")) {
           alert(
-            "Storage is full. Your file will be available in this session but may not be saved in history."
+            "Storage is full. Your file will be available in this session but may not be saved in history.",
           );
         }
         // Continue without storageId
@@ -411,14 +411,14 @@ export default function ChatInput({
               prev.map((item) =>
                 item.id === attachment.id
                   ? { ...item, textContent: text }
-                  : item
-              )
+                  : item,
+              ),
             );
           })
           .catch((error) => {
             console.warn(
               "Failed to extract text from PDF attachment, continuing without text content.",
-              error
+              error,
             );
           });
       }
@@ -622,7 +622,7 @@ export default function ChatInput({
                   target.style.height = "auto";
                   const textareaOnlyHeight = Math.min(
                     target.scrollHeight,
-                    maxTextareaHeight
+                    maxTextareaHeight,
                   );
                   target.style.height = textareaOnlyHeight + "px";
                   // Include attachment height in total height

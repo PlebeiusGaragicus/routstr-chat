@@ -39,14 +39,14 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
 
   // NWC Auto-Refill State
   const [nwcSettings, setNwcSettings] = useState<AutoRefillNWCSettings>(
-    DEFAULT_AUTO_REFILL_NWC_SETTINGS
+    DEFAULT_AUTO_REFILL_NWC_SETTINGS,
   );
   const [isNwcConnected, setIsNwcConnected] = useState(false);
   const [nwcBalance, setNwcBalance] = useState<number | null>(null);
 
   // API Auto-Topup State
   const [apiSettings, setApiSettings] = useState<AutoTopupAPISettings>(
-    DEFAULT_AUTO_TOPUP_API_SETTINGS
+    DEFAULT_AUTO_TOPUP_API_SETTINGS,
   );
 
   // Tooltip states
@@ -84,12 +84,12 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
           const storedKeys = localStorage.getItem(key);
           console.log(
             `[AutoRefillSettings] Checking localStorage key '${key}':`,
-            storedKeys ? "found" : "not found"
+            storedKeys ? "found" : "not found",
           );
           if (storedKeys) {
             foundKeys = JSON.parse(storedKeys);
             console.log(
-              `[AutoRefillSettings] Loaded ${foundKeys.length} API keys from '${key}'`
+              `[AutoRefillSettings] Loaded ${foundKeys.length} API keys from '${key}'`,
             );
             break;
           }
@@ -103,12 +103,12 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
       } catch (e) {
         console.error(
           "[AutoRefillSettings] Error loading API keys from localStorage:",
-          e
+          e,
         );
       }
     } else {
       console.log(
-        `[AutoRefillSettings] Using ${apiKeys.length} API keys from props`
+        `[AutoRefillSettings] Using ${apiKeys.length} API keys from props`,
       );
     }
   }, [apiKeys.length]);

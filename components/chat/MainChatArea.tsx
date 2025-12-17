@@ -70,7 +70,7 @@ const MainChatArea: React.FC = () => {
       baseUrl,
       isAuthenticated,
       setIsLoginModalOpen,
-      getActiveConversationId
+      getActiveConversationId,
     );
   };
 
@@ -85,7 +85,7 @@ const MainChatArea: React.FC = () => {
       selectedModel,
       baseUrl,
       activeConversationId,
-      getActiveConversationId
+      getActiveConversationId,
     );
   };
 
@@ -97,7 +97,7 @@ const MainChatArea: React.FC = () => {
       selectedModel,
       baseUrl,
       activeConversationId,
-      getActiveConversationId
+      getActiveConversationId,
     );
   };
 

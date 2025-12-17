@@ -51,7 +51,7 @@ export const setStorageItem = <T>(key: string, value: T): void => {
       // If the key is non-critical (cache-like), skip persisting silently
       if (NON_CRITICAL_STORAGE_KEYS.has(key)) {
         console.warn(
-          `Storage quota exceeded; skipping non-critical key "${key}".`
+          `Storage quota exceeded; skipping non-critical key "${key}".`,
         );
         return;
       }
@@ -65,7 +65,7 @@ export const setStorageItem = <T>(key: string, value: T): void => {
       } catch (retryError) {
         console.warn(
           `Storage quota exceeded; unable to persist key "${key}" after cleanup attempt.`,
-          retryError
+          retryError,
         );
         return;
       }
@@ -106,7 +106,7 @@ export const getStorageItem = <T>(key: string, defaultValue: T): T => {
       } catch (removeError) {
         console.error(
           `Error removing corrupted item with key "${key}":`,
-          removeError
+          removeError,
         );
       }
     }
@@ -182,7 +182,7 @@ export const migrateStorageItems = (): void => {
         } catch (parseError) {
           // If parsing fails, re-save the item with proper JSON formatting
           console.log(
-            `Migrating storage item "${key}" from raw value to JSON format`
+            `Migrating storage item "${key}" from raw value to JSON format`,
           );
           if (typeof defaultValue === "string") {
             setStorageItem(key, item); // Re-save the raw string value as JSON
@@ -461,7 +461,7 @@ export const saveSidebarCollapsed = (isCollapsed: boolean): void => {
 export const loadActiveConversationId = (): string | null => {
   return getStorageItem<string | null>(
     STORAGE_KEYS.ACTIVE_CONVERSATION_ID,
-    null
+    null,
   );
 };
 
@@ -470,7 +470,7 @@ export const loadActiveConversationId = (): string | null => {
  * @param conversationId Conversation ID to save
  */
 export const saveActiveConversationId = (
-  conversationId: string | null
+  conversationId: string | null,
 ): void => {
   setStorageItem(STORAGE_KEYS.ACTIVE_CONVERSATION_ID, conversationId);
 };
@@ -580,12 +580,12 @@ export const migrateCurrentCashuToken = (baseUrl: string): void => {
     const currentToken = localStorage.getItem("current_cashu_token");
     if (currentToken) {
       console.log(
-        "Migrating current_cashu_token to local_cashu_tokens format..."
+        "Migrating current_cashu_token to local_cashu_tokens format...",
       );
       setLocalCashuToken(baseUrl, currentToken);
       localStorage.removeItem("current_cashu_token");
       console.log(
-        "Migration complete: current_cashu_token moved to local_cashu_tokens."
+        "Migration complete: current_cashu_token moved to local_cashu_tokens.",
       );
     }
   } catch (error) {
@@ -616,15 +616,15 @@ export const saveDisabledProviders = (disabledProviders: string[]): void => {
 export const loadMintsFromAllProviders = (): Record<string, string[]> => {
   const allProviderMints = getStorageItem<Record<string, string[]>>(
     STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS,
-    {}
+    {},
   );
   const normalizedMints = Object.entries(allProviderMints).map(
     ([baseUrl, mints]) => {
       const normalizedMints = mints.map((mint) =>
-        mint.endsWith("/") ? mint.slice(0, -1) : mint
+        mint.endsWith("/") ? mint.slice(0, -1) : mint,
       );
       return [baseUrl, normalizedMints];
-    }
+    },
   );
   return Object.fromEntries(normalizedMints);
 };
@@ -634,7 +634,7 @@ export const loadMintsFromAllProviders = (): Record<string, string[]> => {
  * @param mintsMap Record mapping provider base URL to array of mint URLs
  */
 export const saveMintsFromAllProviders = (
-  mintsMap: Record<string, string[]>
+  mintsMap: Record<string, string[]>,
 ): void => {
   setStorageItem(STORAGE_KEYS.MINTS_FROM_ALL_PROVIDERS, mintsMap);
 };
@@ -659,7 +659,7 @@ export const getProviderMints = (providerBaseUrl: string): string[] => {
  */
 export const setProviderMints = (
   providerBaseUrl: string,
-  mints: string[]
+  mints: string[],
 ): void => {
   const allMints = loadMintsFromAllProviders();
   const normalized = providerBaseUrl.endsWith("/")
@@ -676,7 +676,7 @@ export const setProviderMints = (
 export const loadInfoFromAllProviders = (): Record<string, any> => {
   return getStorageItem<Record<string, any>>(
     STORAGE_KEYS.INFO_FROM_ALL_PROVIDERS,
-    {}
+    {},
   );
 };
 
@@ -685,7 +685,7 @@ export const loadInfoFromAllProviders = (): Record<string, any> => {
  * @param infoMap Record mapping provider base URL to info object
  */
 export const saveInfoFromAllProviders = (
-  infoMap: Record<string, any>
+  infoMap: Record<string, any>,
 ): void => {
   setStorageItem(STORAGE_KEYS.INFO_FROM_ALL_PROVIDERS, infoMap);
 };
@@ -697,7 +697,7 @@ export const saveInfoFromAllProviders = (
  */
 export const getOrFetchProviderInfo = async (
   providerBaseUrl: string,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
 ): Promise<any | null> => {
   const base = providerBaseUrl.endsWith("/")
     ? providerBaseUrl
@@ -735,7 +735,7 @@ export const getOrFetchProviderInfo = async (
 export const loadLastModelsUpdate = (): Record<string, number> => {
   return getStorageItem<Record<string, number>>(
     STORAGE_KEYS.LAST_MODELS_UPDATE,
-    {}
+    {},
   );
 };
 
@@ -744,7 +744,7 @@ export const loadLastModelsUpdate = (): Record<string, number> => {
  * @param timestampsMap Record mapping provider base URL to timestamp in milliseconds
  */
 export const saveLastModelsUpdate = (
-  timestampsMap: Record<string, number>
+  timestampsMap: Record<string, number>,
 ): void => {
   setStorageItem(STORAGE_KEYS.LAST_MODELS_UPDATE, timestampsMap);
 };
@@ -755,7 +755,7 @@ export const saveLastModelsUpdate = (
  * @returns Timestamp in milliseconds or null if never updated
  */
 export const getProviderLastUpdate = (
-  providerBaseUrl: string
+  providerBaseUrl: string,
 ): number | null => {
   const allTimestamps = loadLastModelsUpdate();
   const normalized = providerBaseUrl.endsWith("/")
@@ -771,7 +771,7 @@ export const getProviderLastUpdate = (
  */
 export const setProviderLastUpdate = (
   providerBaseUrl: string,
-  timestamp: number
+  timestamp: number,
 ): void => {
   const allTimestamps = loadLastModelsUpdate();
   const normalized = providerBaseUrl.endsWith("/")
@@ -832,7 +832,7 @@ export const DEFAULT_AUTO_TOPUP_API_SETTINGS: AutoTopupAPISettings = {
 export const loadAutoRefillNWCSettings = (): AutoRefillNWCSettings => {
   return getStorageItem<AutoRefillNWCSettings>(
     "auto_refill_nwc_settings",
-    DEFAULT_AUTO_REFILL_NWC_SETTINGS
+    DEFAULT_AUTO_REFILL_NWC_SETTINGS,
   );
 };
 
@@ -841,7 +841,7 @@ export const loadAutoRefillNWCSettings = (): AutoRefillNWCSettings => {
  * @param settings NWC auto-refill settings
  */
 export const saveAutoRefillNWCSettings = (
-  settings: AutoRefillNWCSettings
+  settings: AutoRefillNWCSettings,
 ): void => {
   setStorageItem("auto_refill_nwc_settings", settings);
 };
@@ -853,7 +853,7 @@ export const saveAutoRefillNWCSettings = (
 export const loadAutoTopupAPISettings = (): AutoTopupAPISettings => {
   return getStorageItem<AutoTopupAPISettings>(
     "auto_topup_api_settings",
-    DEFAULT_AUTO_TOPUP_API_SETTINGS
+    DEFAULT_AUTO_TOPUP_API_SETTINGS,
   );
 };
 
@@ -862,7 +862,7 @@ export const loadAutoTopupAPISettings = (): AutoTopupAPISettings => {
  * @param settings API auto-topup settings
  */
 export const saveAutoTopupAPISettings = (
-  settings: AutoTopupAPISettings
+  settings: AutoTopupAPISettings,
 ): void => {
   setStorageItem("auto_topup_api_settings", settings);
 };
@@ -872,7 +872,7 @@ export const saveAutoTopupAPISettings = (
  * @param timestamp Timestamp in milliseconds
  */
 export const updateNWCLastRefillTime = (
-  timestamp: number = Date.now()
+  timestamp: number = Date.now(),
 ): void => {
   const settings = loadAutoRefillNWCSettings();
   saveAutoRefillNWCSettings({ ...settings, lastRefillAt: timestamp });
@@ -883,7 +883,7 @@ export const updateNWCLastRefillTime = (
  * @param timestamp Timestamp in milliseconds
  */
 export const updateAPILastTopupTime = (
-  timestamp: number = Date.now()
+  timestamp: number = Date.now(),
 ): void => {
   const settings = loadAutoTopupAPISettings();
   saveAutoTopupAPISettings({ ...settings, lastTopupAt: timestamp });
