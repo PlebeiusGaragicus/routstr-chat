@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext } from 'react';
-import { useAuthState, UseAuthStateReturn } from '@/hooks/useAuthState';
+import React, { createContext, useContext } from "react";
+import { useAuthState, UseAuthStateReturn } from "@/hooks/useAuthState";
 
 interface AuthContextType extends UseAuthStateReturn {}
 
@@ -10,7 +10,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -28,8 +28,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authState = useAuthState();
 
   return (
-    <AuthContext.Provider value={authState}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>
   );
 };

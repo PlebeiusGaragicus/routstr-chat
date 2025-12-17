@@ -1,6 +1,6 @@
 // Utility functions for tracking Nostr event timestamps
 
-const TIMESTAMP_PREFIX = 'nostr_last_event_';
+const TIMESTAMP_PREFIX = "nostr_last_event_";
 
 /**
  * Construct storage key based on pubkey and event kind
@@ -22,7 +22,10 @@ export function storeEventTimestamp(pubkey: string, kind: number): void {
  * Get the last stored timestamp for a specific event kind and pubkey
  * Returns undefined if no timestamp is stored
  */
-export function getLastEventTimestamp(pubkey: string, kind: number): number | undefined {
+export function getLastEventTimestamp(
+  pubkey: string,
+  kind: number
+): number | undefined {
   const key = getStorageKey(pubkey, kind);
   const storedValue = localStorage.getItem(key);
 
@@ -31,4 +34,4 @@ export function getLastEventTimestamp(pubkey: string, kind: number): number | un
   }
 
   return undefined;
-} 
+}

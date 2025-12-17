@@ -1,6 +1,10 @@
-import { ReactNode } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { AppContext, type AppConfig, type AppContextType } from '@/context/AppContext';
+import { ReactNode } from "react";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import {
+  AppContext,
+  type AppConfig,
+  type AppContextType,
+} from "@/context/AppContext";
 
 interface AppProviderProps {
   children: ReactNode;
@@ -13,15 +17,13 @@ interface AppProviderProps {
 }
 
 export function AppProvider(props: AppProviderProps) {
-  const {
-    children,
-    storageKey,
-    defaultConfig,
-    presetRelays,
-  } = props;
+  const { children, storageKey, defaultConfig, presetRelays } = props;
 
   // App configuration state with localStorage persistence
-  const [config, setConfig] = useLocalStorage<AppConfig>(storageKey, defaultConfig);
+  const [config, setConfig] = useLocalStorage<AppConfig>(
+    storageKey,
+    defaultConfig
+  );
 
   // Generic config updater with callback pattern
   const updateConfig = (updater: (currentConfig: AppConfig) => AppConfig) => {

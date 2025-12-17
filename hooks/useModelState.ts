@@ -1,5 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { loadConfiguredModels, saveConfiguredModels, loadModelProviderMap, saveModelProviderMap } from '@/utils/storageUtils';
+import { useState, useEffect, useCallback } from "react";
+import {
+  loadConfiguredModels,
+  saveConfiguredModels,
+  loadModelProviderMap,
+  saveModelProviderMap,
+} from "@/utils/storageUtils";
 
 export interface UseModelStateReturn {
   configuredModels: string[];
@@ -16,7 +21,9 @@ export interface UseModelStateReturn {
  */
 export const useModelState = (): UseModelStateReturn => {
   const [configuredModels, setConfiguredModelsState] = useState<string[]>([]);
-  const [modelProviderMap, setModelProviderMapState] = useState<Record<string, string>>({});
+  const [modelProviderMap, setModelProviderMapState] = useState<
+    Record<string, string>
+  >({});
 
   // Load configured models from storage on mount (migrates from favorites)
   useEffect(() => {
@@ -28,9 +35,9 @@ export const useModelState = (): UseModelStateReturn => {
 
   // Toggle configured model
   const toggleConfiguredModel = useCallback((modelId: string) => {
-    setConfiguredModelsState(prev => {
+    setConfiguredModelsState((prev) => {
       const updated = prev.includes(modelId)
-        ? prev.filter(id => id !== modelId)
+        ? prev.filter((id) => id !== modelId)
         : [...prev, modelId];
       saveConfiguredModels(updated);
       return updated;
@@ -42,19 +49,22 @@ export const useModelState = (): UseModelStateReturn => {
     saveConfiguredModels(models);
   }, []);
 
-  const setModelProviderFor = useCallback((modelId: string, baseUrl: string) => {
-    setModelProviderMapState(prev => {
-      const updated = { ...prev, [modelId]: baseUrl };
-      saveModelProviderMap(updated);
-      return updated;
-    });
-  }, []);
+  const setModelProviderFor = useCallback(
+    (modelId: string, baseUrl: string) => {
+      setModelProviderMapState((prev) => {
+        const updated = { ...prev, [modelId]: baseUrl };
+        saveModelProviderMap(updated);
+        return updated;
+      });
+    },
+    []
+  );
 
   return {
     configuredModels,
     setConfiguredModels,
     toggleConfiguredModel,
     modelProviderMap,
-    setModelProviderFor
+    setModelProviderFor,
   };
 };

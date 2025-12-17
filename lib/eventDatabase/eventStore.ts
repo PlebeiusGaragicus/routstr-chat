@@ -1,18 +1,18 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { NostrEvent } from 'nostr-tools';
-import { EventStoreState, Filter } from './types';
-import { 
-  isAnyReplaceable, 
-  getEventReplaceableKey, 
-  getReplaceableKey, 
-  isNewerEvent 
-} from './replaceables';
-import { 
-  filterEvents, 
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { NostrEvent } from "nostr-tools";
+import { EventStoreState, Filter } from "./types";
+import {
+  isAnyReplaceable,
+  getEventReplaceableKey,
+  getReplaceableKey,
+  isNewerEvent,
+} from "./replaceables";
+import {
+  filterEvents,
   matchesAnyFilter,
-  getTimeline as getTimelineFromEvents 
-} from './filters';
+  getTimeline as getTimelineFromEvents,
+} from "./filters";
 
 /**
  * Zustand-based Event Database
@@ -34,25 +34,29 @@ export const useEventDatabase = create<EventStoreState>()(
        */
       add(event: NostrEvent): NostrEvent {
         const state = get();
-        
+
         // Check if event already exists
         if (state.events[event.id]) {
           return event;
         }
-        
+
         // Handle replaceable events
         if (isAnyReplaceable(event.kind)) {
           const replaceableKey = getEventReplaceableKey(event);
           if (replaceableKey) {
             const currentLatestId = state.replaceableIndex[replaceableKey];
-            const currentLatest = currentLatestId ? state.events[currentLatestId] : null;
-            
+            const currentLatest = currentLatestId
+              ? state.events[currentLatestId]
+              : null;
+
             // Check if this event is newer than the current latest
-            const shouldUpdateIndex = !currentLatest || isNewerEvent(event, currentLatest);
-            
+            const shouldUpdateIndex =
+              !currentLatest || isNewerEvent(event, currentLatest);
+
             // Get existing history or create new array
-            const existingHistory = state.replaceableHistory[replaceableKey] || [];
-            
+            const existingHistory =
+              state.replaceableHistory[replaceableKey] || [];
+
             // Insert event into history in sorted order (newest first)
             let newHistory: string[];
             if (existingHistory.length === 0) {
@@ -70,27 +74,30 @@ export const useEventDatabase = create<EventStoreState>()(
               newHistory = [
                 ...existingHistory.slice(0, insertIndex),
                 event.id,
-                ...existingHistory.slice(insertIndex)
+                ...existingHistory.slice(insertIndex),
               ];
             }
-            
+
             set({
               events: { ...state.events, [event.id]: event },
-              replaceableIndex: shouldUpdateIndex 
+              replaceableIndex: shouldUpdateIndex
                 ? { ...state.replaceableIndex, [replaceableKey]: event.id }
                 : state.replaceableIndex,
-              replaceableHistory: { ...state.replaceableHistory, [replaceableKey]: newHistory }
+              replaceableHistory: {
+                ...state.replaceableHistory,
+                [replaceableKey]: newHistory,
+              },
             });
-            
+
             return event;
           }
         }
-        
+
         // Non-replaceable event: just add to events
         set({
-          events: { ...state.events, [event.id]: event }
+          events: { ...state.events, [event.id]: event },
         });
-        
+
         return event;
       },
 
@@ -100,35 +107,35 @@ export const useEventDatabase = create<EventStoreState>()(
        */
       remove(event: string | NostrEvent): boolean {
         const state = get();
-        const eventId = typeof event === 'string' ? event : event.id;
-        
+        const eventId = typeof event === "string" ? event : event.id;
+
         // Check if event exists
         if (!state.events[eventId]) {
           return false;
         }
-        
+
         const eventToRemove = state.events[eventId];
         const newEvents = { ...state.events };
         delete newEvents[eventId];
-        
+
         // Handle replaceable events
         let newReplaceableIndex = state.replaceableIndex;
         let newReplaceableHistory = state.replaceableHistory;
-        
+
         if (isAnyReplaceable(eventToRemove.kind)) {
           const replaceableKey = getEventReplaceableKey(eventToRemove);
           if (replaceableKey) {
             // Remove from history
             const history = state.replaceableHistory[replaceableKey] || [];
-            const newHistory = history.filter(id => id !== eventId);
-            
+            const newHistory = history.filter((id) => id !== eventId);
+
             newReplaceableHistory = { ...state.replaceableHistory };
             if (newHistory.length === 0) {
               delete newReplaceableHistory[replaceableKey];
             } else {
               newReplaceableHistory[replaceableKey] = newHistory;
             }
-            
+
             // Update index if this was the latest
             newReplaceableIndex = { ...state.replaceableIndex };
             if (state.replaceableIndex[replaceableKey] === eventId) {
@@ -141,13 +148,13 @@ export const useEventDatabase = create<EventStoreState>()(
             }
           }
         }
-        
+
         set({
           events: newEvents,
           replaceableIndex: newReplaceableIndex,
-          replaceableHistory: newReplaceableHistory
+          replaceableHistory: newReplaceableHistory,
         });
-        
+
         return true;
       },
 
@@ -159,19 +166,21 @@ export const useEventDatabase = create<EventStoreState>()(
         const state = get();
         const allEvents = Object.values(state.events);
         const filterArray = Array.isArray(filters) ? filters : [filters];
-        
+
         // Find events that match the filters
-        const eventsToRemove = allEvents.filter(event => matchesAnyFilter(event, filterArray));
-        
+        const eventsToRemove = allEvents.filter((event) =>
+          matchesAnyFilter(event, filterArray)
+        );
+
         if (eventsToRemove.length === 0) {
           return 0;
         }
-        
+
         // Remove each matching event
-        eventsToRemove.forEach(event => {
+        eventsToRemove.forEach((event) => {
           get().remove(event);
         });
-        
+
         return eventsToRemove.length;
       },
 
@@ -194,7 +203,11 @@ export const useEventDatabase = create<EventStoreState>()(
       /**
        * Check if the event store has a replaceable event
        */
-      hasReplaceable(kind: number, pubkey: string, identifier: string = ''): boolean {
+      hasReplaceable(
+        kind: number,
+        pubkey: string,
+        identifier: string = ""
+      ): boolean {
         const key = getReplaceableKey(kind, pubkey, identifier);
         return key in get().replaceableIndex;
       },
@@ -202,7 +215,11 @@ export const useEventDatabase = create<EventStoreState>()(
       /**
        * Get a replaceable event (returns the latest version)
        */
-      getReplaceable(kind: number, pubkey: string, identifier: string = ''): NostrEvent | undefined {
+      getReplaceable(
+        kind: number,
+        pubkey: string,
+        identifier: string = ""
+      ): NostrEvent | undefined {
         const state = get();
         const key = getReplaceableKey(kind, pubkey, identifier);
         const eventId = state.replaceableIndex[key];
@@ -212,17 +229,21 @@ export const useEventDatabase = create<EventStoreState>()(
       /**
        * Get the history of a replaceable event (all versions, newest first)
        */
-      getReplaceableHistory(kind: number, pubkey: string, identifier: string = ''): NostrEvent[] | undefined {
+      getReplaceableHistory(
+        kind: number,
+        pubkey: string,
+        identifier: string = ""
+      ): NostrEvent[] | undefined {
         const state = get();
         const key = getReplaceableKey(kind, pubkey, identifier);
         const history = state.replaceableHistory[key];
-        
+
         if (!history || history.length === 0) {
           return undefined;
         }
-        
+
         return history
-          .map(id => state.events[id])
+          .map((id) => state.events[id])
           .filter((event): event is NostrEvent => event !== undefined);
       },
 
@@ -253,7 +274,7 @@ export const useEventDatabase = create<EventStoreState>()(
         set({
           events: {},
           replaceableIndex: {},
-          replaceableHistory: {}
+          replaceableHistory: {},
         });
       },
 
@@ -264,19 +285,19 @@ export const useEventDatabase = create<EventStoreState>()(
         const state = get();
         return {
           totalEvents: Object.keys(state.events).length,
-          replaceableCount: Object.keys(state.replaceableIndex).length
+          replaceableCount: Object.keys(state.replaceableIndex).length,
         };
-      }
+      },
     }),
     {
-      name: 'nostr-event-store',
+      name: "nostr-event-store",
       storage: createJSONStorage(() => localStorage),
       // Only persist data, not methods
       partialize: (state) => ({
         events: state.events,
         replaceableIndex: state.replaceableIndex,
-        replaceableHistory: state.replaceableHistory
-      })
+        replaceableHistory: state.replaceableHistory,
+      }),
     }
   )
 );
@@ -297,7 +318,7 @@ export function getEventDatabaseInstance() {
     getReplaceable: store.getReplaceable.bind(store),
     getReplaceableHistory: store.getReplaceableHistory.bind(store),
     getByFilters: store.getByFilters.bind(store),
-    getTimeline: store.getTimeline.bind(store)
+    getTimeline: store.getTimeline.bind(store),
   };
 }
 

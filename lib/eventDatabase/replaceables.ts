@@ -1,4 +1,4 @@
-import { NostrEvent } from 'nostr-tools';
+import { NostrEvent } from "nostr-tools";
 
 /**
  * Check if a kind is replaceable (10000-19999 range)
@@ -28,18 +28,22 @@ export function isAnyReplaceable(kind: number): boolean {
  */
 export function getIdentifier(event: NostrEvent): string {
   if (!isParameterizedReplaceable(event.kind)) {
-    return '';
+    return "";
   }
-  
-  const dTag = event.tags.find(t => t[0] === 'd');
-  return dTag && dTag[1] ? dTag[1] : '';
+
+  const dTag = event.tags.find((t) => t[0] === "d");
+  return dTag && dTag[1] ? dTag[1] : "";
 }
 
 /**
  * Generate a composite key for replaceable events
  * Format: "kind:pubkey:identifier"
  */
-export function getReplaceableKey(kind: number, pubkey: string, identifier: string = ''): string {
+export function getReplaceableKey(
+  kind: number,
+  pubkey: string,
+  identifier: string = ""
+): string {
   return `${kind}:${pubkey}:${identifier}`;
 }
 
@@ -50,7 +54,7 @@ export function getEventReplaceableKey(event: NostrEvent): string | null {
   if (!isAnyReplaceable(event.kind)) {
     return null;
   }
-  
+
   const identifier = getIdentifier(event);
   return getReplaceableKey(event.kind, event.pubkey, identifier);
 }
@@ -64,7 +68,7 @@ export function isNewerEvent(eventA: NostrEvent, eventB: NostrEvent): boolean {
   if (eventA.created_at !== eventB.created_at) {
     return eventA.created_at > eventB.created_at;
   }
-  
+
   // If timestamps are equal, compare by event ID (lexicographic comparison)
   // This ensures deterministic ordering
   return eventA.id > eventB.id;

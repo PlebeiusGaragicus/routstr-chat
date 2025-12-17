@@ -1,5 +1,5 @@
-import { Conversation } from '@/types/chat';
-import { persistConversationsSnapshot } from './conversationUtils';
+import { Conversation } from "@/types/chat";
+import { persistConversationsSnapshot } from "./conversationUtils";
 
 /**
  * Manages batched updates to localStorage to prevent thrashing
@@ -25,7 +25,7 @@ export class StorageBatchManager {
   queueUpdate(conversation: Conversation): void {
     // Add to pending updates
     this.pendingUpdates.set(conversation.id, conversation);
-    
+
     // Also update the in-memory snapshot
     this.allConversations.set(conversation.id, conversation);
 
@@ -86,7 +86,7 @@ export class StorageBatchManager {
       });
 
       // Persist to localStorage
-      console.log('Persisting conversations to storage:', allConversations);
+      console.log("Persisting conversations to storage:", allConversations);
       persistConversationsSnapshot(allConversations);
 
       // Clear pending updates
@@ -98,7 +98,7 @@ export class StorageBatchManager {
         this.debounceTimer = null;
       }
     } catch (error) {
-      console.error('Error flushing storage updates:', error);
+      console.error("Error flushing storage updates:", error);
     }
   }
 

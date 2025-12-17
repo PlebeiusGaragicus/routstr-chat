@@ -1,7 +1,7 @@
-import { useNostr } from '@nostrify/react';
-import { useNostrLogin } from '@nostrify/react/login';
-import { useQuery } from '@tanstack/react-query';
-import { NSchema as n, NostrEvent, NostrMetadata } from '@nostrify/nostrify';
+import { useNostr } from "@nostrify/react";
+import { useNostrLogin } from "@nostrify/react/login";
+import { useQuery } from "@tanstack/react-query";
+import { NSchema as n, NostrEvent, NostrMetadata } from "@nostrify/nostrify";
 import { KINDS } from "@/lib/nostr-kinds";
 
 export interface Account {
@@ -16,11 +16,11 @@ export function useLoggedInAccounts() {
   const { logins, setLogin, removeLogin } = useNostrLogin();
 
   const { data: authors = [], isLoading } = useQuery({
-    queryKey: ['logins', logins.map((l) => l.id).join(';')],
+    queryKey: ["logins", logins.map((l) => l.id).join(";")],
     queryFn: async ({ signal }) => {
       const events = await nostr.query(
         [{ kinds: [KINDS.METADATA], authors: logins.map((l) => l.pubkey) }],
-        { signal: AbortSignal.any([signal, AbortSignal.timeout(1500)]) },
+        { signal: AbortSignal.any([signal, AbortSignal.timeout(1500)]) }
       );
 
       return logins.map(({ id, pubkey }): Account => {

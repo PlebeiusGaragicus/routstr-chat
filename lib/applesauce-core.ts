@@ -1,6 +1,6 @@
-import { EventStore } from 'applesauce-core';
-import { RelayPool } from 'applesauce-relay';
-import { getEventDatabaseInstance } from './eventDatabase';
+import { EventStore } from "applesauce-core";
+import { RelayPool } from "applesauce-relay";
+import { getEventDatabaseInstance } from "./eventDatabase";
 
 /**
  * Singleton instances for Applesauce core functionality

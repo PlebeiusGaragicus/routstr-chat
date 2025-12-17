@@ -939,7 +939,7 @@ const TopUpPromptModal: React.FC<TopUpPromptModalProps> = ({
           <Drawer.Content className="bg-card flex flex-col rounded-t-[10px] mt-24 h-[80%] lg:h-fit max-h-[96%] fixed bottom-0 left-0 right-0 outline-none z-60">
             <div className="pt-4 pb-4 bg-card rounded-t-[10px] flex-1 overflow-y-auto">
               <div
-                className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-white/20 mb-8"
+                className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted-foreground/30 mb-8"
                 aria-hidden
               />
               <Drawer.Title className="sr-only">Top up</Drawer.Title>

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNostrLogin } from '@nostrify/react/login';
-import { clearAllStorage } from '@/utils/storageUtils';
+import { useState, useEffect, useCallback } from "react";
+import { useNostrLogin } from "@nostrify/react/login";
+import { clearAllStorage } from "@/utils/storageUtils";
 
 export interface UseAuthStateReturn {
   isAuthenticated: boolean;
@@ -17,7 +17,7 @@ export interface UseAuthStateReturn {
 export const useAuthState = (): UseAuthStateReturn => {
   const { logins, removeLogin } = useNostrLogin();
   const [authChecked, setAuthChecked] = useState(true);
-  
+
   const isAuthenticated = logins.length > 0;
 
   const logout = useCallback(async () => {
@@ -37,6 +37,6 @@ export const useAuthState = (): UseAuthStateReturn => {
     isAuthenticated,
     authChecked,
     logout,
-    logins
+    logins,
   };
 };
