@@ -64,7 +64,7 @@ export default function Sidebar({
                   : "translate-x-0 opacity-100"
               }`
         }
-          bg-[#0f0f0f] flex flex-col transition-all duration-300 ease-in-out shadow-lg`}
+          bg-sidebar flex flex-col transition-all duration-300 ease-in-out border-r border-sidebar-border`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Action Bar with New Chat button and Collapse/Close button */}
@@ -75,7 +75,7 @@ export default function Sidebar({
               createNewConversation();
               if (isMobile) setIsSidebarOpen(false);
             }}
-            className="flex-1 min-w-0 flex items-center gap-2 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
+            className="flex-1 min-w-0 flex items-center gap-2 text-sidebar-foreground/90 hover:text-sidebar-foreground bg-sidebar-accent/30 hover:bg-sidebar-accent/50 border border-sidebar-border rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
             data-tutorial="new-chat-button"
           >
             <SquarePen className="h-4 w-4" />
@@ -86,10 +86,10 @@ export default function Sidebar({
           {!isMobile && (
             <button
               onClick={() => setIsSidebarCollapsed(true)}
-              className="p-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-full border border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50 text-sidebar-foreground transition-colors cursor-pointer"
               aria-label="Collapse sidebar"
             >
-              <ChevronDown className="h-3.5 w-3.5 rotate-90 text-white/70" />
+              <ChevronDown className="h-3.5 w-3.5 rotate-90 text-sidebar-foreground/70" />
             </button>
           )}
 
@@ -97,7 +97,7 @@ export default function Sidebar({
           {isMobile && (
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="rounded-full p-1.5 shadow-md border border-white/10 bg-white/5 hover:bg-white/10 text-white"
+              className="rounded-full p-1.5 border border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50 text-sidebar-foreground"
               aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
@@ -108,11 +108,13 @@ export default function Sidebar({
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
           <div className="flex items-center justify-between px-2 pb-2">
-            <div className="text-xs text-white/50 font-medium">Chats</div>
+            <div className="text-xs text-muted-foreground font-medium">
+              Chats
+            </div>
             <button
               onClick={() => syncWithNostr()}
               disabled={isSyncing}
-              className={`p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ${
+              className={`p-1 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-sidebar-foreground transition-colors ${
                 isSyncing ? "animate-spin" : ""
               }`}
               title="Sync with Nostr"
@@ -121,7 +123,7 @@ export default function Sidebar({
             </button>
           </div>
           {conversations.length === 0 ? (
-            <p className="text-xs text-white/50 text-center py-2">
+            <p className="text-xs text-muted-foreground text-center py-2">
               No saved conversations
             </p>
           ) : (
@@ -134,8 +136,8 @@ export default function Sidebar({
                 }}
                 className={`p-2 rounded text-sm cursor-pointer flex justify-between items-center group ${
                   activeConversationId === conversation.id
-                    ? "bg-white/10 text-white"
-                    : "text-white/70 hover:bg-white/5"
+                    ? "bg-sidebar-accent text-sidebar-foreground"
+                    : "text-muted-foreground hover:bg-sidebar-accent/50"
                 }`}
               >
                 <div className="flex items-center gap-2 flex-1 truncate">
@@ -145,7 +147,7 @@ export default function Sidebar({
                   onClick={async (e) =>
                     await deleteConversation(conversation.id, e)
                   }
-                  className="text-white/40 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                  className="text-muted-foreground hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -163,7 +165,7 @@ export default function Sidebar({
                 setIsSettingsOpen(true);
                 setInitialSettingsTab("settings");
               }}
-              className="flex items-center gap-2 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-sidebar-foreground/90 hover:text-sidebar-foreground bg-sidebar-accent/30 hover:bg-sidebar-accent/50 border border-sidebar-border rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
               data-tutorial="settings-button"
             >
               <Settings className="h-4 w-4" />
@@ -176,7 +178,7 @@ export default function Sidebar({
                 setIsSettingsOpen(true);
                 setInitialSettingsTab("api-keys");
               }}
-              className="flex items-center gap-2 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-sidebar-foreground/90 hover:text-sidebar-foreground bg-sidebar-accent/30 hover:bg-sidebar-accent/50 border border-sidebar-border rounded-md py-2 px-3 h-[36px] text-sm transition-colors cursor-pointer"
             >
               <Key className="h-4 w-4" />
               <span>API Keys</span>
@@ -189,10 +191,10 @@ export default function Sidebar({
       {!isMobile && isSidebarCollapsed && (
         <button
           onClick={() => setIsSidebarCollapsed(false)}
-          className="fixed top-[30px] transform -translate-y-1/2 left-4 z-30 rounded-full p-1.5 shadow-md transition-all duration-300 ease-in-out border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+          className="fixed top-[30px] transform -translate-y-1/2 left-4 z-30 rounded-full p-1.5 transition-all duration-300 ease-in-out border border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50 text-sidebar-foreground cursor-pointer"
           aria-label="Expand sidebar"
         >
-          <ChevronDown className="h-3.5 w-3.5 -rotate-90 text-white/70" />
+          <ChevronDown className="h-3.5 w-3.5 -rotate-90 text-sidebar-foreground/70" />
         </button>
       )}
     </div>

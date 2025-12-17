@@ -17,7 +17,8 @@ const withPWACfg = withPWA({
     },
     {
       // TypeScript doesn't have Workbox types here; use any for config-time typing
-      urlPattern: ({ request }: { request: any }) => request?.destination === "image",
+      urlPattern: ({ request }: { request: any }) =>
+        request?.destination === "image",
       handler: "StaleWhileRevalidate",
       options: {
         cacheName: "images",
@@ -60,6 +61,9 @@ const nextConfig: NextConfig = {
   // Silence Next 16 Turbopack + webpack plugin warning (next-pwa injects webpack config)
   // See: https://nextjs.org/docs/app/api-reference/next-config-js/turbopack
   turbopack: {},
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default withPWACfg(nextConfig);

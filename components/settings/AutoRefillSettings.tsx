@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Zap, RefreshCw, Info } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   loadAutoRefillNWCSettings,
   saveAutoRefillNWCSettings,
@@ -146,16 +147,16 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
 
   return (
     <div className="mb-6 space-y-4">
-      <h3 className="text-sm font-medium text-white/80 mb-2">
+      <h3 className="text-sm font-medium text-foreground/80 mb-2">
         Auto-Refill Settings
       </h3>
 
       {/* NWC Auto-Refill Section */}
-      <div className="bg-white/5 border border-white/10 rounded-md p-3">
+      <div className="bg-muted/50 border border-border rounded-md p-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-yellow-400" />
-            <span className="text-sm font-medium text-white/80">
+            <span className="text-sm font-medium text-foreground/80">
               NWC Auto-Refill
             </span>
             <div
@@ -163,9 +164,9 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
               onMouseEnter={() => setShowNwcTooltip(true)}
               onMouseLeave={() => setShowNwcTooltip(false)}
             >
-              <Info className="h-3.5 w-3.5 text-white/40 hover:text-white/60 cursor-pointer" />
+              <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" />
               {showNwcTooltip && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 p-2 bg-black border border-white/20 rounded-md text-xs text-white/70 w-56 z-50">
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 p-2 bg-card border border-border rounded-md text-xs text-muted-foreground w-56 z-50">
                   Automatically pay from your connected NWC wallet when your
                   Cashu balance drops below the threshold.
                 </div>
@@ -174,20 +175,22 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
           </div>
           {isNwcConnected ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-green-400">Connected</span>
+              <span className="text-xs text-green-600 dark:text-green-400">
+                Connected
+              </span>
               {nwcBalance !== null && (
-                <span className="text-xs text-white/50">
+                <span className="text-xs text-muted-foreground">
                   ({nwcBalance.toLocaleString()} sats)
                 </span>
               )}
             </div>
           ) : (
-            <span className="text-xs text-white/40">Not connected</span>
+            <span className="text-xs text-muted-foreground">Not connected</span>
           )}
         </div>
 
         {!isNwcConnected ? (
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground">
             Connect an NWC wallet in the Lightning Wallet section above to
             enable auto-refill.
           </p>
@@ -195,31 +198,22 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
           <div className="space-y-3">
             {/* Enable Toggle */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white/70">Enable Auto-Refill</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={nwcSettings.enabled}
-                onClick={() =>
-                  updateNwcSettings({ enabled: !nwcSettings.enabled })
+              <span className="text-sm text-muted-foreground">
+                Enable Auto-Refill
+              </span>
+              <Switch
+                checked={nwcSettings.enabled}
+                onCheckedChange={(checked) =>
+                  updateNwcSettings({ enabled: checked })
                 }
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                  nwcSettings.enabled ? "bg-blue-600" : "bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    nwcSettings.enabled ? "translate-x-5" : "translate-x-1"
-                  }`}
-                />
-              </button>
+              />
             </div>
 
             {nwcSettings.enabled && (
               <>
                 {/* Threshold Input */}
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-xs text-white/50 shrink-0">
+                  <label className="text-xs text-muted-foreground shrink-0">
                     When balance drops below
                   </label>
                   <div className="flex items-center gap-1">
@@ -232,15 +226,15 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
                           threshold: parseInt(e.target.value) || 0,
                         })
                       }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-20 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-foreground text-right focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <span className="text-xs text-white/50">sats</span>
+                    <span className="text-xs text-muted-foreground">sats</span>
                   </div>
                 </div>
 
                 {/* Amount Input */}
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-xs text-white/50 shrink-0">
+                  <label className="text-xs text-muted-foreground shrink-0">
                     Refill with
                   </label>
                   <div className="flex items-center gap-1">
@@ -253,9 +247,9 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
                           amount: parseInt(e.target.value) || 100,
                         })
                       }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-20 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-foreground text-right focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <span className="text-xs text-white/50">sats</span>
+                    <span className="text-xs text-muted-foreground">sats</span>
                   </div>
                 </div>
               </>
@@ -265,10 +259,10 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
       </div>
 
       {/* API Auto-Topup Section */}
-      <div className="bg-white/5 border border-white/10 rounded-md p-3">
+      <div className="bg-muted/50 border border-border rounded-md p-3">
         <div className="flex items-center gap-2 mb-3">
           <RefreshCw className="h-4 w-4 text-blue-400" />
-          <span className="text-sm font-medium text-white/80">
+          <span className="text-sm font-medium text-foreground/80">
             API Auto-Topup
           </span>
           <div
@@ -276,9 +270,9 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
             onMouseEnter={() => setShowApiTooltip(true)}
             onMouseLeave={() => setShowApiTooltip(false)}
           >
-            <Info className="h-3.5 w-3.5 text-white/40 hover:text-white/60 cursor-pointer" />
+            <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" />
             {showApiTooltip && (
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 p-2 bg-black border border-white/20 rounded-md text-xs text-white/70 w-56 z-50">
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 p-2 bg-card border border-border rounded-md text-xs text-muted-foreground w-56 z-50">
                 Automatically topup your API key from your Cashu wallet when its
                 balance drops below the threshold.
               </div>
@@ -287,38 +281,29 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
         </div>
 
         {validApiKeys.length === 0 ? (
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground">
             Create an API key in the API Keys tab to enable auto-topup.
           </p>
         ) : (
           <div className="space-y-3">
             {/* Enable Toggle */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white/70">Enable Auto-Topup</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={apiSettings.enabled}
-                onClick={() =>
-                  updateApiSettings({ enabled: !apiSettings.enabled })
+              <span className="text-sm text-muted-foreground">
+                Enable Auto-Topup
+              </span>
+              <Switch
+                checked={apiSettings.enabled}
+                onCheckedChange={(checked) =>
+                  updateApiSettings({ enabled: checked })
                 }
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                  apiSettings.enabled ? "bg-blue-600" : "bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    apiSettings.enabled ? "translate-x-5" : "translate-x-1"
-                  }`}
-                />
-              </button>
+              />
             </div>
 
             {apiSettings.enabled && (
               <>
                 {/* API Key Selector */}
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-xs text-white/50 shrink-0">
+                  <label className="text-xs text-muted-foreground shrink-0">
                     API Key
                   </label>
                   <select
@@ -326,7 +311,7 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
                     onChange={(e) =>
                       updateApiSettings({ apiKey: e.target.value || null })
                     }
-                    className="flex-1 max-w-[180px] bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="flex-1 max-w-[180px] bg-muted/50 border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   >
                     <option value="">Select API Key</option>
                     {validApiKeys.map((key) => (
@@ -343,7 +328,7 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
 
                 {/* Threshold Input */}
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-xs text-white/50 shrink-0">
+                  <label className="text-xs text-muted-foreground shrink-0">
                     When balance drops below
                   </label>
                   <div className="flex items-center gap-1">
@@ -356,15 +341,15 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
                           threshold: (parseInt(e.target.value) || 0) * 1000,
                         })
                       }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-20 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-foreground text-right focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <span className="text-xs text-white/50">sats</span>
+                    <span className="text-xs text-muted-foreground">sats</span>
                   </div>
                 </div>
 
                 {/* Amount Input */}
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-xs text-white/50 shrink-0">
+                  <label className="text-xs text-muted-foreground shrink-0">
                     Topup with
                   </label>
                   <div className="flex items-center gap-1">
@@ -377,9 +362,9 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
                           amount: parseInt(e.target.value) || 100,
                         })
                       }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-20 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-foreground text-right focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <span className="text-xs text-white/50">sats</span>
+                    <span className="text-xs text-muted-foreground">sats</span>
                   </div>
                 </div>
               </>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
 import { LogOut, XCircle, Copy } from "lucide-react";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import NostrRelayManager from "./NostrRelayManager"; // Import the new component
 import NWCWalletManager from "./NWCWalletManager"; // Import the NWC wallet manager
 import AutoRefillSettings from "./AutoRefillSettings"; // Import auto-refill settings
+import ThemeSettings from "./ThemeSettings"; // Import theme settings
 import { useLoggedInAccounts } from "@/hooks/useLoggedInAccounts";
 import { useLoginActions } from "@/hooks/useLoginActions";
 import { useNostrLogin } from "@nostrify/react/login";
@@ -98,62 +100,44 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
         </div>
       )}
 
+      {/* Theme Settings */}
+      <ThemeSettings />
+
       {/* Chat Sync Settings */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-white/80 mb-2">Chat Sync</h3>
-        <div className="bg-white/5 border border-white/10 rounded-md p-3 space-y-4">
+        <h3 className="text-sm font-medium text-foreground/80 mb-2">
+          Chat Sync
+        </h3>
+        <div className="bg-muted/50 border border-border rounded-md p-3 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-white/70">Enable Chat Sync</div>
-              <div className="text-xs text-white/40 mt-1">
+              <div className="text-sm text-foreground/70">Enable Chat Sync</div>
+              <div className="text-xs text-muted-foreground mt-1">
                 Sync chat messages with Nostr relays
               </div>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={chatSyncEnabled}
-              onClick={() => setChatSyncEnabled(!chatSyncEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                chatSyncEnabled ? "bg-blue-600" : "bg-gray-600"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  chatSyncEnabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
+            <Switch
+              checked={chatSyncEnabled}
+              onCheckedChange={setChatSyncEnabled}
+            />
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/5 pt-4">
+          <div className="flex items-center justify-between border-t border-border pt-4">
             <div>
-              <div className="text-sm text-white/70">
+              <div className="text-sm text-foreground/70">
                 Auto-delete old conversations
               </div>
-              <div className="text-xs text-white/40 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Automatically delete conversations older than 7 days
               </div>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoDeleteEnabled}
-              onClick={() => {
-                const newValue = !autoDeleteEnabled;
-                setAutoDeleteEnabled(newValue);
-                saveAutoDeleteConversations(newValue);
+            <Switch
+              checked={autoDeleteEnabled}
+              onCheckedChange={(checked) => {
+                setAutoDeleteEnabled(checked);
+                saveAutoDeleteConversations(checked);
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                autoDeleteEnabled ? "bg-blue-600" : "bg-gray-600"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  autoDeleteEnabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
+            />
           </div>
         </div>
       </div>
@@ -171,24 +155,28 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
 
       {/* Account Section */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-white/80 mb-2">Account</h3>
-        <div className="mb-3 bg-white/5 border border-white/10 rounded-md p-3">
-          <div className="text-xs text-white/50 mb-1">Current Account</div>
-          <div className="font-mono text-xs text-white/70 break-all">
+        <h3 className="text-sm font-medium text-foreground/80 mb-2">Account</h3>
+        <div className="mb-3 bg-muted/50 border border-border rounded-md p-3">
+          <div className="text-xs text-muted-foreground mb-1">
+            Current Account
+          </div>
+          <div className="font-mono text-xs text-foreground/70 break-all">
             {currentUser?.pubkey || publicKey || "Not available"}
           </div>
         </div>
         {otherUsers && otherUsers.length > 0 && (
-          <div className="mb-3 bg-white/5 border border-white/10 rounded-md p-3">
-            <div className="text-xs text-white/50 mb-2">Switch Account</div>
+          <div className="mb-3 bg-muted/50 border border-border rounded-md p-3">
+            <div className="text-xs text-muted-foreground mb-2">
+              Switch Account
+            </div>
             <div className="flex flex-col gap-2">
               {otherUsers.map((acct) => (
                 <div key={acct.id} className="flex items-center gap-2">
-                  <div className="flex-1 font-mono text-xs text-white/60 break-all">
+                  <div className="flex-1 font-mono text-xs text-muted-foreground break-all">
                     {acct.pubkey}
                   </div>
                   <button
-                    className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs transition-colors cursor-pointer"
+                    className="px-2 py-1 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground text-xs transition-colors cursor-pointer"
                     onClick={() => setLogin(acct.id)}
                     type="button"
                   >
@@ -206,18 +194,20 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
             </div>
           </div>
         )}
-        <div className="mb-3 bg-white/5 border border-white/10 rounded-md p-3">
-          <div className="text-xs text-white/50 mb-2">Add Account by nsec</div>
+        <div className="mb-3 bg-muted/50 border border-border rounded-md p-3">
+          <div className="text-xs text-muted-foreground mb-2">
+            Add Account by nsec
+          </div>
           <div className="flex gap-2">
             <input
               type="text"
-              className="flex-1 bg-transparent border border-white/10 rounded-md px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+              className="flex-1 bg-transparent border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-foreground/30 focus:outline-none"
               placeholder="nsec1..."
               value={newNsec}
               onChange={(e) => setNewNsec(e.target.value)}
             />
             <button
-              className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm transition-colors cursor-pointer"
+              className="px-3 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground text-sm transition-colors cursor-pointer"
               onClick={() => {
                 const trimmed = newNsec.trim();
                 if (!trimmed.startsWith("nsec1")) return;
@@ -260,7 +250,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
           )}
           {logout && router && (
             <button
-              className="grow flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 text-white px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
+              className="grow flex items-center justify-center gap-2 bg-muted hover:bg-muted/80 border border-border text-foreground px-3 py-2 rounded-md text-sm transition-colors cursor-pointer"
               onClick={() => {
                 if (window.confirm("Are you sure you want to sign out?")) {
                   logout();
@@ -278,8 +268,10 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
       </div>
 
       {/* Version Information */}
-      <div className="mt-8 pt-4 border-t border-white/10">
-        <div className="text-xs text-white/40 text-center">Version 0.1.0</div>
+      <div className="mt-8 pt-4 border-t border-border">
+        <div className="text-xs text-muted-foreground text-center">
+          Version 0.1.0
+        </div>
       </div>
     </>
   );

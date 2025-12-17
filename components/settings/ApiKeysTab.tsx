@@ -16,6 +16,7 @@ import {
   Pencil,
   X,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   getBalanceFromStoredProofs,
   refundRemainingBalance,
@@ -861,14 +862,14 @@ const ApiKeysTab = ({
   };
 
   return (
-    <div className="space-y-6 text-white relative">
+    <div className="space-y-6 text-foreground relative">
       {" "}
       {/* Added relative positioning back */}
-      <h3 className="text-sm font-medium text-white/80">API Keys</h3>
+      <h3 className="text-sm font-medium text-foreground/80">API Keys</h3>
       {user && (
-        <div className="flex items-center justify-between p-3 bg-white/5 rounded-md border border-white/10">
+        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md border border-border">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white/80">
+            <span className="text-sm font-medium text-foreground/80">
               Sync with Cloud (Nostr)
             </span>
             <div
@@ -876,9 +877,9 @@ const ApiKeysTab = ({
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
             >
-              <Info className="h-4 w-4 text-white/60 hover:text-white transition-colors cursor-pointer" />
+              <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />
               <div
-                className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-black text-white text-xs rounded-md shadow-lg transition-opacity duration-300 w-64 border border-white/30 whitespace-normal z-50 ${
+                className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-card text-foreground text-xs rounded-md shadow-lg transition-opacity duration-300 w-64 border border-border whitespace-normal z-50 ${
                   showTooltip
                     ? "opacity-100 pointer-events-auto"
                     : "opacity-0 pointer-events-none"
@@ -897,37 +898,25 @@ const ApiKeysTab = ({
               </div>
             </div>
           </div>
-          <button
-            role="switch"
-            aria-checked={cloudSyncEnabled}
-            onClick={() => setCloudSyncEnabled(!cloudSyncEnabled)}
-            className={`${
-              cloudSyncEnabled ? "bg-white" : "bg-white/20"
-            } inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-sm transition-all outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer`}
-          >
-            <span
-              className={`${
-                cloudSyncEnabled
-                  ? "translate-x-[calc(100%-2px)] bg-black"
-                  : "translate-x-0 bg-white"
-              } pointer-events-none block size-4 rounded-full ring-0 transition-transform`}
-            />
-          </button>
+          <Switch
+            checked={cloudSyncEnabled}
+            onCheckedChange={setCloudSyncEnabled}
+          />
         </div>
       )}
-      <div className="bg-white/5 border border-white/10 rounded-md p-4">
+      <div className="bg-muted/50 border border-border rounded-md p-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-white/70 flex items-center gap-2">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
               Available Balance
               <div
                 className="relative inline-block"
                 onMouseEnter={() => setShowMaxBalanceTooltip(true)}
                 onMouseLeave={() => setShowMaxBalanceTooltip(false)}
               >
-                <Info className="h-4 w-4 text-white/60 hover:text-white transition-colors cursor-pointer" />
+                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />
                 <div
-                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-black text-white text-xs rounded-md shadow-lg transition-opacity duration-300 w-64 border border-white/30 whitespace-normal z-50 ${
+                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-card text-foreground text-xs rounded-md shadow-lg transition-opacity duration-300 w-64 border border-border whitespace-normal z-50 ${
                     showMaxBalanceTooltip
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -938,7 +927,7 @@ const ApiKeysTab = ({
                 </div>
               </div>
             </div>
-            <div className="text-lg font-semibold text-white">
+            <div className="text-lg font-semibold text-foreground">
               {usingNip60 &&
                 cashuStore.proofs &&
                 Object.keys(mintBalances).length > 1 &&
@@ -946,7 +935,7 @@ const ApiKeysTab = ({
                   <>
                     {maxMintBalance} sats
                     {usingNip60 && maxMintBalanceUrl && (
-                      <span className="text-xs text-white/50 ml-2">
+                      <span className="text-xs text-muted-foreground ml-2">
                         ({maxMintBalanceUrl.replace(/^https?:\/\//, "")})
                       </span>
                     )}
@@ -971,43 +960,18 @@ const ApiKeysTab = ({
             }
             return (
               localMintBalance !== totalBalance && (
-                <p className="text-sm text-white/70 mt-2">
+                <p className="text-sm text-muted-foreground mt-2">
                   Total Balance: {totalBalance} sats
                 </p>
               )
             );
           })()}
       </div>
-      {(isLoadingApiKeys || isSyncingApiKeys) && (
-        <div className="mb-4 flex items-center text-white/70">
-          <svg
-            className="animate-spin h-5 w-5 mr-3 text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          {isLoadingApiKeys ? "Loading API Keys..." : "Syncing API Keys..."}
-        </div>
-      )}
       {/* Action Buttons */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-2">
           <button
-            className="flex items-center justify-center gap-2 px-2 py-1 sm:px-3 sm:py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-xs sm:text-sm font-medium hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-2 py-1 sm:px-3 sm:py-2 bg-transparent border border-border text-foreground/80 rounded-md text-xs sm:text-sm font-medium hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
             onClick={createApiKey}
             disabled={isLoading || isSyncingApiKeys}
           >
@@ -1015,7 +979,7 @@ const ApiKeysTab = ({
             {isLoading ? "Creating..." : "Create New API Key"}
           </button>
           <button
-            className="flex items-center justify-center gap-2 px-2 py-1 sm:px-3 sm:py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-xs sm:text-sm font-medium hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-2 py-1 sm:px-3 sm:py-2 bg-transparent border border-border text-foreground/80 rounded-md text-xs sm:text-sm font-medium hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
             onClick={handleAddApiKey}
             disabled={isAddingApiKey || isSyncingApiKeys}
           >
@@ -1025,7 +989,7 @@ const ApiKeysTab = ({
         </div>
         {storedApiKeys.length > 0 && (
           <button
-            className="flex items-center justify-center gap-2 px-2 py-1 sm:px-3 sm:py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-xs sm:text-sm hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-2 py-1 sm:px-3 sm:py-2 bg-transparent border border-border text-foreground/80 rounded-md text-xs sm:text-sm hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
             onClick={refreshApiKeysBalances}
             disabled={isRefreshingBalances}
             title="Refresh all API key balances"
@@ -1041,9 +1005,22 @@ const ApiKeysTab = ({
           </button>
         )}
       </div>
+      {(isLoadingApiKeys || isSyncingApiKeys) && storedApiKeys.length === 0 && (
+        <div className="space-y-3 mt-6">
+          <h4 className="text-sm font-medium text-muted-foreground">
+            <div className="h-4 w-40 bg-muted-foreground/10 rounded animate-pulse mb-2" />
+          </h4>
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-muted/50 rounded-md border border-border p-3 h-[52px] animate-pulse"
+            />
+          ))}
+        </div>
+      )}
       {storedApiKeys.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-white/70 mt-6">
+          <h4 className="text-sm font-medium text-muted-foreground mt-6">
             {cloudSyncEnabled
               ? "Cloud Synced API Keys"
               : "Locally Stored API Keys"}
@@ -1056,11 +1033,11 @@ const ApiKeysTab = ({
             return (
               <div
                 key={index}
-                className="bg-white/5 rounded-md border border-white/10 overflow-hidden"
+                className="bg-muted/50 rounded-md border border-border overflow-hidden"
               >
                 {/* Single Line Compact Header */}
                 <div
-                  className="flex items-center justify-between p-3 hover:bg-white/5 transition-colors cursor-pointer"
+                  className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
                   onClick={() => toggleExpanded(keyData.key)}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -1077,34 +1054,34 @@ const ApiKeysTab = ({
                               handleSaveEditLabel(keyData);
                             }
                           }}
-                          className="bg-white/5 border border-white/10 rounded-full px-3 py-1 text-sm text-white w-full sm:w-56 md:w-64 flex-1 min-w-0 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="bg-muted/50 border border-border rounded-full px-3 py-1 text-sm text-foreground w-full sm:w-56 md:w-64 flex-1 min-w-0 focus:outline-none focus:ring-1 focus:ring-ring"
                           placeholder="Enter a name"
                           autoFocus
                         />
                         <button
-                          className="p-1 hover:bg-white/10 rounded-full shrink-0"
+                          className="p-1 hover:bg-muted rounded-full shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSaveEditLabel(keyData);
                           }}
                           title="Save"
                         >
-                          <Check className="h-4 w-4 text-white/70" />
+                          <Check className="h-4 w-4 text-muted-foreground" />
                         </button>
                         <button
-                          className="p-1 hover:bg-white/10 rounded-full shrink-0"
+                          className="p-1 hover:bg-muted rounded-full shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCancelEditLabel();
                           }}
                           title="Cancel"
                         >
-                          <X className="h-4 w-4 text-white/60" />
+                          <X className="h-4 w-4 text-muted-foreground" />
                         </button>
                       </div>
                     ) : (
                       <>
-                        <span className="text-sm font-medium text-white truncate">
+                        <span className="text-sm font-medium text-foreground truncate">
                           {keyData.label || "Unnamed API Key"}
                         </span>
                         <button
@@ -1112,15 +1089,15 @@ const ApiKeysTab = ({
                             e.stopPropagation();
                             handleStartEditLabel(keyData);
                           }}
-                          className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                          className="p-1 hover:bg-muted rounded-full transition-colors"
                           title="Rename"
                         >
-                          <Pencil className="h-3.5 w-3.5 text-white/60" />
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                       </>
                     )}
                     <span
-                      className={`text-xs text-white/50 font-medium truncate ${
+                      className={`text-xs text-muted-foreground font-medium truncate ${
                         editingLabelKey === keyData.key
                           ? "hidden sm:inline"
                           : ""
@@ -1129,13 +1106,13 @@ const ApiKeysTab = ({
                       ({displayUrl})
                     </span>
                     {keyData.isInvalid && (
-                      <span className="px-2 py-0.5 bg-white/10 border border-white/20 text-white/60 text-xs font-medium rounded-full flex-shrink-0">
+                      <span className="px-2 py-0.5 bg-muted border border-border text-muted-foreground text-xs font-medium rounded-full shrink-0">
                         Invalid
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-sm font-medium text-white">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-medium text-foreground">
                       {keyData.isInvalid
                         ? "Invalid"
                         : keyData.balance !== null
@@ -1147,12 +1124,12 @@ const ApiKeysTab = ({
                         e.stopPropagation();
                         toggleExpanded(keyData.key);
                       }}
-                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                      className="p-1 hover:bg-muted rounded transition-colors"
                     >
                       {isExpanded ? (
-                        <ChevronUp className="h-4 w-4 text-white/70" />
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-white/70" />
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                       )}
                     </button>
                   </div>
@@ -1160,29 +1137,29 @@ const ApiKeysTab = ({
 
                 {/* Expanded Content - Only Visible When Expanded */}
                 {isExpanded && (
-                  <div className="px-4 pt-4 pb-4 space-y-3 border-t border-white/10">
+                  <div className="px-4 pt-4 pb-4 space-y-3 border-t border-border">
                     <div className="flex items-center space-x-2">
                       <input
                         type="password"
                         value={keyData.key}
                         readOnly
-                        className="flex-grow bg-white/5 border border-white/10 rounded-full px-3 py-1 text-[11px] text-white/80 font-mono focus:outline-none focus:ring-1 focus:ring-white/20"
+                        className="grow bg-muted/50 border border-border rounded-full px-3 py-1 text-[11px] text-foreground/80 font-mono focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                       <button
                         onClick={() => handleCopyClick(keyData.key)}
-                        className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                         title={
                           copiedKey === keyData.key ? "Copied!" : "Copy API Key"
                         }
                       >
                         {copiedKey === keyData.key ? (
-                          <Check className="h-4 w-4 text-white/70" />
+                          <Check className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                          <Copy className="h-4 w-4 text-white/70" />
+                          <Copy className="h-4 w-4 text-muted-foreground" />
                         )}
                       </button>
                       <button
-                        className="px-2 py-1 bg-transparent border border-white/10 text-white/80 rounded-full text-[11px] hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                        className="px-2 py-1 bg-transparent border border-border text-foreground/80 rounded-full text-[11px] hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1"
                         onClick={() => refreshSingleApiKeyBalance(keyData)}
                         disabled={isRefreshingKey === keyData.key}
                         title="Refresh this API key balance"
@@ -1199,7 +1176,7 @@ const ApiKeysTab = ({
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       <button
-                        className="px-2 py-1 sm:px-3 bg-white/10 border border-white/20 text-white rounded-full text-[11px] sm:text-xs hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                        className="px-2 py-1 sm:px-3 bg-muted border border-border text-foreground rounded-full text-[11px] sm:text-xs hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                         onClick={() => handleTopUp(keyData)}
                         disabled={
                           isTopUpLoading === keyData.key || keyData.isInvalid
@@ -1210,7 +1187,7 @@ const ApiKeysTab = ({
                           : "Top Up"}
                       </button>
                       <button
-                        className="px-2 py-1 sm:px-3 bg-transparent border border-white/10 text-white/80 rounded-full text-[11px] sm:text-xs hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50 cursor-pointer"
+                        className="px-2 py-1 sm:px-3 bg-transparent border border-border text-foreground/80 rounded-full text-[11px] sm:text-xs hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
                         onClick={async () => {
                           setIsRefundingKey(keyData.key); // Set loading for this specific key
                           try {
@@ -1289,16 +1266,16 @@ const ApiKeysTab = ({
           <div className={isMobile ? "px-4" : ""}>
             {isLoading || isSyncingApiKeys ? (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Creating API Key...
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Please wait while your API key is being generated and{" "}
                   {cloudSyncEnabled ? "synced to the cloud" : "stored locally"}.
                 </p>
                 <div className="flex justify-center">
                   <svg
-                    className="animate-spin h-8 w-8 text-white"
+                    className="animate-spin h-8 w-8 text-foreground"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -1321,10 +1298,10 @@ const ApiKeysTab = ({
               </>
             ) : (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Confirm API Key Creation
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Note: Your API keys will be stored{" "}
                   {cloudSyncEnabled
                     ? "in the cloud (Nostr) and also cached locally."
@@ -1336,7 +1313,7 @@ const ApiKeysTab = ({
                     placeholder="API Key Label (optional)"
                     value={newApiKeyLabel}
                     onChange={(e) => setNewApiKeyLabel(e.target.value)}
-                    className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="grow bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
                 <div className="flex items-center space-x-2 mb-4">
@@ -1345,18 +1322,18 @@ const ApiKeysTab = ({
                     placeholder="Amount"
                     value={apiKeyAmount}
                     onChange={(e) => setApiKeyAmount(e.target.value)}
-                    className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="grow bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   <button
                     onClick={() => setApiKeyAmount(localMintBalance.toString())}
-                    className="px-3 py-2 bg-white/5 border border-white/20 text-white/70 rounded-md text-sm hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                    className="px-3 py-2 bg-muted/50 border border-border text-muted-foreground rounded-md text-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                   >
                     Max
                   </button>
                 </div>
                 {availableBaseUrls.length >= 1 && (
                   <div className="mb-4">
-                    <p className="text-sm text-white/70 mb-2">
+                    <p className="text-sm text-muted-foreground mb-2">
                       Select Base URL for this API Key:
                     </p>
                     <div className="max-h-32 overflow-y-auto space-y-2">
@@ -1373,7 +1350,7 @@ const ApiKeysTab = ({
                           <div className="min-w-0 flex-1">
                             <label
                               htmlFor={`newApiKeyBaseUrl-${index}`}
-                              className="text-sm text-white truncate block"
+                              className="text-sm text-foreground truncate block"
                               title={url}
                             >
                               {url}
@@ -1386,13 +1363,13 @@ const ApiKeysTab = ({
                 )}
                 <div className="flex justify-end space-x-2 mt-auto">
                   <button
-                    className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-sm transition-colors cursor-pointer"
                     onClick={() => setShowConfirmation(false)}
                   >
                     Cancel
                   </button>
                   <button
-                    className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent border border-border text-foreground/80 rounded-md text-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                     onClick={confirmCreateApiKey}
                   >
                     Confirm
@@ -1405,13 +1382,13 @@ const ApiKeysTab = ({
       )}
       {showDeleteConfirmation && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-black rounded-lg p-6 max-w-md w-full border border-white/10">
+          <div className="bg-card rounded-lg p-6 max-w-md w-full border border-border">
             {refundFailed ? (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Refund Failed
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   ATTENTION! The REFUND operation FAILED. Do you still want to
                   delete this API Key? Any remaining balance will be lost.
                   {cloudSyncEnabled
@@ -1420,13 +1397,13 @@ const ApiKeysTab = ({
                 </p>
                 <div className="flex justify-end space-x-2">
                   <button
-                    className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-sm transition-colors cursor-pointer"
                     onClick={confirmDeleteApiKey}
                   >
                     Delete Anyway
                   </button>
                   <button
-                    className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent border border-border text-foreground/80 rounded-md text-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                     onClick={() => {
                       setShowDeleteConfirmation(false);
                       setKeyToDeleteConfirmation(null);
@@ -1441,10 +1418,10 @@ const ApiKeysTab = ({
             ) : isDeletingKey === keyToDeleteConfirmation ||
               isSyncingApiKeys ? (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Deleting API Key...
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Please wait while the API key is being deleted and{" "}
                   {cloudSyncEnabled
                     ? "synced to the cloud and refunded"
@@ -1453,7 +1430,7 @@ const ApiKeysTab = ({
                 </p>
                 <div className="flex justify-center">
                   <svg
-                    className="animate-spin h-8 w-8 text-white"
+                    className="animate-spin h-8 w-8 text-foreground"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -1476,10 +1453,10 @@ const ApiKeysTab = ({
               </>
             ) : (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Confirm API Key Deletion
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Are you sure you want to delete this API Key? This action
                   cannot be undone. Any remaining balance will be refunded.
                   {cloudSyncEnabled
@@ -1488,7 +1465,7 @@ const ApiKeysTab = ({
                 </p>
                 <div className="flex justify-end space-x-2">
                   <button
-                    className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-sm transition-colors cursor-pointer"
                     onClick={() => {
                       setShowDeleteConfirmation(false);
                       setKeyToDeleteConfirmation(null);
@@ -1497,7 +1474,7 @@ const ApiKeysTab = ({
                     Cancel
                   </button>
                   <button
-                    className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent border border-border text-foreground/80 rounded-md text-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                     onClick={confirmDeleteApiKey}
                   >
                     Confirm Delete
@@ -1510,16 +1487,16 @@ const ApiKeysTab = ({
       )}
       {showTopUpModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-black rounded-lg p-6 max-w-md w-full border border-white/10">
-            <h4 className="text-lg font-semibold text-white mb-4">
+          <div className="bg-card rounded-lg p-6 max-w-md w-full border border-border">
+            <h4 className="text-lg font-semibold text-foreground mb-4">
               Top Up API Key
             </h4>
-            <p className="text-sm text-white/70 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Top up "{keyToTopUp?.label || "Unnamed"}" API key with additional
               sats.
             </p>
             <div className="mb-4">
-              <label className="block text-sm text-white/70 mb-2">
+              <label className="block text-sm text-muted-foreground mb-2">
                 Amount (sats):
               </label>
               <div className="flex items-center space-x-2">
@@ -1534,22 +1511,22 @@ const ApiKeysTab = ({
                       void confirmTopUp();
                     }
                   }}
-                  className="flex-grow bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                  className="grow bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
                 <button
                   onClick={() => setTopUpAmount(localMintBalance.toString())}
-                  className="px-3 py-2 bg-white/5 border border-white/20 text-white/70 rounded-md text-sm hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                  className="px-3 py-2 bg-muted/50 border border-border text-muted-foreground rounded-md text-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                 >
                   Max
                 </button>
               </div>
-              <p className="text-xs text-white/50 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Available: {localMintBalance} sats
               </p>
             </div>
             <div className="flex justify-end space-x-2">
               <button
-                className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                className="px-4 py-2 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-sm transition-colors cursor-pointer"
                 onClick={() => {
                   setShowTopUpModal(false);
                   setTopUpAmount("");
@@ -1559,7 +1536,7 @@ const ApiKeysTab = ({
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-white/10 border border-white/20 text-white rounded-md text-sm hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 bg-muted border border-border text-foreground rounded-md text-sm hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                 onClick={confirmTopUp}
                 disabled={
                   !topUpAmount ||
@@ -1591,16 +1568,16 @@ const ApiKeysTab = ({
           <div className={isMobile ? "px-4" : ""}>
             {isAddingApiKey ? (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Adding API Key...
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Please wait while your API key is being verified and{" "}
                   {cloudSyncEnabled ? "synced to the cloud" : "stored locally"}.
                 </p>
                 <div className="flex justify-center">
                   <svg
-                    className="animate-spin h-8 w-8 text-white"
+                    className="animate-spin h-8 w-8 text-foreground"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -1623,17 +1600,17 @@ const ApiKeysTab = ({
               </>
             ) : (
               <>
-                <h4 className="text-lg font-semibold text-white mb-4">
+                <h4 className="text-lg font-semibold text-foreground mb-4">
                   Add Existing API Key
                 </h4>
-                <p className="text-sm text-white/70 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Add an existing API key to manage it here. The key will be
                   verified before adding.
                 </p>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-white/70 mb-2">
+                    <label className="block text-sm text-muted-foreground mb-2">
                       API Key Label (optional)
                     </label>
                     <input
@@ -1647,12 +1624,12 @@ const ApiKeysTab = ({
                           void confirmAddApiKey();
                         }
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                      className="w-full bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/70 mb-2">
+                    <label className="block text-sm text-muted-foreground mb-2">
                       API Key
                     </label>
                     <input
@@ -1666,16 +1643,16 @@ const ApiKeysTab = ({
                           void confirmAddApiKey();
                         }
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-white/20"
+                      className="w-full bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
                   {availableBaseUrls.length >= 1 && (
                     <div>
-                      <label className="block text-sm text-white/70 mb-2">
+                      <label className="block text-sm text-muted-foreground mb-2">
                         Base URL
                       </label>
-                      <div className="max-h-32 overflow-y-auto space-y-2 bg-white/5 rounded-md p-2 border border-white/10">
+                      <div className="max-h-32 overflow-y-auto space-y-2 bg-muted/50 rounded-md p-2 border border-border">
                         {availableBaseUrls.map((url: string, index: number) => (
                           <div className="flex items-center gap-2" key={index}>
                             <input
@@ -1691,7 +1668,7 @@ const ApiKeysTab = ({
                             <div className="min-w-0 flex-1">
                               <label
                                 htmlFor={`manualApiKeyBaseUrl-${index}`}
-                                className="text-sm text-white truncate block"
+                                className="text-sm text-foreground truncate block"
                                 title={url}
                               >
                                 {url}
@@ -1706,7 +1683,7 @@ const ApiKeysTab = ({
 
                 <div className="flex justify-end space-x-2 mt-6">
                   <button
-                    className="px-4 py-2 bg-transparent text-white/70 hover:text-white rounded-md text-sm transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-sm transition-colors cursor-pointer"
                     onClick={() => {
                       setShowAddApiKeyModal(false);
                       setManualApiKey("");
@@ -1716,7 +1693,7 @@ const ApiKeysTab = ({
                     Cancel
                   </button>
                   <button
-                    className="px-4 py-2 bg-transparent border border-white/10 text-white/80 rounded-md text-sm hover:bg-white/5 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2 bg-transparent border border-border text-foreground/80 rounded-md text-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
                     onClick={confirmAddApiKey}
                     disabled={!manualApiKey.trim()}
                   >

@@ -573,7 +573,7 @@ export default function ChatMessages({
                                             key={`edit-img-${imgIndex}`}
                                             src={item.image_url?.url}
                                             alt="Attached"
-                                            className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                                            className="w-16 h-16 object-cover rounded-lg border border-border"
                                           />
                                         ))}
                                     </div>
@@ -587,15 +587,15 @@ export default function ChatMessages({
                                         .map((item, fileIndex) => (
                                           <div
                                             key={`edit-file-${fileIndex}`}
-                                            className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2"
+                                            className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2"
                                           >
                                             <FileText
-                                              className="h-5 w-5 text-white/80 flex-shrink-0"
+                                              className="h-5 w-5 text-foreground/80 flex-shrink-0"
                                               aria-hidden="true"
                                             />
                                             <div className="min-w-0 flex-1">
                                               <p
-                                                className="truncate text-sm font-medium text-white"
+                                                className="truncate text-sm font-medium text-foreground"
                                                 title={
                                                   item.file?.name ||
                                                   "Attachment"
@@ -605,7 +605,7 @@ export default function ChatMessages({
                                                   "Attachment"}
                                               </p>
                                               {item.file?.mimeType && (
-                                                <p className="text-xs uppercase text-white/60">
+                                                <p className="text-xs uppercase text-muted-foreground">
                                                   {item.file.mimeType ===
                                                   "application/pdf"
                                                     ? "PDF"
@@ -630,21 +630,21 @@ export default function ChatMessages({
                                     handleSaveInlineEdit();
                                   }
                                 }}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white focus:outline-none focus:border-white/40"
+                                className="w-full bg-muted/50 border border-border rounded-2xl p-3 text-sm text-foreground focus:outline-none focus:border-foreground/40"
                                 rows={3}
                                 autoFocus
                               />
                               <div className="flex justify-end space-x-2 mt-2">
                                 <button
                                   onClick={cancelEditing}
-                                  className="text-xs text-gray-300 hover:text-white bg-white/10 px-3 py-1.5 rounded-md"
+                                  className="text-xs text-muted-foreground hover:text-foreground bg-muted px-3 py-1.5 rounded-md"
                                 >
                                   Cancel
                                 </button>
                                 <button
                                   onClick={handleSaveInlineEdit}
                                   disabled={isLoading}
-                                  className="text-xs text-black bg-white px-3 py-1.5 rounded-md hover:bg-white/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/70"
+                                  className="text-xs text-primary-foreground bg-primary px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Send
                                 </button>
@@ -653,7 +653,7 @@ export default function ChatMessages({
                           ) : (
                             <div>
                               <div className="group relative">
-                                <div className="bg-white/10 rounded-2xl py-2 px-4 text-white">
+                                <div className="bg-muted rounded-2xl py-2 px-4 text-foreground">
                                   <div className="text-[18px]">
                                     <MessageContentRenderer
                                       content={message.content}
@@ -677,7 +677,7 @@ export default function ChatMessages({
                                     onClick={() =>
                                       copyMessageContent(index, message.content)
                                     }
-                                    className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
+                                    className="p-1 rounded-full text-muted-foreground hover:text-foreground transition-colors"
                                     aria-label="Copy message"
                                   >
                                     {copiedMessageIndex === index ? (
@@ -688,7 +688,7 @@ export default function ChatMessages({
                                   </button>
                                   <button
                                     onClick={() => startEditingMessage(index)}
-                                    className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
+                                    className="p-1 rounded-full text-muted-foreground hover:text-foreground transition-colors"
                                     aria-label="Edit message"
                                   >
                                     <Edit className="w-4 h-4" />
@@ -885,7 +885,7 @@ export default function ChatMessages({
                             thinkingContent={thinkingContent}
                           />
                         )}
-                        <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
+                        <div className="w-full text-foreground py-2 px-0 text-[18px]">
                           <MessageContentRenderer
                             content={message.content}
                             citations={getCitationsFromContent(message.content)}
@@ -905,7 +905,7 @@ export default function ChatMessages({
                             onClick={() =>
                               copyMessageContent(index, message.content)
                             }
-                            className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border rounded-md px-3 py-1.5 transition-colors cursor-pointer"
                           >
                             {copiedMessageIndex === index ? (
                               <Check className="w-3 h-3" />
@@ -916,7 +916,7 @@ export default function ChatMessages({
                           </button>
                           <button
                             onClick={() => retryMessage(index)}
-                            className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-3 py-1.5 transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border rounded-md px-3 py-1.5 transition-colors cursor-pointer"
                           >
                             <svg
                               width="12"
@@ -992,7 +992,7 @@ export default function ChatMessages({
 
         {streamingContent && (
           <div className="flex flex-col items-start mb-6">
-            <div className="w-full text-gray-100 py-2 px-0 text-[18px]">
+            <div className="w-full text-foreground py-2 px-0 text-[18px]">
               <MarkdownRenderer content={streamingContent} />
             </div>
           </div>

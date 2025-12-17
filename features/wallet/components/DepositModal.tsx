@@ -1,13 +1,21 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AlertCircle, Copy, Loader2, QrCode, Zap, ArrowRight, Info } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  AlertCircle,
+  Copy,
+  Loader2,
+  QrCode,
+  Zap,
+  ArrowRight,
+  Info,
+} from "lucide-react";
 import QRCode from "react-qr-code";
-import { 
-  useCashuWallet, 
-  useCashuToken, 
-  useCashuStore, 
-  formatBalance, 
+import {
+  useCashuWallet,
+  useCashuToken,
+  useCashuStore,
+  formatBalance,
   calculateBalanceByMint,
-  useTransactionHistoryStore 
+  useTransactionHistoryStore,
 } from "@/features/wallet";
 import { PendingTransaction } from "../state/transactionHistoryStore";
 import {
@@ -17,10 +25,16 @@ import {
 import { useInvoiceSync } from "@/hooks/useInvoiceSync";
 import { useInvoiceChecker } from "@/hooks/useInvoiceChecker";
 import { MintQuoteState } from "@cashu/cashu-ts";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const BCButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.Button), { ssr: false });
-const BCPayButton = dynamic(() => import('@getalby/bitcoin-connect-react').then(m => m.PayButton), { ssr: false });
+const BCButton = dynamic(
+  () => import("@getalby/bitcoin-connect-react").then((m) => m.Button),
+  { ssr: false }
+);
+const BCPayButton = dynamic(
+  () => import("@getalby/bitcoin-connect-react").then((m) => m.PayButton),
+  { ssr: false }
+);
 
 // Helper function to generate unique IDs
 const generateId = () => crypto.randomUUID();
@@ -36,7 +50,16 @@ interface DepositModalProps {
   autoCreate?: boolean;
 }
 
-const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, balance, setBalance, usingNip60, initialAmount, autoCreate }) => {
+const DepositModal: React.FC<DepositModalProps> = ({
+  isOpen,
+  onClose,
+  mintUrl,
+  balance,
+  setBalance,
+  usingNip60,
+  initialAmount,
+  autoCreate,
+}) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const hasAutoCreatedRef = useRef(false);
 
@@ -44,17 +67,19 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node)
+      ) {
         onClose();
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen, onClose]);
-
 
   const popularAmounts = [100, 500, 1000];
 
@@ -64,7 +89,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
   const [paymentRequest, setPaymentRequest] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
-  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [pendingTransactionId, setPendingTransactionId] = useState<
+    string | null
+  >(null);
   const processingInvoiceRef = useRef<string | null>(null);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -73,7 +100,11 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
 
   const { wallet, isLoading, updateProofs } = useCashuWallet();
   const cashuStore = useCashuStore();
-  const { receiveToken, isLoading: isTokenLoading, error: hookError } = useCashuToken();
+  const {
+    receiveToken,
+    isLoading: isTokenLoading,
+    error: hookError,
+  } = useCashuToken();
   const transactionHistoryStore = useTransactionHistoryStore();
   const { addInvoice, updateInvoice } = useInvoiceSync();
   const { triggerCheck } = useInvoiceChecker();
@@ -93,7 +124,12 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
     if (initialAmount && initialAmount > 0) {
       setReceiveAmount(String(initialAmount));
     }
-    if (autoCreate && initialAmount && initialAmount > 0 && !hasAutoCreatedRef.current) {
+    if (
+      autoCreate &&
+      initialAmount &&
+      initialAmount > 0 &&
+      !hasAutoCreatedRef.current
+    ) {
       hasAutoCreatedRef.current = true;
       void handleCreateInvoice(initialAmount);
     }
@@ -112,7 +148,8 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
       return;
     }
 
-    const amount = quickMintAmount !== undefined ? quickMintAmount : parseInt(receiveAmount);
+    const amount =
+      quickMintAmount !== undefined ? quickMintAmount : parseInt(receiveAmount);
 
     if (isNaN(amount) || amount <= 0) {
       setError("Please enter a valid amount");
@@ -135,13 +172,13 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
 
       // Store invoice persistently
       await addInvoice({
-        type: 'mint',
+        type: "mint",
         mintUrl: cashuStore.activeMintUrl,
         quoteId: invoiceData.quoteId,
         paymentRequest: invoiceData.paymentRequest,
         amount: amount,
         state: MintQuoteState.UNPAID,
-        expiresAt: invoiceData.expiresAt
+        expiresAt: invoiceData.expiresAt,
       });
 
       const pendingTxId = generateId();
@@ -169,7 +206,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
       console.error("Error creating invoice:", error);
       setError(
         "Failed to create Lightning invoice: " +
-        (error instanceof Error ? error.message : String(error))
+          (error instanceof Error ? error.message : String(error))
       );
     } finally {
       setIsProcessing(false);
@@ -177,15 +214,30 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
   };
 
   const handlePaid = async (_response: any) => {
-    if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount) return;
+    if (!cashuStore.activeMintUrl || !currentMeltQuoteId || !pendingAmount)
+      return;
     try {
-      const proofs = await mintTokensFromPaidInvoice(cashuStore.activeMintUrl, currentMeltQuoteId, pendingAmount);
+      const proofs = await mintTokensFromPaidInvoice(
+        cashuStore.activeMintUrl,
+        currentMeltQuoteId,
+        pendingAmount
+      );
       if (proofs.length > 0) {
-        await updateProofs({ mintUrl: cashuStore.activeMintUrl, proofsToAdd: proofs, proofsToRemove: [] });
-        await updateInvoice(currentMeltQuoteId, { state: MintQuoteState.PAID, paidAt: Date.now() });
-        if (pendingTransactionId) transactionHistoryStore.removePendingTransaction(pendingTransactionId);
+        await updateProofs({
+          mintUrl: cashuStore.activeMintUrl,
+          proofsToAdd: proofs,
+          proofsToRemove: [],
+        });
+        await updateInvoice(currentMeltQuoteId, {
+          state: MintQuoteState.PAID,
+          paidAt: Date.now(),
+        });
+        if (pendingTransactionId)
+          transactionHistoryStore.removePendingTransaction(
+            pendingTransactionId
+          );
         setPendingTransactionId(null);
-        setSuccessMessage(`Received ${formatBalance(pendingAmount, 'sats')}!`);
+        setSuccessMessage(`Received ${formatBalance(pendingAmount, "sats")}!`);
         setInvoice("");
         setcurrentMeltQuoteId("");
         setReceiveAmount("");
@@ -220,13 +272,13 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
         // Update stored invoice status
         await updateInvoice(quoteId, {
           state: MintQuoteState.PAID,
-          paidAt: Date.now()
+          paidAt: Date.now(),
         });
 
         transactionHistoryStore.removePendingTransaction(pendingTxId);
         setPendingTransactionId(null);
 
-        setSuccessMessage(`Received ${formatBalance(amount, 'sats')}!`);
+        setSuccessMessage(`Received ${formatBalance(amount, "sats")}!`);
         setInvoice("");
         setcurrentMeltQuoteId("");
         setReceiveAmount("");
@@ -245,7 +297,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
         console.error("Error checking payment status:", error);
         setError(
           "Failed to check payment status: " +
-          (error instanceof Error ? error.message : String(error))
+            (error instanceof Error ? error.message : String(error))
         );
       } else {
         setTimeout(() => {
@@ -270,7 +322,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
     processingInvoiceRef.current = null;
   };
 
-  const [tokenToImport, setTokenToImport] = useState('');
+  const [tokenToImport, setTokenToImport] = useState("");
   const [isImporting, setIsImporting] = useState(false);
 
   const handleReceiveToken = async () => {
@@ -286,7 +338,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
       const proofs = await receiveToken(tokenToImport);
       const totalAmount = proofs.reduce((sum, p) => sum + p.amount, 0);
 
-      setSuccessMessage(`Received ${formatBalance(totalAmount, 'sats')} successfully!`);
+      setSuccessMessage(
+        `Received ${formatBalance(totalAmount, "sats")} successfully!`
+      );
       setTokenToImport("");
     } catch (error) {
       console.error("Error receiving token:", error);
@@ -296,13 +350,27 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div ref={modalRef} className="bg-[#181818] border border-white/20 rounded-md p-4 max-w-sm w-full max-h-[90vh] overflow-y-auto relative">
+      <div
+        ref={modalRef}
+        className="bg-card border border-border rounded-md p-4 max-w-sm w-full max-h-[90vh] overflow-y-auto relative"
+      >
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-white/50 hover:text-white"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-4 h-4"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
         <h2 className="text-xl font-semibold text-white mb-4">Deposit Funds</h2>
@@ -345,7 +413,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
             {/* Bitcoin Connect: Connect Wallet */}
             <div className="bg-white/5 border border-white/20 rounded-md p-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-white/70">Connect a wallet (NWC)</span>
+                <span className="text-xs text-white/70">
+                  Connect a wallet (NWC)
+                </span>
                 {/* @ts-ignore */}
                 <BCButton />
               </div>
@@ -358,7 +428,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                   <button
                     key={amount}
                     onClick={() => handleQuickMint(amount)}
-                    disabled={isProcessing || isLoading || !cashuStore.activeMintUrl}
+                    disabled={
+                      isProcessing || isLoading || !cashuStore.activeMintUrl
+                    }
                     className="flex-1 bg-white/5 border border-white/20 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 hover:border-white/30 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
@@ -376,7 +448,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                   value={receiveAmount}
                   onChange={(e) => setReceiveAmount(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       void handleCreateInvoice();
                     }
@@ -387,12 +459,17 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                 />
                 <button
                   onClick={() => handleCreateInvoice()}
-                  disabled={isProcessing || !receiveAmount || !cashuStore.activeMintUrl || isLoading}
+                  disabled={
+                    isProcessing ||
+                    !receiveAmount ||
+                    !cashuStore.activeMintUrl ||
+                    isLoading
+                  }
                   className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
                   type="button"
                 >
                   <Zap className="h-4 w-4 mr-2 inline" />
-                  {isProcessing ? 'Creating...' : 'Create'}
+                  {isProcessing ? "Creating..." : "Create"}
                 </button>
               </div>
             </div>
@@ -411,7 +488,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-sm text-white/70">Lightning Invoice</span>
+                  <span className="text-sm text-white/70">
+                    Lightning Invoice
+                  </span>
                   <div className="relative">
                     <input
                       readOnly
@@ -434,7 +513,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                 {/* Bitcoin Connect: Pay Button */}
                 <div className="bg-white/5 border border-white/20 rounded-md p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-white/70">Pay with connected wallet</span>
+                    <span className="text-xs text-white/70">
+                      Pay with connected wallet
+                    </span>
                     {/* @ts-ignore */}
                     <BCPayButton invoice={invoice} onPaid={handlePaid} />
                   </div>
@@ -468,7 +549,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, mintUrl, b
                 className="w-full bg-white/10 border border-white/10 text-white py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
                 type="button"
               >
-                {isImporting ? 'Importing...' : 'Import Token'}
+                {isImporting ? "Importing..." : "Import Token"}
               </button>
             </div>
           </div>

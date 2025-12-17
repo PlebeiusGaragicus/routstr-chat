@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Check, XCircle, ChevronDown, Minus } from "lucide-react";
+import { Search, Check, XCircle, ChevronDown, Minus, Star } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/Popover";
+import { Switch } from "@/components/ui/switch";
 import { Model } from "@/types/models";
 import {
   getModelNameWithoutProvider,
@@ -257,18 +258,18 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
   };
 
   return (
-    <div className="flex flex-col min-h-[600px]">
+    <div className="flex flex-col h-full min-h-[600px]">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 h-full">
           {/* Favorite Models Section - Top */}
-          <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col">
+          <div className="bg-muted/50 border border-border rounded-md p-3 flex flex-col">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-white flex items-center gap-1.5">
+              <h4 className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 Favorite Models
               </h4>
               {configuredModels.length > 0 && (
                 <button
-                  className="text-white/50 hover:text-red-400 text-xs flex items-center gap-1 cursor-pointer"
+                  className="text-muted-foreground hover:text-red-400 text-xs flex items-center gap-1 cursor-pointer"
                   onClick={clearAll}
                   type="button"
                 >
@@ -276,7 +277,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                 </button>
               )}
             </div>
-            <div className="overflow-y-auto divide-y divide-white/5 max-h-[200px]">
+            <div className="overflow-y-auto divide-y divide-border max-h-[200px]">
               {configuredModelsList.length > 0 ? (
                 configuredModelsList.map((item) => (
                   <div
@@ -284,12 +285,12 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     className="flex items-center justify-between py-2"
                   >
                     <div className="min-w-0">
-                      <div className="text-sm text-white truncate flex items-center gap-1.5">
+                      <div className="text-sm text-foreground truncate flex items-center gap-1.5">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="h-3.5 w-3.5 text-yellow-400 flex-shrink-0"
+                          className="h-3.5 w-3.5 text-yellow-500 dark:text-yellow-400 flex-shrink-0"
                         >
                           <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.401 8.167L12 18.896l-7.335 3.868 1.401-8.167L.132 9.21l8.2-1.192L12 .587z" />
                         </svg>
@@ -299,15 +300,15 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                             : item.id}
                         </span>
                       </div>
-                      <div className="text-[11px] text-white/60 truncate">
+                      <div className="text-[11px] text-muted-foreground truncate">
                         Provider:{" "}
-                        <span className="text-white/80">
+                        <span className="text-foreground/80">
                           {getProviderLabelFor(item.key)}
                         </span>
                       </div>
                     </div>
                     <button
-                      className="text-white/50 hover:text-red-400 text-xs cursor-pointer"
+                      className="text-muted-foreground hover:text-red-400 text-xs cursor-pointer"
                       onClick={() => toggleConfiguredModel(item.key)}
                       title="Remove from My Models"
                       type="button"
@@ -317,7 +318,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-white/50 py-4 text-center">
+                <div className="text-sm text-muted-foreground py-4 text-center">
                   No models selected. Add from the list →
                 </div>
               )}
@@ -325,25 +326,19 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
           </div>
 
           {/* Disable Providers Section - Bottom */}
-          <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col">
+          <div className="bg-muted/50 border border-border rounded-md p-3 flex flex-col flex-1 min-h-0">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-white flex items-center gap-2">
-                Disable Providers
-                <span className="text-xs font-normal text-white/60">
+              <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                Providers
+                <span className="text-xs font-normal text-muted-foreground">
                   ({allProviders.length - disabledProviders.length}/
                   {allProviders.length})
                 </span>
               </h4>
               {allProviders.length > 0 && (
-                <button
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-transparent ${
-                    disabledProviders.length === 0
-                      ? "bg-green-500/50"
-                      : disabledProviders.length === allProviders.length
-                      ? "bg-red-500/50"
-                      : "bg-yellow-500/50"
-                  } cursor-pointer`}
-                  onClick={() => {
+                <Switch
+                  checked={disabledProviders.length === 0}
+                  onCheckedChange={() => {
                     const shouldEnableAll = disabledProviders.length > 0;
                     if (shouldEnableAll) {
                       // Enable all providers
@@ -368,10 +363,8 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       }, 0);
                     }
                   }}
-                  type="button"
-                  role="switch"
-                  aria-checked={disabledProviders.length === 0}
-                  title={
+                  id="toggle-all-providers"
+                  aria-label={
                     disabledProviders.length === 0
                       ? "Disable all providers"
                       : disabledProviders.length === allProviders.length
@@ -380,36 +373,16 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                           allProviders.length - disabledProviders.length
                         }/${allProviders.length} enabled)`
                   }
-                >
-                  {disabledProviders.length > 0 &&
-                  disabledProviders.length < allProviders.length ? (
-                    // Half-enabled state: show minus icon
-                    <span className="inline-block h-4 w-4 transform rounded-full bg-white flex items-center justify-center translate-x-2.5">
-                      <Minus
-                        className="h-3 w-3 text-yellow-600"
-                        strokeWidth={3}
-                      />
-                    </span>
-                  ) : (
-                    // All enabled or all disabled: show regular toggle
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        disabledProviders.length === 0
-                          ? "translate-x-5"
-                          : "translate-x-1"
-                      }`}
-                    />
-                  )}
-                </button>
+                />
               )}
             </div>
-            <div className="overflow-y-auto divide-y divide-white/5 max-h-[200px]">
+            <div className="overflow-y-auto divide-y divide-border flex-1 min-h-0">
               {isLoadingProviders ? (
                 <div className="p-2 space-y-2">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="py-2">
-                      <div className="h-4 w-32 bg-white/5 rounded animate-pulse mb-1" />
-                      <div className="h-3 w-48 bg-white/5 rounded animate-pulse" />
+                      <div className="h-4 w-32 bg-muted rounded animate-pulse mb-1" />
+                      <div className="h-3 w-48 bg-muted rounded animate-pulse" />
                     </div>
                   ))}
                 </div>
@@ -426,38 +399,28 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                       className="flex items-center justify-between py-2"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm text-white truncate">
+                        <div className="text-sm text-foreground truncate">
                           {provider.name}
                         </div>
-                        <div className="text-[11px] text-white/60 truncate">
+                        <div className="text-[11px] text-muted-foreground truncate">
                           {normalized}
                         </div>
                       </div>
-                      <button
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-transparent ${
-                          isDisabled ? "bg-red-500/50" : "bg-green-500/50"
-                        } cursor-pointer`}
-                        onClick={() =>
+                      <Switch
+                        checked={!isDisabled}
+                        onCheckedChange={() =>
                           toggleProviderDisabled(provider.endpoint_url)
                         }
-                        type="button"
-                        role="switch"
-                        aria-checked={!isDisabled}
-                        title={
+                        id={`switch-${normalized}`}
+                        aria-label={
                           isDisabled ? "Enable provider" : "Disable provider"
                         }
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            isDisabled ? "translate-x-1" : "translate-x-5"
-                          }`}
-                        />
-                      </button>
+                      />
                     </div>
                   );
                 })
               ) : (
-                <div className="text-sm text-white/50 py-4 text-center">
+                <div className="text-sm text-muted-foreground py-4 text-center">
                   No providers available
                 </div>
               )}
@@ -465,15 +428,17 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-md p-3 flex flex-col min-h-[300px]">
-          <h4 className="text-sm font-medium text-white mb-2">All Models</h4>
+        <div className="bg-muted/50 border border-border rounded-md p-3 flex flex-col h-full min-h-0">
+          <h4 className="text-sm font-medium text-foreground mb-2">
+            All Models
+          </h4>
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[11px] text-white/60 flex-shrink-0">
+            <span className="text-[11px] text-muted-foreground flex-shrink-0">
               Provider
             </span>
             {isLoadingProviders ? (
               <div className="inline-block align-middle">
-                <div className="h-6 w-56 bg-white/5 border border-white/10 rounded animate-pulse" />
+                <div className="h-6 w-56 bg-muted border border-border rounded animate-pulse" />
               </div>
             ) : providers.length > 0 ? (
               <div className="flex-1 min-w-0">
@@ -483,7 +448,7 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                 >
                   <PopoverTrigger asChild>
                     <button
-                      className="inline-flex items-center gap-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white/80 hover:bg-white/10 cursor-pointer w-full justify-between"
+                      className="inline-flex items-center gap-1 bg-muted/50 border border-border rounded px-2 py-1 text-[11px] text-foreground/80 hover:bg-muted cursor-pointer w-full justify-between"
                       type="button"
                     >
                       <span className="truncate text-left">
@@ -502,18 +467,18 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                             : selectedProvider || "Select provider";
                         })()}
                       </span>
-                      <ChevronDown className="h-3 w-3 text-white/60 flex-shrink-0" />
+                      <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
-                    className="bg-[#181818] border border-white/10 text-white p-2 w-96 rounded-md shadow-lg z-[9999]"
+                    className="bg-card border border-border text-foreground p-2 w-96 rounded-md shadow-lg z-[9999]"
                   >
                     <div className="mb-2 relative">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                       <input
                         placeholder="Search providers..."
-                        className="w-full bg-white/5 border border-white/10 rounded pl-8 pr-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
+                        className="w-full bg-muted/50 border border-border rounded pl-8 pr-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none"
                         onChange={(e) => {
                           const q = e.target.value.toLowerCase();
                           setProviders((prev) =>
@@ -545,8 +510,8 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                         return (
                           <button
                             key={`${p.name}-${normalized}`}
-                            className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10 cursor-pointer ${
-                              isActive ? "bg-white/10" : ""
+                            className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-muted cursor-pointer ${
+                              isActive ? "bg-muted" : ""
                             }`}
                             onClick={() => {
                               setSelectedProvider(normalized);
@@ -555,8 +520,10 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                             type="button"
                           >
                             <div className="truncate">
-                              <span className="text-white/90">{p.name}</span>
-                              <span className="text-white/40">
+                              <span className="text-foreground/90">
+                                {p.name}
+                              </span>
+                              <span className="text-muted-foreground">
                                 {" "}
                                 — {normalized}
                               </span>
@@ -569,28 +536,28 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                 </Popover>
               </div>
             ) : (
-              <span className="text-[11px] text-white/50">
+              <span className="text-[11px] text-muted-foreground">
                 No providers available
               </span>
             )}
           </div>
           {/* Provider models search */}
           <div className="relative mb-2">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
               placeholder="Search models in this provider..."
-              className="w-full bg-white/5 border border-white/10 rounded pl-8 pr-2 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none"
+              className="w-full bg-muted/50 border border-border rounded pl-8 pr-2 py-1.5 text-sm text-foreground focus:border-ring focus:outline-none"
               value={providerSearchQuery}
               onChange={(e) => setProviderSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-white/5 max-h-[400px]">
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border">
             {isLoadingProviders || isLoadingProviderModels ? (
               <div className="p-2 space-y-2">
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="py-2">
-                    <div className="h-4 w-40 bg-white/5 rounded animate-pulse mb-1" />
-                    <div className="h-3 w-64 bg-white/5 rounded animate-pulse" />
+                    <div className="h-4 w-40 bg-muted rounded animate-pulse mb-1" />
+                    <div className="h-3 w-64 bg-muted rounded animate-pulse" />
                   </div>
                 ))}
               </div>
@@ -609,36 +576,47 @@ const ModelsTab: React.FC<ModelsTabProps> = ({
                     m.id.toLowerCase().includes(q)
                   );
                 })
-                .map((model) => (
-                  <div
-                    key={`${selectedProvider}-${model.id}`}
-                    className="flex items-center justify-between py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-sm text-white truncate">
-                        {getModelNameWithoutProvider(model.name)}
-                      </div>
-                    </div>
-                    <button
-                      className="text-white/80 hover:text-white text-xs border border-white/20 rounded px-2 py-1 cursor-pointer flex items-center gap-1"
-                      onClick={() => {
-                        const base = normalizeBaseUrl(selectedProvider);
-                        const key = buildModelKey(model.id, base);
-                        if (setModelProviderFor) {
-                          // Store mapping for this specific provider-qualified key
-                          setModelProviderFor(key, base);
-                        }
-                        toggleConfiguredModel(key);
-                      }}
-                      title="Favorite this model"
-                      type="button"
+                .map((model) => {
+                  const base = normalizeBaseUrl(selectedProvider);
+                  const key = buildModelKey(model.id, base);
+                  const isFav = configuredModels.includes(key);
+                  return (
+                    <div
+                      key={`${selectedProvider}-${model.id}`}
+                      className="flex items-center justify-between py-2"
                     >
-                      <Check className="h-3 w-3" /> Favorite
-                    </button>
-                  </div>
-                ))
+                      <div className="min-w-0">
+                        <div className="text-sm text-foreground truncate">
+                          {getModelNameWithoutProvider(model.name)}
+                        </div>
+                      </div>
+                      <button
+                        className={`shrink-0 p-1 rounded transition-colors cursor-pointer ${
+                          isFav
+                            ? "text-yellow-500 hover:text-yellow-400"
+                            : "text-muted-foreground hover:text-yellow-500"
+                        }`}
+                        onClick={() => {
+                          if (setModelProviderFor) {
+                            // Store mapping for this specific provider-qualified key
+                            setModelProviderFor(key, base);
+                          }
+                          toggleConfiguredModel(key);
+                        }}
+                        title={
+                          isFav ? "Remove from favorites" : "Add to favorites"
+                        }
+                        type="button"
+                      >
+                        <Star
+                          className={`h-4 w-4 ${isFav ? "fill-current" : ""}`}
+                        />
+                      </button>
+                    </div>
+                  );
+                })
             ) : (
-              <div className="text-sm text-white/50 py-4 text-center">
+              <div className="text-sm text-muted-foreground py-4 text-center">
                 No models found for this provider
               </div>
             )}

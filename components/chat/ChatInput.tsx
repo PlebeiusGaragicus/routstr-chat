@@ -54,8 +54,7 @@ export default function ChatInput({
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
   const { isSidebarOpen } = useChat();
-  const unifiedBgClass =
-    isMobile && isSidebarOpen ? "bg-[#181818]" : "bg-[#181818]";
+  const unifiedBgClass = "bg-background";
   const maxTextareaHeight = isMobile ? 176 : 240;
 
   // Handle centering when messages change from external updates
@@ -194,7 +193,7 @@ export default function ChatInput({
     }
 
     if (attachmentsToAdd.length > 0) {
-       console.log(attachmentsToAdd)
+      console.log(attachmentsToAdd);
       setUploadedAttachments((prev) => [
         ...prev,
         ...attachmentsToAdd.map((item) => item.attachment),
@@ -463,7 +462,7 @@ export default function ChatInput({
           }}
         >
           <div className="text-center mb-4">
-            <h1 className="text-2xl md:text-3xl font-semibold text-white">
+            <h1 className="text-2xl md:text-3xl font-semibold text-foreground">
               How can I help?
             </h1>
           </div>
@@ -484,7 +483,7 @@ export default function ChatInput({
             : `${
                 isMobile
                   ? `fixed z-20 left-0 right-0 w-screen ${unifiedBgClass} backdrop-blur-sm transition-all duration-300 ease-in-out px-0 pb-2 pt-0`
-                  : "fixed z-20 bg-[#181818] backdrop-blur-sm transition-all duration-300 ease-in-out " +
+                  : "fixed z-20 bg-background backdrop-blur-sm transition-all duration-300 ease-in-out " +
                     (!isAuthenticated
                       ? "left-0 right-0 pb-4 pt-0"
                       : isSidebarCollapsed
@@ -513,7 +512,7 @@ export default function ChatInput({
             className={`relative flex flex-col w-full rounded-3xl transition-all duration-300 ease-out ${
               isDragging
                 ? "bg-linear-to-br from-purple-500/20 via-purple-500/10 to-purple-500/5 border-2 border-dashed border-purple-400/70 shadow-[0_0_40px_-5px_rgba(168,85,247,0.5)] scale-[1.01]"
-                : "bg-white/10 border border-white/10"
+                : "bg-muted/50 border border-border"
             }`}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
@@ -546,22 +545,22 @@ export default function ChatInput({
                       <img
                         src={attachment.dataUrl}
                         alt={attachment.name}
-                        className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                        className="w-16 h-16 object-cover rounded-lg border border-border"
                       />
                     ) : (
-                      <div className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2">
+                      <div className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2">
                         <FileText
-                          className="h-5 w-5 text-white/80 shrink-0"
+                          className="h-5 w-5 text-foreground/80 shrink-0"
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
                           <p
-                            className="truncate text-sm font-medium text-white"
+                            className="truncate text-sm font-medium text-foreground"
                             title={attachment.name}
                           >
                             {attachment.name}
                           </p>
-                          <p className="text-xs uppercase text-white/60">
+                          <p className="text-xs uppercase text-muted-foreground">
                             {getAttachmentLabel(attachment.mimeType)}
                           </p>
                         </div>
@@ -608,7 +607,7 @@ export default function ChatInput({
                       : `Ask anything...`
                     : `Sign in to start chatting...`
                 }
-                className="flex-1 bg-transparent px-4 py-3 text-[16.5px] sm:text-[16.5px] text-white focus:outline-none pl-14 pr-12 resize-none min-h-[48px] overflow-y-auto"
+                className="flex-1 bg-transparent px-4 py-3 text-[16.5px] sm:text-[16.5px] text-foreground placeholder:text-muted-foreground focus:outline-none pl-14 pr-12 resize-none min-h-[48px] overflow-y-auto"
                 autoComplete="off"
                 data-tutorial="chat-input"
                 rows={1}
@@ -637,10 +636,10 @@ export default function ChatInput({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!isAuthenticated}
-                className="absolute left-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-white/10 md:hover:bg-white/20 disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
+                className="absolute left-3 bottom-2 p-2 rounded-full bg-transparent hover:bg-muted disabled:opacity-50 disabled:bg-transparent transition-colors cursor-pointer"
                 aria-label="Upload attachment"
               >
-                <Paperclip className="h-5 w-5 text-white" />
+                <Paperclip className="h-5 w-5 text-foreground" />
               </button>
 
               {/* Send button */}
@@ -655,7 +654,7 @@ export default function ChatInput({
                 className={`absolute right-3 bottom-2 p-2 rounded-full transition-colors cursor-pointer ${
                   showRedButton
                     ? "bg-red-500/30 hover:bg-red-500/40"
-                    : "bg-transparent hover:bg-white/10 md:hover:bg-white/20"
+                    : "bg-transparent hover:bg-muted"
                 } ${
                   !isLoading &&
                   !isAuthenticated &&
@@ -667,9 +666,9 @@ export default function ChatInput({
                 aria-label="Send message"
               >
                 {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  <Loader2 className="h-5 w-5 animate-spin text-foreground" />
                 ) : (
-                  <Send className="h-5 w-5 text-white" />
+                  <Send className="h-5 w-5 text-foreground" />
                 )}
               </button>
             </div>

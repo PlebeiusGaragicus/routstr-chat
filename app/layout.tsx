@@ -18,7 +18,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Routstr",
-  description: "The future of AI access is permissionless, private, and decentralized",
+  description:
+    "The future of AI access is permissionless, private, and decentralized",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -48,15 +49,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#181818] text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
         suppressHydrationWarning={true}
       >
         <ClientProviders>
           <SWUpdater />
           {children}
-          <Toaster theme="dark" />
+          <Toaster richColors />
           <BitcoinConnectClient />
         </ClientProviders>
       </body>

@@ -1103,7 +1103,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       <PopoverTrigger asChild>
         <button
           className={
-            "flex items-center gap-2 text-white bg-white/5 hover:bg-white/10 rounded-md py-2 px-3 sm:px-4 h-[36px] text-xs sm:text-sm transition-colors cursor-pointer border border-white/10 justify-center"
+            "flex items-center gap-2 text-foreground bg-muted/50 hover:bg-muted rounded-md py-2 px-3 sm:px-4 h-[36px] text-xs sm:text-sm transition-colors cursor-pointer border border-border justify-center"
           }
         >
           <svg
@@ -1116,7 +1116,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="lucide lucide-wallet flex-shrink-0"
+            className="lucide lucide-wallet shrink-0"
           >
             <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
             <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
@@ -1132,19 +1132,19 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         sideOffset={isMobile ? 12 : 4}
         className={`${
           isMobile ? "w-[92vw]" : "w-72"
-        } bg-[#181818] border border-white/10 rounded-md shadow-lg p-0 max-h-[70vh] overflow-y-auto`}
+        } bg-card border border-border rounded-md shadow-lg p-0 max-h-[70vh] overflow-y-auto`}
       >
         {/* Header - Sticky */}
-        <div className="flex items-center justify-between p-3 border-b border-white/10 sticky top-0 z-10 bg-[#181818]">
+        <div className="flex items-center justify-between p-3 border-b border-border sticky top-0 z-10 bg-card">
           {activeTab !== "overview" && activeTab !== "invoice" ? (
             <div className="flex items-center gap-3 flex-1">
               <button
                 onClick={() => navigateToTab("overview")}
-                className="text-white/70 hover:text-white transition-colors p-1 -ml-1 cursor-pointer"
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1 cursor-pointer"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 {getTabTitle()}
               </h3>
 
@@ -1158,10 +1158,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           onClick={() =>
                             setIsMintSelectorOpen(!isMintSelectorOpen)
                           }
-                          className={`bg-white/5 border rounded-md px-2 py-1 text-white text-xs focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 flex items-center gap-1 cursor-pointer min-w-[120px] ${
+                          className={`bg-muted/50 border rounded-md px-2 py-1 text-foreground text-xs focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 flex items-center gap-1 cursor-pointer min-w-[120px] ${
                             !isCurrentMintValid
                               ? "border-red-500/50"
-                              : "border-white/20"
+                              : "border-border"
                           }`}
                           title={cashuStore.activeMintUrl || "Select a mint"}
                         >
@@ -1171,28 +1171,28 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                               : "Select mint"}
                           </span>
                           <ChevronDown
-                            className={`h-3 w-3 transition-transform flex-shrink-0 ${
+                            className={`h-3 w-3 transition-transform shrink-0 ${
                               isMintSelectorOpen ? "rotate-180" : ""
                             }`}
                           />
                         </button>
 
                         {isMintSelectorOpen && (
-                          <div className="absolute top-full left-0 mt-1 bg-[#181818] border border-white/20 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto min-w-[200px]">
+                          <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto min-w-[200px]">
                             {availableMints.map((mintUrl) => (
                               <button
                                 key={mintUrl}
                                 onClick={() => handleMintSelection(mintUrl)}
-                                className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors cursor-pointer ${
+                                className={`w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors cursor-pointer ${
                                   cashuStore.activeMintUrl === mintUrl
-                                    ? "bg-white/5 text-white"
-                                    : "text-white/70"
+                                    ? "bg-muted/50 text-foreground"
+                                    : "text-muted-foreground"
                                 }`}
                               >
                                 <div className="truncate">
                                   {truncateMintUrl(mintUrl)}
                                 </div>
-                                <div className="text-xs text-white/50">
+                                <div className="text-xs text-muted-foreground">
                                   {formatBalance(
                                     mintBalances[mintUrl] || 0,
                                     mintUnits[mintUrl] || "sat"
@@ -1206,7 +1206,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       </div>
                     ) : (
                       <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md px-2 py-1">
-                        <div className="text-yellow-200 text-xs">No mints</div>
+                        <div className="text-yellow-600 dark:text-yellow-200 text-xs">
+                          No mints
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1214,7 +1216,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 {activeTab === "invoice" ? "Invoice" : "Wallet"}
               </h3>
             </div>
@@ -1228,7 +1230,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                 setInitialSettingsTab("wallet");
                 setIsPopoverOpen(false);
               }}
-              className="text-white/70 hover:text-white transition-colors p-1.5 rounded-md hover:bg-white/5 cursor-pointer"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
               title="Wallet Settings"
             >
               <Settings className="h-4 w-4" />
@@ -1255,10 +1257,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                         onClick={() =>
                           setIsMintSelectorOpen(!isMintSelectorOpen)
                         }
-                        className={`bg-white/5 border rounded-md px-2 py-1 text-white text-xs focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 flex items-center gap-1 cursor-pointer min-w-[120px] ${
+                        className={`bg-muted/50 border rounded-md px-2 py-1 text-foreground text-xs focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 flex items-center gap-1 cursor-pointer min-w-[120px] ${
                           !isCurrentMintValid
                             ? "border-red-500/50"
-                            : "border-white/20"
+                            : "border-border"
                         }`}
                         title={cashuStore.activeMintUrl || "Select a mint"}
                       >
@@ -1268,28 +1270,28 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             : "Select mint"}
                         </span>
                         <ChevronDown
-                          className={`h-3 w-3 transition-transform flex-shrink-0 ${
+                          className={`h-3 w-3 transition-transform shrink-0 ${
                             isMintSelectorOpen ? "rotate-180" : ""
                           }`}
                         />
                       </button>
 
                       {isMintSelectorOpen && (
-                        <div className="absolute top-full left-0 mt-1 bg-[#181818] border border-white/20 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto min-w-[200px]">
+                        <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto min-w-[200px]">
                           {availableMints.map((mintUrl) => (
                             <button
                               key={mintUrl}
                               onClick={() => handleMintSelection(mintUrl)}
-                              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors cursor-pointer ${
+                              className={`w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors cursor-pointer ${
                                 cashuStore.activeMintUrl === mintUrl
-                                  ? "bg-white/5 text-white"
-                                  : "text-white/70"
+                                  ? "bg-muted/50 text-foreground"
+                                  : "text-muted-foreground"
                               }`}
                             >
                               <div className="truncate">
                                 {truncateMintUrl(mintUrl)}
                               </div>
-                              <div className="text-xs text-white/50">
+                              <div className="text-xs text-muted-foreground">
                                 {formatBalance(
                                   mintBalances[mintUrl] || 0,
                                   mintUnits[mintUrl] || "sat"
@@ -1303,7 +1305,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                     </div>
                   ) : (
                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md px-2 py-1">
-                      <div className="text-yellow-200 text-xs">No mints</div>
+                      <div className="text-yellow-600 dark:text-yellow-200 text-xs">
+                        No mints
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1311,11 +1315,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
               {/* Balance Display */}
               <div className="text-center mb-4">
-                <div className="text-white/60 text-sm font-medium mb-1">
+                <div className="text-muted-foreground text-sm font-medium mb-1">
                   {truncatedNpub}
                 </div>
-                <div className="text-white/60 text-sm mb-2">Balance</div>
-                <div className="text-white text-2xl font-bold">
+                <div className="text-muted-foreground text-sm mb-2">
+                  Balance
+                </div>
+                <div className="text-foreground text-2xl font-bold">
                   {isBalanceLoading
                     ? "loading"
                     : `${localBalance.toFixed(2)} sats`}
@@ -1326,34 +1332,34 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <button
                   onClick={() => navigateToTab("receive")}
-                  className="flex flex-col items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg p-6 transition-colors cursor-pointer"
+                  className="flex flex-col items-center justify-center gap-2 bg-muted/50 hover:bg-muted border border-border rounded-lg p-6 transition-colors cursor-pointer"
                 >
-                  <ArrowDownLeft className="h-6 w-6 text-white/70" />
-                  <span className="text-white/70 text-sm font-medium">
+                  <ArrowDownLeft className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-muted-foreground text-sm font-medium">
                     Receive
                   </span>
                 </button>
 
                 <button
                   onClick={() => navigateToTab("send")}
-                  className="flex flex-col items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg p-6 transition-colors cursor-pointer"
+                  className="flex flex-col items-center justify-center gap-2 bg-muted/50 hover:bg-muted border border-border rounded-lg p-6 transition-colors cursor-pointer"
                 >
-                  <ArrowUpRight className="h-6 w-6 text-white/70" />
-                  <span className="text-white/70 text-sm font-medium">
+                  <ArrowUpRight className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-muted-foreground text-sm font-medium">
                     Send
                   </span>
                 </button>
               </div>
 
               {/* Quick Activity Preview */}
-              <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+              <div className="bg-muted/50 border border-border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/70 text-sm font-medium">
+                  <span className="text-muted-foreground text-sm font-medium">
                     Recent Activity
                   </span>
                   <button
                     onClick={() => navigateToTab("activity")}
-                    className="text-white/50 hover:text-white/70 text-xs cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground/70 text-xs cursor-pointer"
                   >
                     View All
                   </button>
@@ -1375,11 +1381,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                                 : "bg-green-500"
                             }`}
                           />
-                          <span className="text-white/60 text-xs capitalize">
+                          <span className="text-muted-foreground text-xs capitalize">
                             {tx.type}
                           </span>
                         </div>
-                        <span className="text-white/60 text-xs font-mono">
+                        <span className="text-muted-foreground text-xs font-mono">
                           {tx.type === "send" || tx.type === "spent"
                             ? "-"
                             : "+"}
@@ -1388,7 +1394,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       </div>
                     ))}
                   {transactionHistory.length === 0 && (
-                    <div className="text-white/50 text-xs text-center py-2">
+                    <div className="text-muted-foreground text-xs text-center py-2">
                       No transactions yet
                     </div>
                   )}
@@ -1404,18 +1410,18 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {/* Note about msats if using msat unit */}
               {currentMintUnit === "msat" && (
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                  <div className="text-blue-200 text-sm text-center">
+                  <div className="text-blue-600 dark:text-blue-200 text-sm text-center">
                     Note: You are using msats (millisats). 1 sat = 1000 msats
                   </div>
                 </div>
               )}
-              <div className="flex bg-white/5 rounded-lg p-1">
+              <div className="flex bg-muted/50 rounded-lg p-1">
                 <button
                   onClick={() => setSendTab("token")}
                   className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                     sendTab === "token"
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white/80"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground/80"
                   }`}
                 >
                   eCash Token
@@ -1424,8 +1430,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   onClick={() => setSendTab("lightning")}
                   className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer ${
                     sendTab === "lightning"
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white/80"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground/80"
                   }`}
                 >
                   <Zap className="h-3 w-3" />
@@ -1436,11 +1442,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {sendTab === "token" && (
                 <div className="space-y-3">
                   {/* Balance context */}
-                  <div className="bg-white/5 rounded-lg p-2 text-center">
-                    <div className="text-white/60 text-xs">
+                  <div className="bg-muted/50 rounded-lg p-2 text-center">
+                    <div className="text-muted-foreground text-xs">
                       Available Balance
                     </div>
-                    <div className="text-white text-lg font-bold">
+                    <div className="text-foreground text-lg font-bold">
                       {usingNip60 ? (
                         <>
                           {currentMintUnit === "msat"
@@ -1464,7 +1470,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       )}
                     </div>
                     {usingNip60 && !isCurrentMintValid && (
-                      <div className="text-red-400 text-xs mt-1">
+                      <div className="text-red-600 dark:text-red-400 text-xs mt-1">
                         Invalid mint selected
                       </div>
                     )}
@@ -1474,14 +1480,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                         cashuStore.activeMintUrl,
                         mintBalances
                       ) === 0 && (
-                        <div className="text-yellow-400 text-xs mt-1">
+                        <div className="text-yellow-600 dark:text-yellow-400 text-xs mt-1">
                           No balance available in selected mint
                         </div>
                       )}
                   </div>
 
                   <div>
-                    <label className="block text-white/70 text-xs font-medium mb-2">
+                    <label className="block text-muted-foreground text-xs font-medium mb-2">
                       Amount ({currentMintUnit}s)
                     </label>
                     <input
@@ -1494,7 +1500,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           void generateSendToken();
                         }
                       }}
-                      className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-lg font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground text-lg font-mono focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                       placeholder="0"
                       autoFocus
                     />
@@ -1508,7 +1514,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           : currentMintUnit === "msat"
                           ? balance * 1000
                           : balance) && (
-                        <p className="text-red-400 text-xs mt-1">
+                        <p className="text-red-600 dark:text-red-400 text-xs mt-1">
                           Amount exceeds available balance
                         </p>
                       )}
@@ -1530,7 +1536,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             ? balance * 1000
                             : balance)
                         }
-                        className="py-1.5 px-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 rounded-md text-white/70 text-xs transition-colors cursor-pointer"
+                        className="py-1.5 px-2 bg-muted/50 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed border border-border rounded-md text-muted-foreground text-xs transition-colors cursor-pointer"
                       >
                         {amount}
                       </button>
@@ -1557,7 +1563,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             ) === 0
                           : balance === 0
                       }
-                      className="py-1.5 px-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 rounded-md text-white/70 text-xs transition-colors cursor-pointer"
+                      className="py-1.5 px-2 bg-muted/50 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed border border-border rounded-md text-muted-foreground text-xs transition-colors cursor-pointer"
                     >
                       Max
                     </button>
@@ -1570,11 +1576,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       isGeneratingSendToken ||
                       (usingNip60 && (!hasMints || !isCurrentMintValid))
                     }
-                    className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border text-foreground py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isGeneratingSendToken ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-foreground/30 border-t-foreground" />
                         Generating...
                       </>
                     ) : (
@@ -1584,18 +1590,18 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
                   {generatedToken && (
                     <div className="space-y-2">
-                      <div className="text-white/70 text-xs font-medium">
+                      <div className="text-muted-foreground text-xs font-medium">
                         Generated Token:
                       </div>
-                      <div className="bg-white/5 border border-white/20 rounded-lg p-2">
-                        <div className="font-mono text-xs text-white/70 break-all mb-2 max-h-20 overflow-y-auto">
+                      <div className="bg-muted/50 border border-border rounded-lg p-2">
+                        <div className="font-mono text-xs text-muted-foreground break-all mb-2 max-h-20 overflow-y-auto">
                           {generatedToken}
                         </div>
                         <button
                           onClick={() =>
                             copyToClipboard(generatedToken, "Token")
                           }
-                          className="w-full bg-white/10 hover:bg-white/15 border border-white/20 text-white py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                          className="w-full bg-muted hover:bg-muted/80 border border-border text-foreground py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                         >
                           {copySuccess ? (
                             <>
@@ -1610,7 +1616,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           )}
                         </button>
                       </div>
-                      <div className="text-white/50 text-xs text-center">
+                      <div className="text-muted-foreground text-xs text-center">
                         Share this token to send {sendAmount} {currentMintUnit}s
                       </div>
                     </div>
@@ -1621,7 +1627,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {sendTab === "lightning" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-white/70 text-xs font-medium mb-2">
+                    <label className="block text-muted-foreground text-xs font-medium mb-2">
                       Lightning Invoice
                     </label>
                     <textarea
@@ -1637,21 +1643,21 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           void handlePayLightningInvoice();
                         }
                       }}
-                      className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-xs font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 min-h-[80px] resize-y"
+                      className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground text-xs font-mono focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 min-h-[80px] resize-y"
                       placeholder="Paste lightning invoice here..."
                       autoFocus
                     />
                   </div>
 
                   {invoiceAmount && (
-                    <div className="bg-white/5 border border-white/20 rounded-lg p-3">
-                      <div className="text-white/70 text-xs mb-1">
+                    <div className="bg-muted/50 border border-border rounded-lg p-3">
+                      <div className="text-muted-foreground text-xs mb-1">
                         Invoice Amount
                       </div>
-                      <div className="text-white text-lg font-bold">
+                      <div className="text-foreground text-lg font-bold">
                         {invoiceAmount} {currentMintUnit}s
                         {invoiceFeeReserve !== 0 && (
-                          <span className="text-xs font-normal text-white/50 ml-2">
+                          <span className="text-xs font-normal text-muted-foreground ml-2">
                             + max {invoiceFeeReserve} fee
                           </span>
                         )}
@@ -1670,16 +1676,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           ? isNip60Processing || isNip60LoadingInvoice
                           : isPayingInvoice)
                       }
-                      className="flex-1 bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      className="flex-1 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border text-foreground py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {(usingNip60 ? isNip60Processing : isPayingInvoice) ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-foreground/30 border-t-foreground" />
                           Paying...
                         </>
                       ) : usingNip60 && isNip60LoadingInvoice ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-foreground/30 border-t-foreground" />
                           Loading...
                         </>
                       ) : (
@@ -1696,7 +1702,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                         <button
                           onClick={handleNip60PaymentCancel}
                           disabled={isNip60Processing}
-                          className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed border border-red-500/30 text-red-200 rounded-lg font-medium transition-colors cursor-pointer"
+                          className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed border border-red-500/30 text-red-600 dark:text-red-200 rounded-lg font-medium transition-colors cursor-pointer"
                           title="Cancel and clear invoice"
                         >
                           ✕
@@ -1704,7 +1710,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       )}
                   </div>
 
-                  <div className="text-white/50 text-xs text-center">
+                  <div className="text-muted-foreground text-xs text-center">
                     Paste a lightning invoice to pay it instantly
                   </div>
                 </div>
@@ -1718,20 +1724,20 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {/* Note about msats if using msat unit */}
               {currentMintUnit === "msat" && (
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                  <div className="text-blue-200 text-sm text-center">
+                  <div className="text-blue-600 dark:text-blue-200 text-sm text-center">
                     Note: You are using msats (millisats). 1 sat = 1000 msats
                   </div>
                 </div>
               )}
 
               {/* Sub-tabs for Lightning/Token */}
-              <div className="flex bg-white/5 rounded-lg p-1">
+              <div className="flex bg-muted/50 rounded-lg p-1">
                 <button
                   onClick={() => setReceiveTab("lightning")}
                   className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${
                     receiveTab === "lightning"
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white/80"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground/80"
                   }`}
                 >
                   <Zap className="h-3 w-3" />
@@ -1741,8 +1747,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   onClick={() => setReceiveTab("token")}
                   className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                     receiveTab === "token"
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white/80"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground/80"
                   }`}
                 >
                   Token
@@ -1752,13 +1758,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {receiveTab === "lightning" && (
                 <div className="space-y-3">
                   {/* NWC Wallet row */}
-                  <div className="bg-white/5 border border-white/20 rounded-lg p-2 flex items-center justify-between">
-                    <span className="text-xs text-white/70">Wallet (NWC)</span>
+                  <div className="bg-muted/50 border border-border rounded-lg p-2 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Wallet (NWC)
+                    </span>
                     {bcStatus === "connected" ? (
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="text-green-400">Connected</span>
+                        <span className="text-green-600 dark:text-green-400">
+                          Connected
+                        </span>
                         {bcBalance !== null && (
-                          <span className="text-white/70">
+                          <span className="text-muted-foreground">
                             • {bcBalance.toLocaleString()} sats
                           </span>
                         )}
@@ -1773,7 +1783,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             mod.launchModal();
                           } catch {}
                         }}
-                        className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                        className="px-3 py-1.5 text-xs bg-muted border border-border rounded-md text-foreground hover:bg-muted/80"
                         type="button"
                       >
                         {bcStatus === "connecting"
@@ -1783,7 +1793,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                     )}
                   </div>
                   <div>
-                    <label className="block text-white/70 text-xs font-medium mb-2">
+                    <label className="block text-muted-foreground text-xs font-medium mb-2">
                       Amount ({currentMintUnit}s)
                     </label>
                     <input
@@ -1796,7 +1806,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           void handleCreateMintQuote();
                         }
                       }}
-                      className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-lg font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground text-lg font-mono focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                       placeholder="0"
                       autoFocus
                     />
@@ -1807,7 +1817,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       <button
                         key={amount}
                         onClick={() => setMintAmount(amount.toString())}
-                        className="py-1.5 px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/70 text-xs transition-colors cursor-pointer"
+                        className="py-1.5 px-2 bg-muted/50 hover:bg-muted border border-border rounded-md text-muted-foreground text-xs transition-colors cursor-pointer"
                       >
                         {amount}
                       </button>
@@ -1820,11 +1830,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       !isValidReceiveAmount ||
                       (usingNip60 ? isNip60Processing : isMinting)
                     }
-                    className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border text-foreground py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {(usingNip60 ? isNip60Processing : isMinting) ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-foreground/30 border-t-foreground" />
                         Creating...
                       </>
                     ) : (
@@ -1840,13 +1850,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {receiveTab === "token" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-white/70 text-xs font-medium mb-2">
+                    <label className="block text-muted-foreground text-xs font-medium mb-2">
                       Cashu Token
                     </label>
                     <textarea
                       value={tokenToImport}
                       onChange={(e) => setTokenToImport(e.target.value)}
-                      className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white text-xs font-mono focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 min-h-[80px] resize-y"
+                      className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground text-xs font-mono focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 min-h-[80px] resize-y"
                       placeholder="Paste a Cashu token here..."
                       autoFocus
                     />
@@ -1855,11 +1865,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   <button
                     onClick={handleImportToken}
                     disabled={!tokenToImport.trim() || isImporting}
-                    className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border text-foreground py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isImporting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-foreground/30 border-t-foreground" />
                         Importing...
                       </>
                     ) : (
@@ -1867,7 +1877,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                     )}
                   </button>
 
-                  <div className="text-white/50 text-xs text-center">
+                  <div className="text-muted-foreground text-xs text-center">
                     Import a Cashu token to add sats to your wallet
                   </div>
                 </div>
@@ -1879,17 +1889,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           {activeTab === "activity" && (
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-white/70 text-sm font-medium">
+                <span className="text-muted-foreground text-sm font-medium">
                   Transaction History
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-white/50 text-xs">
+                  <span className="text-muted-foreground text-xs">
                     {transactionHistory.length} transactions
                   </span>
                   {transactionHistory.length > 0 && (
                     <button
                       onClick={handleClearHistory}
-                      className="text-white/50 hover:text-red-400 cursor-pointer"
+                      className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -1897,13 +1907,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                 </div>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-lg max-h-80 overflow-y-auto">
+              <div className="bg-muted/50 border border-border rounded-lg max-h-80 overflow-y-auto">
                 {transactionHistory.length === 0 ? (
-                  <div className="p-4 text-center text-white/50 text-sm">
+                  <div className="p-4 text-center text-muted-foreground text-sm">
                     No transactions yet
                   </div>
                 ) : (
-                  <div className="divide-y divide-white/10">
+                  <div className="divide-y divide-border">
                     {[...transactionHistory].reverse().map((tx, index) => (
                       <div
                         key={index}
@@ -1918,22 +1928,22 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             }`}
                           />
                           <div>
-                            <div className="text-sm font-medium text-white capitalize">
+                            <div className="text-sm font-medium text-foreground capitalize">
                               {tx.type}
                             </div>
-                            <div className="text-xs text-white/50">
+                            <div className="text-xs text-muted-foreground">
                               {new Date(tx.timestamp).toLocaleString()}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-mono text-white">
+                          <div className="text-sm font-mono text-foreground">
                             {tx.type === "send" || tx.type === "spent"
                               ? "-"
                               : "+"}
                             {tx.amount} sats
                           </div>
-                          <div className="text-xs text-white/50">
+                          <div className="text-xs text-muted-foreground">
                             Balance: {tx.balance}
                           </div>
                         </div>
@@ -1944,10 +1954,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               </div>
 
               {/* Quick actions */}
-              <div className="pt-2 border-t border-white/10">
+              <div className="pt-2 border-t border-border">
                 <button
                   onClick={() => setIsSettingsOpen(true)}
-                  className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white py-2 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-muted/50 hover:bg-muted border border-border text-muted-foreground hover:text-foreground py-2 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <ExternalLink className="h-3 w-3" />
                   Open Full Wallet Settings
@@ -1962,19 +1972,23 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               {/* Back Button */}
               <button
                 onClick={() => navigateToTab("receive")}
-                className="text-white/70 hover:text-white transition-colors cursor-pointer"
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
 
               {/* NWC Wallet row */}
-              <div className="bg-white/5 border border-white/20 rounded-lg p-2 flex items-center justify-between">
-                <span className="text-xs text-white/70">Wallet (NWC)</span>
+              <div className="bg-muted/50 border border-border rounded-lg p-2 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Wallet (NWC)
+                </span>
                 {bcStatus === "connected" ? (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-green-400">Connected</span>
+                    <span className="text-green-600 dark:text-green-400">
+                      Connected
+                    </span>
                     {bcBalance !== null && (
-                      <span className="text-white/70">
+                      <span className="text-muted-foreground">
                         • {bcBalance.toLocaleString()} sats
                       </span>
                     )}
@@ -1989,7 +2003,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                         mod.launchModal();
                       } catch {}
                     }}
-                    className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                    className="px-3 py-1.5 text-xs bg-muted border border-border rounded-md text-foreground hover:bg-muted/80"
                     type="button"
                   >
                     {bcStatus === "connecting"
@@ -2003,7 +2017,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                 <div className="space-y-3">
                   {/* Amount Display */}
                   <div className="text-center">
-                    <div className="text-white/60 text-sm">
+                    <div className="text-muted-foreground text-sm">
                       {mintAmount} {currentMintUnit}s
                     </div>
                   </div>
@@ -2011,7 +2025,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   {/* QR Code Display */}
                   <div className="relative">
                     <div
-                      className="bg-white/5 border border-white/20 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors"
+                      className="bg-muted/50 border border-border rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-muted transition-colors"
                       onClick={() =>
                         onShowQRCode({
                           invoice: usingNip60 ? nip60Invoice : mintInvoice,
@@ -2032,9 +2046,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       </div>
                     </div>
                     {/* Zoom hint */}
-                    <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm border border-white/20 rounded-md px-2 py-1 flex items-center gap-1 pointer-events-none">
+                    <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm border border-border rounded-md px-2 py-1 flex items-center gap-1 pointer-events-none">
                       <svg
-                        className="h-3 w-3 text-white/70"
+                        className="h-3 w-3 text-muted-foreground"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -2046,7 +2060,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
                         />
                       </svg>
-                      <span className="text-white/70 text-xs">Zoom</span>
+                      <span className="text-muted-foreground text-xs">
+                        Zoom
+                      </span>
                     </div>
                   </div>
 
@@ -2054,7 +2070,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                     <div className="flex items-center justify-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500/30 border-t-yellow-400" />
-                      <div className="text-yellow-200 text-xs">
+                      <div className="text-yellow-600 dark:text-yellow-200 text-xs">
                         Waiting for payment...
                       </div>
                     </div>
@@ -2066,11 +2082,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                       void handlePayWithBitcoinConnect();
                     }}
                     disabled={isBcPaying || bcStatus !== "connected"}
-                    className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border text-foreground py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isBcPaying ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-foreground/30 border-t-foreground" />
                         Paying...
                       </>
                     ) : (
@@ -2079,8 +2095,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   </button>
 
                   {/* Invoice String Display */}
-                  <div className="bg-white/5 border border-white/20 rounded-lg p-2">
-                    <div className="font-mono text-xs text-white/70 break-all mb-2">
+                  <div className="bg-muted/50 border border-border rounded-lg p-2">
+                    <div className="font-mono text-xs text-muted-foreground break-all mb-2">
                       {(usingNip60 ? nip60Invoice : mintInvoice).length > 80
                         ? `${(usingNip60 ? nip60Invoice : mintInvoice).slice(
                             0,
@@ -2100,7 +2116,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                           "Invoice"
                         )
                       }
-                      className="w-full bg-white/10 hover:bg-white/15 border border-white/20 text-white py-1.5 px-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full bg-muted hover:bg-muted/80 border border-border text-foreground py-1.5 px-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {copySuccess ? (
                         <>
@@ -2117,7 +2133,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-center text-white/50 py-8">
+                <div className="text-center text-muted-foreground py-8">
                   <div className="text-sm">No invoice available</div>
                 </div>
               )}
@@ -2128,7 +2144,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           {(error || successMessage) && (
             <div className="p-4 pt-0">
               {error && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-2 rounded-lg text-xs">
+                <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-200 p-2 rounded-lg text-xs">
                   {error}
                 </div>
               )}
@@ -2137,7 +2153,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                 !successMessage.includes("Invoice generated") &&
                 successMessage !==
                   "Payment received! Tokens minted successfully." && (
-                  <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-2 rounded-lg text-xs">
+                  <div className="bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-200 p-2 rounded-lg text-xs">
                     {successMessage}
                   </div>
                 )}

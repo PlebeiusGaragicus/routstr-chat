@@ -774,9 +774,11 @@ const SixtyWallet: React.FC<{
   if (isLoading || isCreatingWallet) {
     return (
       <div className="space-y-6">
-        <div className="bg-white/5 border border-white/10 rounded-md p-4">
+        <div className="bg-muted/50 border border-border rounded-md p-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-white/70">Loading wallet...</span>
+            <span className="text-sm text-muted-foreground">
+              Loading wallet...
+            </span>
           </div>
         </div>
       </div>
@@ -786,9 +788,9 @@ const SixtyWallet: React.FC<{
   if (!wallet) {
     return (
       <div className="space-y-6">
-        <div className="bg-white/5 border border-white/10 rounded-md p-4">
+        <div className="bg-muted/50 border border-border rounded-md p-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-white/70">
+            <span className="text-sm text-muted-foreground">
               You don't have a Cashu wallet yet
             </span>
           </div>
@@ -796,13 +798,13 @@ const SixtyWallet: React.FC<{
             <button
               onClick={() => handleCreateWallet()}
               disabled={!user}
-              className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+              className="bg-muted border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
               type="button"
             >
               Create Wallet
             </button>
             {!user && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-3 rounded-md text-sm mt-4">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-300 p-3 rounded-md text-sm mt-4">
                 <div className="flex items-center">
                   <AlertCircle className="h-4 w-4 mr-2" />
                   <span>You need to log in to create a wallet</span>
@@ -819,15 +821,15 @@ const SixtyWallet: React.FC<{
     <div className="space-y-6">
       {/* Migration Banner */}
       {showMigrationBanner && (
-        <div className="bg-white/5 border border-white/20 rounded-md p-4">
+        <div className="bg-muted/50 border border-border rounded-md p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">
-              <Info className="h-5 w-5 text-white/70 mt-0.5 flex-shrink-0" />
+              <Info className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-white mb-1">
+                <h3 className="text-sm font-medium text-foreground mb-1">
                   Local Wallet Found - Migrate to Cloud Wallet
                 </h3>
-                <p className="text-xs text-white/70 mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   You have {formatBalance(localWalletBalance, "sats")} in your
                   local device wallet. Migrate to the new NIP-60 cloud-based
                   wallet for better security and sync across devices.
@@ -836,7 +838,7 @@ const SixtyWallet: React.FC<{
                   <button
                     onClick={handleMigration}
                     disabled={isMigrating}
-                    className="inline-flex items-center px-3 py-1.5 bg-white/10 border border-white/20 text-white/80 text-xs font-medium rounded-md hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center px-3 py-1.5 bg-muted border border-border text-foreground/80 text-xs font-medium rounded-md hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                     title="Migrate your local wallet balance to the new NIP-60 cloud wallet. This will move all your funds to the cloud for better security and device sync."
                   >
@@ -854,7 +856,7 @@ const SixtyWallet: React.FC<{
                   </button>
                   <button
                     onClick={() => setShowMigrationBanner(false)}
-                    className="text-xs text-white/60 hover:text-white/80 cursor-pointer"
+                    className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                     type="button"
                   >
                     Dismiss
@@ -866,26 +868,30 @@ const SixtyWallet: React.FC<{
         </div>
       )}
       {/* Balance Display */}
-      <div className="bg-white/5 border border-white/10 rounded-md p-4">
+      <div className="bg-muted/50 border border-border rounded-md p-4">
         <div className="flex justify-between items-center">
-          <span className="text-sm text-white/70">Available Balance</span>
+          <span className="text-sm text-muted-foreground">
+            Available Balance
+          </span>
           <div className="flex flex-col items-end">
-            <span className="text-lg font-semibold text-white">
+            <span className="text-lg font-semibold text-foreground">
               {balance} sats
             </span>
           </div>
         </div>
         {wallet.mints && wallet.mints.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="mt-4 pt-4 border-t border-border">
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <h3 className="text-sm font-medium text-white/80 mr-1">Mints</h3>
+              <h3 className="text-sm font-medium text-foreground/80 mr-1">
+                Mints
+              </h3>
               <div className="ml-auto flex items-center gap-1.5">
                 <button
                   onClick={() => setShowAddMintInput(!showAddMintInput)}
-                  className={`p-1.5 rounded-md border border-white/20 ${
+                  className={`p-1.5 rounded-md border border-border ${
                     showAddMintInput
-                      ? "bg-white/15 text-white"
-                      : "bg-white/5 text-white/80 hover:bg-white/10"
+                      ? "bg-muted text-foreground"
+                      : "bg-muted/50 text-foreground/80 hover:bg-muted"
                   } cursor-pointer`}
                   aria-label="Add new mint"
                   title={showAddMintInput ? "Close add mint" : "Add new mint"}
@@ -897,8 +903,8 @@ const SixtyWallet: React.FC<{
                   onClick={() => setShowRemoveMintMode(!showRemoveMintMode)}
                   className={`p-1.5 rounded-md border ${
                     showRemoveMintMode
-                      ? "border-red-500/40 bg-red-500/20 text-red-200"
-                      : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"
+                      ? "border-red-500/40 bg-red-500/20 text-red-600 dark:text-red-300"
+                      : "border-border bg-muted/50 text-foreground/80 hover:bg-muted"
                   } cursor-pointer`}
                   aria-label="Toggle remove mint mode"
                   title={
@@ -934,13 +940,13 @@ const SixtyWallet: React.FC<{
                             cashuStore.setActiveMintUrl(mint);
                           }
                         }}
-                        className="form-radio h-4 w-4 text-white bg-white/10 border-white/30 focus:ring-white/50 shrink-0"
+                        className="form-radio h-4 w-4 text-foreground bg-muted border-border focus:ring-ring shrink-0"
                       />
                       <label
                         htmlFor={`mint-${mint}`}
                         className={cn(
-                          "text-sm cursor-pointer truncate max-w-[70vw] sm:max-w-[28rem]",
-                          isActive ? "text-white" : "text-white/70"
+                          "text-sm cursor-pointer truncate max-w-[70vw] sm:max-w-md",
+                          isActive ? "text-foreground" : "text-muted-foreground"
                         )}
                       >
                         {cleanMintUrl(mint)}
@@ -950,7 +956,7 @@ const SixtyWallet: React.FC<{
                       <span
                         className={cn(
                           "text-sm font-medium",
-                          isActive ? "text-white" : "text-white/70"
+                          isActive ? "text-foreground" : "text-muted-foreground"
                         )}
                       >
                         {formatBalance(mintBalance, unit + "s")}
@@ -958,7 +964,7 @@ const SixtyWallet: React.FC<{
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => cleanSpentProofs(mint)}
-                          className="p-1.5 rounded-md border border-white/20 bg-white/5 hover:bg-white/10 text-white/80 cursor-pointer"
+                          className="p-1.5 rounded-md border border-border bg-muted/50 hover:bg-muted text-foreground/80 cursor-pointer"
                           aria-label="Clean spent proofs"
                           title="Clean spent proofs"
                           type="button"
@@ -990,8 +996,8 @@ const SixtyWallet: React.FC<{
               })}
             </div>
             {showAddMintInput && (
-              <div className="mt-4 pt-4 border-t border-white/10">
-                <h3 className="text-sm font-medium text-white/80 mb-2">
+              <div className="mt-4 pt-4 border-t border-border">
+                <h3 className="text-sm font-medium text-foreground/80 mb-2">
                   Add Custom Mint
                 </h3>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -1005,13 +1011,13 @@ const SixtyWallet: React.FC<{
                         void handleAddCustomMint();
                       }
                     }}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                    className="flex-1 bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
                     placeholder="Enter new mint URL"
                   />
                   <button
                     onClick={handleAddCustomMint}
                     disabled={isAddingMint || !customMintUrl.trim()}
-                    className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="bg-muted border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
                     {isAddingMint ? "Adding..." : "Add Mint"}
@@ -1025,25 +1031,25 @@ const SixtyWallet: React.FC<{
 
       {/* Error/Success Messages */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-200 p-3 rounded-md text-sm">
+        <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-300 p-3 rounded-md text-sm">
           {error}
         </div>
       )}
       {successMessage && (
-        <div className="bg-green-500/10 border border-green-500/30 text-green-200 p-3 rounded-md text-sm">
+        <div className="bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-300 p-3 rounded-md text-sm">
           {successMessage}
         </div>
       )}
 
       {/* Tab Navigation */}
-      <div className="bg-white/5 border border-white/10 rounded-md">
-        <div className="flex border-b border-white/10">
+      <div className="bg-muted/50 border border-border rounded-md">
+        <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab("deposit")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "deposit"
-                ? "text-white bg-white/5 border-b-2 border-white/30"
-                : "text-white/70 hover:text-white/90 hover:bg-white/5"
+                ? "text-foreground bg-muted/50 border-b-2 border-foreground"
+                : "text-muted-foreground hover:text-foreground/90 hover:bg-muted/50"
             }`}
             type="button"
           >
@@ -1053,8 +1059,8 @@ const SixtyWallet: React.FC<{
             onClick={() => setActiveTab("send")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "send"
-                ? "text-white bg-white/5 border-b-2 border-white/30"
-                : "text-white/70 hover:text-white/90 hover:bg-white/5"
+                ? "text-foreground bg-muted/50 border-b-2 border-foreground"
+                : "text-muted-foreground hover:text-foreground/90 hover:bg-muted/50"
             }`}
             type="button"
           >
@@ -1064,8 +1070,8 @@ const SixtyWallet: React.FC<{
             onClick={() => setActiveTab("history")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "history"
-                ? "text-white bg-white/5 border-b-2 border-white/30"
-                : "text-white/70 hover:text-white/90 hover:bg-white/5"
+                ? "text-foreground bg-muted/50 border-b-2 border-foreground"
+                : "text-muted-foreground hover:text-foreground/90 hover:bg-muted/50"
             }`}
             type="button"
           >
@@ -1080,19 +1086,23 @@ const SixtyWallet: React.FC<{
             <div className="space-y-6 h-full">
               {/* Mint Tokens Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white/80">
+                <h3 className="text-sm font-medium text-foreground/80">
                   Via Lightning
                 </h3>
 
                 {/* Bitcoin Connect: Connect Wallet */}
-                <div className="bg-white/5 border border-white/20 rounded-md p-3">
+                <div className="bg-muted/50 border border-border rounded-md p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-white/70">Wallet (NWC)</span>
+                    <span className="text-xs text-muted-foreground">
+                      Wallet (NWC)
+                    </span>
                     {bcStatus === "connected" ? (
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="text-green-400">Connected</span>
+                        <span className="text-green-600 dark:text-green-400">
+                          Connected
+                        </span>
                         {bcBalance !== null && (
-                          <span className="text-white/70">
+                          <span className="text-muted-foreground">
                             • {bcBalance.toLocaleString()} sats
                           </span>
                         )}
@@ -1107,7 +1117,7 @@ const SixtyWallet: React.FC<{
                             mod.launchModal();
                           } catch {}
                         }}
-                        className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15"
+                        className="px-3 py-1.5 text-xs bg-muted border border-border rounded-md text-foreground hover:bg-muted/80"
                         type="button"
                       >
                         {bcStatus === "connecting"
@@ -1126,7 +1136,7 @@ const SixtyWallet: React.FC<{
                         key={amount}
                         onClick={() => handleQuickMint(amount)}
                         disabled={isProcessing}
-                        className="flex-1 bg-white/5 border border-white/20 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 hover:border-white/30 transition-colors disabled:opacity-50 cursor-pointer"
+                        className="flex-1 bg-muted/50 border border-border text-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-muted hover:border-border transition-colors disabled:opacity-50 cursor-pointer"
                         type="button"
                       >
                         {amount} {currentMintUnit}s
@@ -1148,7 +1158,7 @@ const SixtyWallet: React.FC<{
                           void handleCreateInvoice();
                         }
                       }}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                      className="flex-1 bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
                       placeholder={`Amount in ${currentMintUnit}s`}
                     />
                     <button
@@ -1158,7 +1168,7 @@ const SixtyWallet: React.FC<{
                         !receiveAmount ||
                         !cashuStore.activeMintUrl
                       }
-                      className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                      className="bg-muted border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                       type="button"
                     >
                       <Zap className="h-4 w-4 mr-2 inline" />
@@ -1169,28 +1179,28 @@ const SixtyWallet: React.FC<{
 
                 {invoice && (
                   <div className="space-y-4">
-                    <div className="bg-white/5 border border-white/10 rounded-md p-4">
+                    <div className="bg-muted/50 border border-border rounded-md p-4">
                       <div className="mb-2 flex justify-between items-center">
-                        <span className="text-sm text-white/70">
+                        <span className="text-sm text-muted-foreground">
                           Lightning Invoice
                         </span>
                         <button
                           onClick={() => setShowInvoiceModal(true)}
-                          className="text-xs text-white/70 hover:text-white cursor-pointer"
+                          className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                           type="button"
                         >
                           Show QR Code
                         </button>
                       </div>
-                      <div className="font-mono text-xs break-all text-white/70">
+                      <div className="font-mono text-xs break-all text-muted-foreground">
                         {invoice}
                       </div>
                     </div>
 
                     {/* Pay with connected wallet DISABLED BECAUSE IT DOENS"T WORK */}
-                    <div className="bg-white/5 border border-white/20 rounded-md p-3">
+                    <div className="bg-muted/50 border border-border rounded-md p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-white/70">
+                        <span className="text-xs text-muted-foreground">
                           Pay with connected wallet
                         </span>
                         <button
@@ -1198,7 +1208,7 @@ const SixtyWallet: React.FC<{
                             void payWithConnectedWallet();
                           }}
                           disabled={true || isPayingWithWallet}
-                          className="px-3 py-1.5 text-xs bg-white/10 border border-white/20 rounded-md text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 text-xs bg-muted border border-border rounded-md text-foreground hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed"
                           type="button"
                         >
                           {isPayingWithWallet ? (
@@ -1215,7 +1225,7 @@ const SixtyWallet: React.FC<{
 
                     <button
                       onClick={handleCancel}
-                      className="w-full bg-white/10 border border-white/10 text-white py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors cursor-pointer"
+                      className="w-full bg-muted border border-border text-foreground py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors cursor-pointer"
                       type="button"
                     >
                       Cancel
@@ -1226,18 +1236,20 @@ const SixtyWallet: React.FC<{
 
               {/* Import Tokens Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white/80">Via Cashu</h3>
+                <h3 className="text-sm font-medium text-foreground/80">
+                  Via Cashu
+                </h3>
                 <div className="space-y-2">
                   <textarea
                     value={tokenToImport}
                     onChange={(e) => setTokenToImport(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white h-24 focus:border-white/30 focus:outline-none resize-none"
+                    className="w-full bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground h-24 focus:border-ring focus:outline-none resize-none"
                     placeholder="Paste your Cashu token here..."
                   />
                   <button
                     onClick={handleReceiveToken}
                     disabled={isImporting || !tokenToImport.trim()}
-                    className="w-full bg-white/10 border border-white/10 text-white py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="w-full bg-muted border border-border text-foreground py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
                     {isImporting ? "Importing..." : "Import Token"}
@@ -1252,11 +1264,11 @@ const SixtyWallet: React.FC<{
             <div className="space-y-6 h-full">
               {/* Lightning Send Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white/80">
+                <h3 className="text-sm font-medium text-foreground/80">
                   Via Lightning
                 </h3>
                 <div className="space-y-2">
-                  <span className="text-sm text-white/70">Invoice</span>
+                  <span className="text-sm text-muted-foreground">Invoice</span>
                   <div className="relative">
                     <input
                       placeholder="Lightning invoice"
@@ -1268,10 +1280,10 @@ const SixtyWallet: React.FC<{
                           void handlePayInvoice();
                         }
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 pr-10 text-sm text-white focus:border-white/30 focus:outline-none"
+                      className="w-full bg-muted/50 border border-border rounded-md px-3 py-2 pr-10 text-sm text-foreground focus:border-ring focus:outline-none"
                     />
                     <button
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       type="button"
                     >
                       <QrCode className="h-4 w-4" />
@@ -1280,16 +1292,16 @@ const SixtyWallet: React.FC<{
                 </div>
 
                 {invoiceAmount && (
-                  <div className="bg-white/5 border border-white/10 rounded-md p-4">
-                    <p className="text-sm font-medium text-white/80">
+                  <div className="bg-muted/50 border border-border rounded-md p-4">
+                    <p className="text-sm font-medium text-foreground/80">
                       Invoice Amount
                     </p>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-foreground">
                       {formatBalance(invoiceAmount, `${currentMintUnit}s `)}
                       {invoiceFeeReserve !== null &&
                         invoiceFeeReserve !== 0 && (
                           <>
-                            <span className="text-xs font-bold pl-2 text-white/50">
+                            <span className="text-xs font-bold pl-2 text-muted-foreground">
                               + max {formatBalance(invoiceFeeReserve, "sats")}{" "}
                               fee
                             </span>
@@ -1308,7 +1320,7 @@ const SixtyWallet: React.FC<{
                       setcurrentMeltQuoteId("");
                       processingInvoiceRef.current = null;
                     }}
-                    className="flex-1 bg-white/10 border border-white/10 text-white py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors"
+                    className="flex-1 bg-muted border border-border text-foreground py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors"
                     type="button"
                   >
                     Cancel
@@ -1321,7 +1333,7 @@ const SixtyWallet: React.FC<{
                       !sendInvoice ||
                       !invoiceAmount
                     }
-                    className="flex-1 bg-white/10 border border-white/10 text-white py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50"
+                    className="flex-1 bg-muted border border-border text-foreground py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50"
                     type="button"
                   >
                     {isProcessing ? (
@@ -1343,7 +1355,9 @@ const SixtyWallet: React.FC<{
 
               {/* eCash Send Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white/80">Via eCash</h3>
+                <h3 className="text-sm font-medium text-foreground/80">
+                  Via eCash
+                </h3>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -1355,13 +1369,13 @@ const SixtyWallet: React.FC<{
                         void handlesendToken();
                       }
                     }}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                    className="flex-1 bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
                     placeholder={`Amount in ${currentMintUnit}s`}
                   />
                   <button
                     onClick={handlesendToken}
                     disabled={isGeneratingSendToken || !sendAmount}
-                    className="bg-white/10 border border-white/10 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-white/15 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="bg-muted border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50 cursor-pointer"
                     type="button"
                   >
                     {isGeneratingSendToken ? "Generating..." : "Generate Token"}
@@ -1369,26 +1383,26 @@ const SixtyWallet: React.FC<{
                 </div>
 
                 {generatedToken && (
-                  <div className="bg-white/5 border border-white/10 rounded-md p-4">
+                  <div className="bg-muted/50 border border-border rounded-md p-4">
                     <div className="mb-2 flex justify-between items-center">
-                      <span className="text-sm text-white/70">
+                      <span className="text-sm text-muted-foreground">
                         Generated Token
                       </span>
                       <button
                         onClick={copyTokenToClipboard}
-                        className="text-xs text-white/70 hover:text-white cursor-pointer"
+                        className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                         type="button"
                       >
                         Copy Token
                       </button>
                     </div>
-                    <div className="font-mono text-xs break-all text-white/70 max-h-32 overflow-y-auto">
+                    <div className="font-mono text-xs break-all text-muted-foreground max-h-32 overflow-y-auto">
                       {generatedToken}
                     </div>
                   </div>
                 )}
 
-                <div className="text-sm text-white/50 italic">
+                <div className="text-sm text-muted-foreground italic">
                   Share your generated token with others to send them eCash.
                 </div>
               </div>

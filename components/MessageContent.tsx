@@ -206,21 +206,23 @@ export default function MessageContentRenderer({
             return (
               <div
                 key={`file-${index}`}
-                className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2"
+                className="flex w-[220px] max-w-full h-16 items-center gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2"
               >
                 <FileText
-                  className="h-5 w-5 text-white/80 shrink-0"
+                  className="h-5 w-5 text-foreground/80 shrink-0"
                   aria-hidden="true"
                 />
                 <div className="min-w-0 flex-1">
                   <p
-                    className="truncate text-sm font-medium text-white"
+                    className="truncate text-sm font-medium text-foreground"
                     title={item.file?.name || "Attachment"}
                   >
                     {item.file?.name || "Attachment"}
                   </p>
                   {label && (
-                    <p className="text-xs uppercase text-white/60">{label}</p>
+                    <p className="text-xs uppercase text-muted-foreground">
+                      {label}
+                    </p>
                   )}
                 </div>
               </div>
@@ -246,7 +248,7 @@ export default function MessageContentRenderer({
             return (
               <div
                 key={`image-${index}`}
-                className={`relative group shrink-0 overflow-hidden rounded-xl border border-white/15 bg-white/5`}
+                className={`relative group shrink-0 overflow-hidden rounded-xl border border-border bg-muted/50`}
                 style={{
                   width: "min(320px, 100%)",
                   aspectRatio: loaded ? undefined : "1 / 1",
@@ -259,8 +261,8 @@ export default function MessageContentRenderer({
                       : "opacity-100"
                   }`}
                 >
-                  <div className="absolute inset-0 animate-pulse bg-linear-to-br from-white/10 via-white/5 to-transparent" />
-                  <div className="relative h-10 w-10 rounded-full border-2 border-white/40 border-t-transparent animate-spin" />
+                  <div className="absolute inset-0 animate-pulse bg-linear-to-br from-muted via-muted/50 to-transparent" />
+                  <div className="relative h-10 w-10 rounded-full border-2 border-foreground/40 border-t-transparent animate-spin" />
                 </div>
                 {imageUrl && (
                   <img
@@ -282,7 +284,7 @@ export default function MessageContentRenderer({
                   type="button"
                   disabled={!loaded || !imageUrl}
                   onClick={() => imageUrl && downloadImageFromSrc(imageUrl)}
-                  className={`absolute top-3 right-3 transition-opacity bg-black/60 hover:bg-black/80 text-white text-xs rounded-md px-2 py-1 border border-white/20 ${
+                  className={`absolute top-3 right-3 transition-opacity bg-card hover:bg-muted text-foreground text-xs rounded-md px-2 py-1 border border-border ${
                     loaded
                       ? "opacity-100 md:opacity-0 md:group-hover:opacity-100"
                       : "opacity-0 pointer-events-none"
