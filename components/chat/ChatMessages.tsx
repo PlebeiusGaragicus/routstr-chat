@@ -745,9 +745,7 @@ export default function ChatMessages({
                           )}
 
                           {/* Show retry button if last message contains "Pls retry" */}
-                          {shouldShowGroupRetryButton(
-                            systemGroup.firstMessage._eventId!
-                          ) && (
+                          {showRetry && (
                             <button
                               onClick={() =>
                                 retryMessage(

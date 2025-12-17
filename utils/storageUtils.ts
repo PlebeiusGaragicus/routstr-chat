@@ -502,7 +502,24 @@ export const STORAGE_KEYS = {
   MINTS_FROM_ALL_PROVIDERS: "mints_from_all_providers",
   INFO_FROM_ALL_PROVIDERS: "info_from_all_providers",
   LAST_MODELS_UPDATE: "lastModelsUpdate",
+  AUTO_DELETE_CONVERSATIONS: "auto_delete_conversations",
 } as const;
+
+/**
+ * Load auto-delete conversations preference from localStorage
+ * @returns True if auto-delete is enabled, defaults to false
+ */
+export const loadAutoDeleteConversations = (): boolean => {
+  return getStorageItem<boolean>(STORAGE_KEYS.AUTO_DELETE_CONVERSATIONS, false);
+};
+
+/**
+ * Save auto-delete conversations preference to localStorage
+ * @param enabled Whether auto-delete is enabled
+ */
+export const saveAutoDeleteConversations = (enabled: boolean): void => {
+  setStorageItem(STORAGE_KEYS.AUTO_DELETE_CONVERSATIONS, enabled);
+};
 
 /**
  * Retrieves all stored Cashu tokens.

@@ -587,13 +587,20 @@ export const fetchAIResponse = async (
       window.location.origin === "https://beta.chat.routstr.com";
 
     if (error instanceof Error) {
+      const modifiedErrorMsg = error.message.includes("Error in input stream")
+        ? "AI stream was cut off, please try again"
+        : error.message;
+
       const errorMsg =
-        "Error in fetchAIReponse: " +
-        error.message +
+        "Uncaught Error: " +
+        modifiedErrorMsg +
         (isDev || isBeta ? " | " + "error.stack" : ""); // remove for now
       logApiError(errorMsg, onMessageAppend);
     } else {
-      logApiError("An unknown error occurred", onMessageAppend);
+      logApiError(
+        "Unknown Error: Please tag Routstr on Nostr and/or retry. ",
+        onMessageAppend
+      );
     }
   }
 };

@@ -10,7 +10,7 @@ export const getTextFromContent = (
   content: string | MessageContent[]
 ): string => {
   if (typeof content === "string") return content;
-  
+
   try {
     const textContent = content.find(
       (item) => item.type === "text" && !item.hidden
@@ -29,17 +29,19 @@ export const getTextFromContent = (
       const errorType = errorObj.error?.type || "unknown";
       const errorCode = errorObj.error?.code || "";
       const requestId = errorObj.request_id || "";
-      
+
       return `Error: ${errorMessage}\nType: ${errorType}\nCode: ${errorCode}\nRequest ID: ${requestId}`;
     }
-    
+
     // Only log if it's an unexpected error format
-    console.error("Error in getTextFromContent - content.find is not a function");
+    console.error(
+      "Error in getTextFromContent - content.find is not a function"
+    );
     console.error("Content type:", typeof content);
     console.error("Content value:", content);
     console.error("Content is Array:", Array.isArray(content));
     console.error("Error:", error);
-    
+
     return "";
   }
 };
@@ -91,11 +93,11 @@ export const convertMessageForAPI = async (
         const { thinking, citations, ...cleanItem } = item;
         return cleanItem;
       }
-      
+
       // Handle image_url with empty URL but storageId exists
       if (item.type === "image_url" && item.image_url) {
         const { url, storageId } = item.image_url;
-        
+
         // If URL is empty and storageId exists, fetch from IndexedDB
         if (url === "" && storageId) {
           try {
@@ -116,7 +118,7 @@ export const convertMessageForAPI = async (
           }
         }
       }
-      
+
       return item;
     })
   );
@@ -133,7 +135,11 @@ export const convertMessageForAPI = async (
  * @param text The text content
  * @returns A Message object with text content
  */
-export const createTextMessage = (role: string, text: string, prevId?: string): Message => {
+export const createTextMessage = (
+  role: string,
+  text: string,
+  prevId?: string
+): Message => {
   return {
     role,
     content: text,
@@ -262,7 +268,8 @@ export const stripImageDataFromSingleMessage = (msg: Message): Message => {
       if (hasMedia) {
         return {
           ...msg,
-          content: "[Attachment(s) not saved to local storage]",
+          content:
+            "Could not store the image in your browser local storage. Please report to Routstr on Nostr",
         };
       }
       return { ...msg, content: "[Content removed]" };

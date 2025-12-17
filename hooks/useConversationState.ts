@@ -20,6 +20,7 @@ import {
   loadLastUsedModel,
   loadSatsSpentMap,
   saveSatsSpent,
+  loadAutoDeleteConversations,
 } from "@/utils/storageUtils";
 import { useChatSync } from "./useChatSync";
 import {
@@ -100,6 +101,7 @@ export const useConversationState = (): UseConversationStateReturn => {
   const conversationsMapRef = useRef<Map<string, Conversation>>(new Map());
   const processedEventIdsRef = useRef<Set<string>>(new Set());
   const migrationAttemptedRef = useRef(false);
+  const autoDeleteAttemptedRef = useRef(false);
 
   const {
     isSyncing: isPublishing,
@@ -319,10 +321,9 @@ export const useConversationState = (): UseConversationStateReturn => {
     [setActiveConversationIdWithStorage]
   );
 
-  const deleteConversation = useCallback(
-    async (conversationId: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-
+  // Internal function to delete a conversation by ID (no event required)
+  const deleteConversationById = useCallback(
+    (conversationId: string) => {
       setConversations((prevConversations) => {
         const updatedConversations = deleteConversationFromStorage(
           prevConversations,
@@ -376,7 +377,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         // Also delete from conversationsMapRef
         conversationsMapRef.current.delete(conversationId);
 
-        if (conversationId === activeConversationId) {
+        if (conversationId === activeConversationIdRef.current) {
           setActiveConversationIdWithStorage(null);
           setMessages([]);
         }
@@ -384,13 +385,61 @@ export const useConversationState = (): UseConversationStateReturn => {
         return updatedConversations;
       });
     },
-    [
-      activeConversationId,
-      setActiveConversationIdWithStorage,
-      currentPnsKeys,
-      performDeletionSync,
-    ]
+    [setActiveConversationIdWithStorage, currentPnsKeys, performDeletionSync]
   );
+
+  const deleteConversation = useCallback(
+    async (conversationId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      deleteConversationById(conversationId);
+    },
+    [deleteConversationById]
+  );
+
+  // Auto-delete old conversations (older than 7 days) when enabled
+  useEffect(() => {
+    if (!conversationsLoaded || autoDeleteAttemptedRef.current) {
+      return;
+    }
+
+    const autoDeleteEnabled = loadAutoDeleteConversations();
+    if (!autoDeleteEnabled) {
+      return;
+    }
+
+    autoDeleteAttemptedRef.current = true;
+
+    // const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 42 * 1000;
+    const now = Date.now();
+    const idsToDelete: string[] = [];
+
+    conversations.forEach((conversation) => {
+      if (conversation.messages.length > 0) {
+        const lastMessage =
+          conversation.messages[conversation.messages.length - 1];
+        if (lastMessage._createdAt) {
+          // _createdAt is in seconds, convert to ms
+          const messageTime = lastMessage._createdAt * 1000;
+          if (now - messageTime > sevenDaysMs) {
+            idsToDelete.push(conversation.id);
+          }
+        }
+      }
+    });
+
+    if (idsToDelete.length > 0) {
+      console.log(
+        `[useConversationState] Auto-deleting ${idsToDelete.length} old conversations`
+      );
+      // Use setTimeout to avoid state updates during render
+      setTimeout(() => {
+        idsToDelete.forEach((id) => {
+          deleteConversationById(id);
+        });
+      }, 0);
+    }
+  }, [conversationsLoaded, conversations, deleteConversationById]);
 
   const clearConversations = useCallback(() => {
     setConversations([]);
