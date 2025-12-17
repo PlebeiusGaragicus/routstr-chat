@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, Link2, Wifi, WifiOff, Loader, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Zap, Link2, Wifi, WifiOff, Loader, AlertCircle } from "lucide-react";
 
 const NWCWalletManager: React.FC = () => {
-  const [nwcStatus, setNwcStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [nwcStatus, setNwcStatus] = useState<
+    "disconnected" | "connecting" | "connected"
+  >("disconnected");
   const [nwcBalance, setNwcBalance] = useState<number | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [showConfirmDisconnect, setShowConfirmDisconnect] = useState(false);
@@ -15,20 +17,28 @@ const NWCWalletManager: React.FC = () => {
 
     (async () => {
       try {
-        const mod = await import('@getalby/bitcoin-connect-react');
-        
+        const mod = await import("@getalby/bitcoin-connect-react");
+
         const fetchBalance = async (provider: any): Promise<number | null> => {
           try {
-            if (provider && typeof provider.getBalance === 'function') {
+            if (provider && typeof provider.getBalance === "function") {
               const res = await provider.getBalance();
-              if (typeof res === 'number') return res;
-              if (res && typeof res === 'object') {
-                if ('balance' in res && typeof (res as any).balance === 'number') {
-                  const unit = ((res as any).unit || '').toString().toLowerCase();
+              if (typeof res === "number") return res;
+              if (res && typeof res === "object") {
+                if (
+                  "balance" in res &&
+                  typeof (res as any).balance === "number"
+                ) {
+                  const unit = ((res as any).unit || "")
+                    .toString()
+                    .toLowerCase();
                   const n = (res as any).balance as number;
-                  return unit.includes('msat') ? Math.floor(n / 1000) : n;
+                  return unit.includes("msat") ? Math.floor(n / 1000) : n;
                 }
-                if ('balanceMsats' in res && typeof (res as any).balanceMsats === 'number') {
+                if (
+                  "balanceMsats" in res &&
+                  typeof (res as any).balanceMsats === "number"
+                ) {
                   return Math.floor((res as any).balanceMsats / 1000);
                 }
               }
@@ -37,22 +47,22 @@ const NWCWalletManager: React.FC = () => {
           return null;
         };
 
-        unsubConnecting = mod.onConnecting?.(() => setNwcStatus('connecting'));
+        unsubConnecting = mod.onConnecting?.(() => setNwcStatus("connecting"));
         unsubConnect = mod.onConnected?.(async (provider: any) => {
-          setNwcStatus('connected');
+          setNwcStatus("connected");
           const sats = await fetchBalance(provider);
           if (sats !== null) setNwcBalance(sats);
-          
+
           // Extract wallet provider name
           try {
             const cfg = mod.getConnectorConfig?.();
-            if (cfg && typeof cfg === 'object' && 'name' in cfg) {
+            if (cfg && typeof cfg === "object" && "name" in cfg) {
               setWalletProvider((cfg as any).name || null);
             }
           } catch {}
         });
         unsubDisconnect = mod.onDisconnected?.(() => {
-          setNwcStatus('disconnected');
+          setNwcStatus("disconnected");
           setNwcBalance(null);
           setWalletProvider(null);
         });
@@ -61,9 +71,9 @@ const NWCWalletManager: React.FC = () => {
         try {
           const cfg = mod.getConnectorConfig?.();
           if (cfg) {
-            setNwcStatus('connected');
+            setNwcStatus("connected");
             // Extract wallet provider name if available
-            if (cfg && typeof cfg === 'object' && 'name' in cfg) {
+            if (cfg && typeof cfg === "object" && "name" in cfg) {
               setWalletProvider((cfg as any).name || null);
             }
             try {
@@ -77,22 +87,28 @@ const NWCWalletManager: React.FC = () => {
     })();
 
     return () => {
-      try { unsubConnect && unsubConnect(); } catch {}
-      try { unsubDisconnect && unsubDisconnect(); } catch {}
-      try { unsubConnecting && unsubConnecting(); } catch {}
+      try {
+        unsubConnect && unsubConnect();
+      } catch {}
+      try {
+        unsubDisconnect && unsubDisconnect();
+      } catch {}
+      try {
+        unsubConnecting && unsubConnecting();
+      } catch {}
     };
   }, []);
 
   const handleDisconnect = async () => {
     setIsDisconnecting(true);
     try {
-      const mod = await import('@getalby/bitcoin-connect-react');
+      const mod = await import("@getalby/bitcoin-connect-react");
       await mod.disconnect();
-      setNwcStatus('disconnected');
+      setNwcStatus("disconnected");
       setNwcBalance(null);
       setWalletProvider(null);
     } catch (error) {
-      console.error('Error disconnecting NWC wallet:', error);
+      console.error("Error disconnecting NWC wallet:", error);
     } finally {
       setIsDisconnecting(false);
       setShowConfirmDisconnect(false);
@@ -109,53 +125,57 @@ const NWCWalletManager: React.FC = () => {
 
   const handleConnect = async () => {
     try {
-      const mod = await import('@getalby/bitcoin-connect-react');
+      const mod = await import("@getalby/bitcoin-connect-react");
       await mod.launchModal();
     } catch (error) {
-      console.error('Error launching NWC modal:', error);
+      console.error("Error launching NWC modal:", error);
     }
   };
 
   const getStatusIcon = () => {
     switch (nwcStatus) {
-      case 'connected':
+      case "connected":
         return <Wifi className="h-4 w-4 text-green-400" />;
-      case 'connecting':
+      case "connecting":
         return <Loader className="h-4 w-4 text-yellow-400 animate-spin" />;
-      case 'disconnected':
+      case "disconnected":
         return <WifiOff className="h-4 w-4 text-white/50" />;
     }
   };
 
   const getStatusColor = () => {
     switch (nwcStatus) {
-      case 'connected':
-        return 'text-green-400';
-      case 'connecting':
-        return 'text-yellow-400';
-      case 'disconnected':
-        return 'text-white/50';
+      case "connected":
+        return "text-green-400";
+      case "connecting":
+        return "text-yellow-400";
+      case "disconnected":
+        return "text-white/50";
     }
   };
 
   const getStatusText = () => {
     switch (nwcStatus) {
-      case 'connected':
-        return 'CONNECTED';
-      case 'connecting':
-        return 'CONNECTING';
-      case 'disconnected':
-        return 'NOT CONNECTED';
+      case "connected":
+        return "CONNECTED";
+      case "connecting":
+        return "CONNECTING";
+      case "disconnected":
+        return "NOT CONNECTED";
     }
   };
 
   return (
     <div className="mb-6">
-      <h3 className="text-sm font-medium text-white/80 mb-2">Lightning Wallet (NWC)</h3>
+      <h3 className="text-sm font-medium text-white/80 mb-2">
+        Lightning Wallet (NWC)
+      </h3>
       <div className="bg-white/5 border border-white/10 rounded-md p-4">
-        <p className="text-sm text-white mb-3">Connect a Lightning wallet to pay invoices instantly</p>
-        
-        {nwcStatus === 'disconnected' ? (
+        <p className="text-sm text-white mb-3">
+          Connect a Lightning wallet to pay invoices instantly
+        </p>
+
+        {nwcStatus === "disconnected" ? (
           <div className="space-y-3">
             <p className="text-sm text-white/50">No wallet connected</p>
             <button
@@ -175,13 +195,13 @@ const NWCWalletManager: React.FC = () => {
                     {getStatusIcon()}
                     <div className="flex flex-col min-w-0 grow">
                       <span className="text-sm text-white truncate">
-                        {walletProvider || 'Lightning Wallet'}
+                        {walletProvider || "Lightning Wallet"}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs ${getStatusColor()}`}>
                           {getStatusText()}
                         </span>
-                        {nwcBalance !== null && nwcStatus === 'connected' && (
+                        {nwcBalance !== null && nwcStatus === "connected" && (
                           <span className="text-xs text-white/70">
                             {nwcBalance.toLocaleString()} sats
                           </span>
@@ -208,7 +228,8 @@ const NWCWalletManager: React.FC = () => {
                       Disconnect Wallet?
                     </h4>
                     <p className="text-xs text-red-300/80">
-                      You won't be able to pay Lightning invoices until you reconnect
+                      You won't be able to pay Lightning invoices until you
+                      reconnect
                     </p>
                   </div>
                 </div>
@@ -233,7 +254,7 @@ const NWCWalletManager: React.FC = () => {
                         Disconnecting...
                       </>
                     ) : (
-                      'Yes, Disconnect'
+                      "Yes, Disconnect"
                     )}
                   </button>
                 </div>
@@ -247,4 +268,3 @@ const NWCWalletManager: React.FC = () => {
 };
 
 export default NWCWalletManager;
-

@@ -1,11 +1,11 @@
-import { useNostr } from '@/hooks/useNostr';
-import { toast } from 'sonner';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { KINDS } from '@/lib/nostr-kinds';
-import { StoredApiKey } from '@/components/settings/ApiKeysTab';
-import { NostrEvent } from 'nostr-tools';
-import { useState, useEffect, useCallback } from 'react'; // Added useState, useEffect, and useCallback
+import { useNostr } from "@/hooks/useNostr";
+import { toast } from "sonner";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { KINDS } from "@/lib/nostr-kinds";
+import { StoredApiKey } from "@/components/settings/ApiKeysTab";
+import { NostrEvent } from "nostr-tools";
+import { useState, useEffect, useCallback } from "react"; // Added useState, useEffect, and useCallback
 
 /**
  * Hook to fetch and manage user's API keys synced with the cloud
@@ -16,28 +16,32 @@ export function useApiKeysSync() {
   const queryClient = useQueryClient();
 
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') { // Ensure localStorage is available only in client-side
-      return localStorage.getItem('api_keys_cloud_sync_enabled') !== 'false'; // Default to true if not explicitly false
+    if (typeof window !== "undefined") {
+      // Ensure localStorage is available only in client-side
+      return localStorage.getItem("api_keys_cloud_sync_enabled") !== "false"; // Default to true if not explicitly false
     }
     return true; // Default to true for SSR cases where window is undefined
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('api_keys_cloud_sync_enabled', String(cloudSyncEnabled));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "api_keys_cloud_sync_enabled",
+        String(cloudSyncEnabled)
+      );
     }
   }, [cloudSyncEnabled]);
 
-  const API_KEYS_D_TAG = 'routstr-chat-api-keys-v1';
+  const API_KEYS_D_TAG = "routstr-chat-api-keys-v1";
 
   // Mutation to create/update API keys event
   const createApiKeysMutation = useMutation({
     mutationFn: async (apiKeys: StoredApiKey[]) => {
       if (!user) {
-        throw new Error('User not logged in');
+        throw new Error("User not logged in");
       }
       if (!user.signer.nip44) {
-        throw new Error('NIP-44 encryption not supported by your signer');
+        throw new Error("NIP-44 encryption not supported by your signer");
       }
 
       // Encrypt the content
@@ -50,8 +54,8 @@ export function useApiKeysSync() {
       const event = await user.signer.signEvent({
         kind: KINDS.ARBITRARY_APP_DATA,
         content,
-        tags: [['d', API_KEYS_D_TAG]],
-        created_at: Math.floor(Date.now() / 1000)
+        tags: [["d", API_KEYS_D_TAG]],
+        created_at: Math.floor(Date.now() / 1000),
       });
 
       // Publish event
@@ -59,22 +63,29 @@ export function useApiKeysSync() {
       return event;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apiKeys', user?.pubkey, API_KEYS_D_TAG] });
-    }
+      queryClient.invalidateQueries({
+        queryKey: ["apiKeys", user?.pubkey, API_KEYS_D_TAG],
+      });
+    },
   });
 
   // Mutation to handle API key deletion, including Kind 5 for specific events if needed
   const deleteApiKeyMutation = useMutation({
     mutationFn: async (keyToDelete: string) => {
       if (!user) {
-        throw new Error('User not logged in');
+        throw new Error("User not logged in");
       }
       if (!user.signer.nip44) {
-        throw new Error('NIP-44 encryption not supported by your signer');
+        throw new Error("NIP-44 encryption not supported by your signer");
       }
 
-      const currentApiKeys = (queryClient.getQueryData(['apiKeys', user?.pubkey, API_KEYS_D_TAG]) as StoredApiKey[] | undefined) || [];
-      const updatedKeys = currentApiKeys.filter((k: StoredApiKey) => k.key !== keyToDelete);
+      const currentApiKeys =
+        (queryClient.getQueryData(["apiKeys", user?.pubkey, API_KEYS_D_TAG]) as
+          | StoredApiKey[]
+          | undefined) || [];
+      const updatedKeys = currentApiKeys.filter(
+        (k: StoredApiKey) => k.key !== keyToDelete
+      );
 
       // Publish a new event with the updated list
       await createApiKeysMutation.mutateAsync(updatedKeys);
@@ -89,27 +100,28 @@ export function useApiKeysSync() {
       // and do not have external linked (non-replaceable) Nostr events that need explicit deletion.
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apiKeys', user?.pubkey, API_KEYS_D_TAG] });
-    }
+      queryClient.invalidateQueries({
+        queryKey: ["apiKeys", user?.pubkey, API_KEYS_D_TAG],
+      });
+    },
   });
-
 
   // Query to fetch API keys from Nostr
   const apiKeysQuery = useQuery({
-    queryKey: ['apiKeys', user?.pubkey, API_KEYS_D_TAG],
+    queryKey: ["apiKeys", user?.pubkey, API_KEYS_D_TAG],
     queryFn: async ({ signal }) => {
       if (!user || !cloudSyncEnabled) {
         return [];
       }
       if (!user.signer.nip44) {
-        throw new Error('NIP-44 encryption not supported by your signer');
+        throw new Error("NIP-44 encryption not supported by your signer");
       }
 
       const filter = {
         kinds: [KINDS.ARBITRARY_APP_DATA],
         authors: [user.pubkey],
-        '#d': [API_KEYS_D_TAG], // Filter by the 'd' tag
-        limit: 1 // We only need the latest replaceable event
+        "#d": [API_KEYS_D_TAG], // Filter by the 'd' tag
+        limit: 1, // We only need the latest replaceable event
       };
 
       const events = await nostr.query([filter], { signal });
@@ -122,7 +134,10 @@ export function useApiKeysSync() {
 
       try {
         // Decrypt content
-        const decrypted = await user.signer.nip44.decrypt(user.pubkey, latestEvent.content);
+        const decrypted = await user.signer.nip44.decrypt(
+          user.pubkey,
+          latestEvent.content
+        );
         const cloudApiKeys: StoredApiKey[] = JSON.parse(decrypted);
 
         // Implement cloud cleanup on fetch:
@@ -141,10 +156,12 @@ export function useApiKeysSync() {
 
         return cloudApiKeys;
       } catch (error) {
-        if (error instanceof Error && error.message.includes('invalid MAC')) {
-          toast.error('Nostr Extention: invalid MAC. Please switch to your previously connected account on the extension OR sign out and login. .');
+        if (error instanceof Error && error.message.includes("invalid MAC")) {
+          toast.error(
+            "Nostr Extention: invalid MAC. Please switch to your previously connected account on the extension OR sign out and login. ."
+          );
         }
-        console.error('Failed to decrypt API key data:', error);
+        console.error("Failed to decrypt API key data:", error);
         return [];
       }
     },
@@ -165,7 +182,8 @@ export function useApiKeysSync() {
   return {
     syncedApiKeys: apiKeysQuery.data || [],
     isLoadingApiKeys: apiKeysQuery.isLoading,
-    isSyncingApiKeys: createApiKeysMutation.isPending || deleteApiKeyMutation.isPending,
+    isSyncingApiKeys:
+      createApiKeysMutation.isPending || deleteApiKeyMutation.isPending,
     createOrUpdateApiKeys, // Use memoized function
     deleteApiKey, // Use memoized function
     cloudSyncEnabled: cloudSyncEnabled, // Expose for component to use

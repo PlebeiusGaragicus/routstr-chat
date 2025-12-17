@@ -1,18 +1,31 @@
 import { Event } from "nostr-tools";
-import { Mint, Wallet, getEncodedTokenV4, getDecodedToken } from "@cashu/cashu-ts";
-import { getLocalCashuToken, setLocalCashuToken, removeLocalCashuToken, getLocalCashuTokens, CashuTokenEntry } from '@/utils/storageUtils';
-
+import {
+  Mint,
+  Wallet,
+  getEncodedTokenV4,
+  getDecodedToken,
+} from "@cashu/cashu-ts";
+import {
+  getLocalCashuToken,
+  setLocalCashuToken,
+  removeLocalCashuToken,
+  getLocalCashuTokens,
+  CashuTokenEntry,
+} from "@/utils/storageUtils";
 
 /**
  * Gets both wallet + current Token balance from stored proofs and routstr API
  * @param mintUrl The Cashu mint URL
- * @param baseUrl The API base URL  
+ * @param baseUrl The API base URL
  * @param tokenAmount Amount in sats for token creation if needed (defaults to 12)
  * @returns The total balance in mSats
  */
 export const MSATS_PER_SAT = 1000;
 
-export const fetchBalances = async (mintUrl: string, baseUrl: string): Promise<{apiBalance:number, proofsBalance:number}> => {
+export const fetchBalances = async (
+  mintUrl: string,
+  baseUrl: string
+): Promise<{ apiBalance: number; proofsBalance: number }> => {
   let apiBalance = 0;
   let proofsBalance = 0;
 
@@ -22,17 +35,21 @@ export const fetchBalances = async (mintUrl: string, baseUrl: string): Promise<{
     if (token) {
       const response = await fetch(`${baseUrl}v1/wallet/info`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
         if (response.status === 402) {
           // Invalidate current token since it's out of balance
           removeLocalCashuToken(baseUrl);
-          console.warn('rdlogs: API token invalidated due to insufficient balance.');
+          console.warn(
+            "rdlogs: API token invalidated due to insufficient balance."
+          );
         } else {
-          console.error(`Failed to fetch wallet balance: ${response.status} ${response.statusText}`);
+          console.error(
+            `Failed to fetch wallet balance: ${response.status} ${response.statusText}`
+          );
         }
       } else {
         const data = await response.json();
@@ -52,7 +69,7 @@ export const fetchBalances = async (mintUrl: string, baseUrl: string): Promise<{
   // Always get proofs balance, regardless of API call success
   proofsBalance = getBalanceFromStoredProofs() * MSATS_PER_SAT;
 
-  return {apiBalance, proofsBalance};
+  return { apiBalance, proofsBalance };
 };
 
 /**
@@ -74,7 +91,6 @@ export const getBalanceFromStoredProofs = (): number => {
     return 0;
   }
 };
-
 
 /**
  * Get all stored wrapped tokens
@@ -105,7 +121,10 @@ export const removeWrappedToken = (tokenId: string): void => {
   }
 };
 
-export const fetchRefundToken = async (baseUrl: string, storedToken: string): Promise<{
+export const fetchRefundToken = async (
+  baseUrl: string,
+  storedToken: string
+): Promise<{
   success: boolean;
   token?: string;
   requestId?: string;
@@ -114,11 +133,11 @@ export const fetchRefundToken = async (baseUrl: string, storedToken: string): Pr
   if (!baseUrl) {
     return {
       success: false,
-      error: 'No base URL configured'
+      error: "No base URL configured",
     };
   }
 
-  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 
   // Create an AbortController for timeout handling
   const controller = new AbortController();
@@ -128,72 +147,84 @@ export const fetchRefundToken = async (baseUrl: string, storedToken: string): Pr
 
   try {
     const response = await fetch(`${normalizedBaseUrl}v1/wallet/refund`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${storedToken}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${storedToken}`,
+        "Content-Type": "application/json",
       },
-      signal: controller.signal
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
-    const requestId = response.headers.get('x-routstr-request-id') || undefined;
+    const requestId = response.headers.get("x-routstr-request-id") || undefined;
 
     if (!response.ok) {
       const errorData = await response.json();
-      if (response.status === 400 && errorData?.detail === "No balance to refund") {
+      if (
+        response.status === 400 &&
+        errorData?.detail === "No balance to refund"
+      ) {
         removeLocalCashuToken(baseUrl);
         return {
           success: false,
           requestId,
-          error: 'No balance to refund'
+          error: "No balance to refund",
         };
       }
       return {
         success: false,
         requestId,
-        error: `Refund request failed with status ${response.status}: ${errorData?.detail || response.statusText}`
+        error: `Refund request failed with status ${response.status}: ${
+          errorData?.detail || response.statusText
+        }`,
       };
     }
-    
+
     const data = await response.json();
     return {
       success: true,
       token: data.token,
-      requestId
+      requestId,
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    
+
     if (error instanceof Error) {
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         return {
           success: false,
-          error: 'Request timed out after 1 minute'
+          error: "Request timed out after 1 minute",
         };
       }
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
-    
+
     return {
       success: false,
-      error: 'Unknown error occurred during refund request'
+      error: "Unknown error occurred during refund request",
     };
   }
 };
 
-export const storeCashuToken = async (mintUrl: string, token: string): Promise<void> => {
+export const storeCashuToken = async (
+  mintUrl: string,
+  token: string
+): Promise<void> => {
   const mint = new Mint(mintUrl);
   const keysets = await mint.getKeySets();
-  
+
   // Get preferred unit: msat over sat if both are active
-  const activeKeysets = keysets.keysets.filter(k => k.active);
-  const units = [...new Set(activeKeysets.map(k => k.unit))];
-  const preferredUnit = units.includes('msat') ? 'msat' : (units.includes('sat') ? 'sat' : 'not supported');
-  
+  const activeKeysets = keysets.keysets.filter((k) => k.active);
+  const units = [...new Set(activeKeysets.map((k) => k.unit))];
+  const preferredUnit = units.includes("msat")
+    ? "msat"
+    : units.includes("sat")
+    ? "sat"
+    : "not supported";
+
   const wallet = new Wallet(mint, { unit: preferredUnit });
   await wallet.loadMint();
 
@@ -201,17 +232,24 @@ export const storeCashuToken = async (mintUrl: string, token: string): Promise<v
   const proofs = Array.isArray(result) ? result : [];
 
   if (proofs && proofs.length > 0) {
-    const storedProofs = localStorage.getItem('cashu_proofs');
+    const storedProofs = localStorage.getItem("cashu_proofs");
     const existingProofs = storedProofs ? JSON.parse(storedProofs) : [];
-    localStorage.setItem('cashu_proofs', JSON.stringify([...existingProofs, ...proofs]));
+    localStorage.setItem(
+      "cashu_proofs",
+      JSON.stringify([...existingProofs, ...proofs])
+    );
   }
 };
 
-export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, apiKey?: string): Promise<{ success: boolean; message?: string }> => {
+export const refundRemainingBalance = async (
+  mintUrl: string,
+  baseUrl: string,
+  apiKey?: string
+): Promise<{ success: boolean; message?: string }> => {
   try {
     const storedToken = apiKey || getLocalCashuToken(baseUrl); // Use getLocalCashuToken
     if (!storedToken) {
-      return { success: true, message: 'No apiKey to refund' };
+      return { success: true, message: "No apiKey to refund" };
     }
 
     try {
@@ -219,11 +257,14 @@ export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, a
       if (refundResult.success && refundResult.token) {
         await storeCashuToken(mintUrl, refundResult.token);
         removeLocalCashuToken(baseUrl);
-        return { success: true, message: 'Refund completed successfully' };
-      } else if (refundResult.error === 'No balance to refund') {
-        return { success: true, message: 'No balance to refund' };
+        return { success: true, message: "Refund completed successfully" };
+      } else if (refundResult.error === "No balance to refund") {
+        return { success: true, message: "No balance to refund" };
       } else {
-        return { success: false, message: refundResult.error || 'Refund failed' };
+        return {
+          success: false,
+          message: refundResult.error || "Refund failed",
+        };
       }
     } catch (error) {
       throw error; // Re-throw other errors
@@ -232,7 +273,10 @@ export const refundRemainingBalance = async (mintUrl: string, baseUrl: string, a
     console.error("Error refunding balance:", error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Unknown error occurred during refund'
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unknown error occurred during refund",
     };
   }
 };
@@ -254,58 +298,73 @@ export const unifiedRefund = async (
   if (usingNip60) {
     const storedToken = apiKey || getLocalCashuToken(baseUrl); // Use getLocalCashuToken
     if (!storedToken) {
-      return { success: true, message: 'No API key to refund' };
+      return { success: true, message: "No API key to refund" };
     }
-    
-    try {
 
+    try {
       const refundResult = await fetchRefundToken(baseUrl, storedToken);
-      
+
       if (!refundResult.success) {
         return {
           success: false,
-          message: refundResult.error || 'Refund failed',
-          requestId: refundResult.requestId
+          message: refundResult.error || "Refund failed",
+          requestId: refundResult.requestId,
         };
       }
-      
+
       if (!refundResult.token) {
         return {
           success: false,
-          message: 'No token received from refund',
-          requestId: refundResult.requestId
+          message: "No token received from refund",
+          requestId: refundResult.requestId,
         };
       }
-      
+
       const proofs = await receiveTokenFn(refundResult.token);
-      const totalAmount = proofs.reduce((sum: number, p: any) => sum + p.amount, 0);
+      const totalAmount = proofs.reduce(
+        (sum: number, p: any) => sum + p.amount,
+        0
+      );
       if (!apiKey) {
         removeLocalCashuToken(baseUrl);
       }
-      
+
       return {
         success: true,
         refundedAmount: totalAmount,
-        requestId: refundResult.requestId
+        requestId: refundResult.requestId,
       };
     } catch (error) {
       if (usingNip60) {
-        if (error instanceof Error && (error.message.includes("NetworkError when attempting to fetch resource.") || error.message.includes("Failed to fetch") || error.message.includes("Load failed"))) {
+        if (
+          error instanceof Error &&
+          (error.message.includes(
+            "NetworkError when attempting to fetch resource."
+          ) ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("Load failed"))
+        ) {
           return {
             success: false,
-            message: "Failed to connect to the mint: " + ((error as any).mintUrl || mintUrl)
-          }
-        }
-        else if (error instanceof Error && error.message.includes("Wallet not found")) {
+            message:
+              "Failed to connect to the mint: " +
+              ((error as any).mintUrl || mintUrl),
+          };
+        } else if (
+          error instanceof Error &&
+          error.message.includes("Wallet not found")
+        ) {
           return {
             success: false,
-            message: "Wallet couldn't be loaded. Pls save this refunded cashu token: " + ((error as any).token)
-          }
+            message:
+              "Wallet couldn't be loaded. Pls save this refunded cashu token: " +
+              (error as any).token,
+          };
         }
       }
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Refund failed'
+        message: error instanceof Error ? error.message : "Refund failed",
       };
     }
   } else {
@@ -315,34 +374,42 @@ export const unifiedRefund = async (
 
 export const getPendingCashuTokenAmount = (): number => {
   const distribution = getPendingCashuTokenDistribution();
-  const tempKeys = Object.keys(localStorage).filter(key => key.startsWith('pending_send_proofs_'));
+  const tempKeys = Object.keys(localStorage).filter((key) =>
+    key.startsWith("pending_send_proofs_")
+  );
   const tempAmount = tempKeys.reduce((total, key) => {
-    const data = JSON.parse(localStorage.getItem(key) || '{}');
+    const data = JSON.parse(localStorage.getItem(key) || "{}");
     return total + data.tokenAmount;
   }, 0);
-  return distribution.reduce((total, item) => total + item.amount, 0) + tempAmount;
+  return (
+    distribution.reduce((total, item) => total + item.amount, 0) + tempAmount
+  );
 };
 
-export const getPendingCashuTokenDistribution = (): { baseUrl: string; amount: number }[] => {
+export const getPendingCashuTokenDistribution = (): {
+  baseUrl: string;
+  amount: number;
+}[] => {
   const tokens = getLocalCashuTokens();
   const distributionMap: Record<string, number> = {};
-  
+
   tokens.forEach((entry) => {
     try {
       const decoded = getDecodedToken(entry.token);
-      const unitDivisor = decoded.unit === 'msat' ? 1000 : 1;
+      const unitDivisor = decoded.unit === "msat" ? 1000 : 1;
       let sum = 0;
       decoded.proofs.forEach((p: { amount: number }) => {
         sum += p.amount / unitDivisor;
       });
       if (sum > 0) {
-        distributionMap[entry.baseUrl] = (distributionMap[entry.baseUrl] || 0) + sum;
+        distributionMap[entry.baseUrl] =
+          (distributionMap[entry.baseUrl] || 0) + sum;
       }
     } catch (e) {
       // ignore malformed tokens
     }
   });
-  
+
   return Object.entries(distributionMap)
     .map(([baseUrl, amt]) => ({ baseUrl, amount: Math.round(amt) }))
     .sort((a, b) => b.amount - a.amount);

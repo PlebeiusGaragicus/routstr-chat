@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 /**
  * Generic hook for managing localStorage state
@@ -16,10 +16,10 @@ export function useLocalStorage<T>(
 
   const [state, setState] = useState<T>(() => {
     // Check if we're in the browser environment
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return defaultValue;
     }
-    
+
     try {
       const item = localStorage.getItem(key);
       return item ? deserialize(item) : defaultValue;
@@ -33,9 +33,9 @@ export function useLocalStorage<T>(
     try {
       const valueToStore = value instanceof Function ? value(state) : value;
       setState(valueToStore);
-      
+
       // Only access localStorage in the browser
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         localStorage.setItem(key, serialize(valueToStore));
       }
     } catch (error) {
@@ -45,7 +45,7 @@ export function useLocalStorage<T>(
 
   // Hydrate from localStorage on client mount
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
@@ -62,7 +62,7 @@ export function useLocalStorage<T>(
   // Sync with localStorage changes from other tabs
   useEffect(() => {
     // Only set up storage listener in the browser
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
@@ -76,8 +76,8 @@ export function useLocalStorage<T>(
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [key, deserialize]);
 
   return [state, setValue] as const;

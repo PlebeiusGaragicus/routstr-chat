@@ -1,5 +1,5 @@
-import { useNostr } from '@nostrify/react';
-import { NLogin, useNostrLogin } from '@nostrify/react/login';
+import { useNostr } from "@nostrify/react";
+import { NLogin, useNostrLogin } from "@nostrify/react/login";
 
 // NOTE: This file should not be edited except for adding new login methods.
 
@@ -32,6 +32,6 @@ export function useLoginActions() {
       if (login) {
         removeLogin(login.id);
       }
-    }
+    },
   };
 }

@@ -1,5 +1,10 @@
-import { nip19, SimplePool, getPublicKey as getPublicKeyFromPrivate, finalizeEvent } from 'nostr-tools';
-import type { Event } from 'nostr-tools';
+import {
+  nip19,
+  SimplePool,
+  getPublicKey as getPublicKeyFromPrivate,
+  finalizeEvent,
+} from "nostr-tools";
+import type { Event } from "nostr-tools";
 
 // Define the Window interface extension for Nostr
 declare global {
@@ -23,21 +28,25 @@ export type NostrExtension = {
 };
 
 export const isNostrExtensionAvailable = (): boolean => {
-  return typeof window !== 'undefined' && 'nostr' in window && window.nostr !== undefined;
+  return (
+    typeof window !== "undefined" &&
+    "nostr" in window &&
+    window.nostr !== undefined
+  );
 };
 
 // Get the user's public key from their Nostr extension (NIP-07)
 export const getPublicKey = async (): Promise<string | null> => {
   if (!isNostrExtensionAvailable()) {
-    console.error('Nostr extension not available');
+    console.error("Nostr extension not available");
     return null;
   }
-  
+
   try {
     const publicKey = await window.nostr!.getPublicKey();
     return publicKey;
   } catch (error) {
-    console.error('Error getting public key:', error);
+    console.error("Error getting public key:", error);
     return null;
   }
 };
@@ -47,8 +56,8 @@ export const formatPublicKey = (publicKey: string): string => {
   try {
     return nip19.npubEncode(publicKey);
   } catch (error) {
-    console.error('Error formatting public key:', error);
-    return publicKey.slice(0, 10) + '...' + publicKey.slice(-10);
+    console.error("Error formatting public key:", error);
+    return publicKey.slice(0, 10) + "..." + publicKey.slice(-10);
   }
 };
 
@@ -56,10 +65,10 @@ export const formatPublicKey = (publicKey: string): string => {
 export const decodePublicKey = (npub: string): string | null => {
   try {
     const { type, data } = nip19.decode(npub);
-    if (type !== 'npub') return null;
+    if (type !== "npub") return null;
     return data as string;
   } catch (error) {
-    console.error('Error decoding npub:', error);
+    console.error("Error decoding npub:", error);
     return null;
   }
 };
@@ -68,10 +77,10 @@ export const decodePublicKey = (npub: string): string | null => {
 export const decodePrivateKey = (nsec: string): Uint8Array | null => {
   try {
     const { type, data } = nip19.decode(nsec);
-    if (type !== 'nsec') return null;
+    if (type !== "nsec") return null;
     return data as Uint8Array;
   } catch (error) {
-    console.error('Error decoding nsec:', error);
+    console.error("Error decoding nsec:", error);
     return null;
   }
 };
@@ -112,9 +121,12 @@ export const validateNsec = (nsec: string): boolean => {
 };
 
 // Sign an event with the user's Nostr extension
-export const signEvent = async (content: string, kind = 1): Promise<Event | null> => {
+export const signEvent = async (
+  content: string,
+  kind = 1
+): Promise<Event | null> => {
   if (!isNostrExtensionAvailable()) {
-    console.error('Nostr extension not available');
+    console.error("Nostr extension not available");
     return null;
   }
 
@@ -123,13 +135,13 @@ export const signEvent = async (content: string, kind = 1): Promise<Event | null
       kind,
       created_at: Math.floor(Date.now() / 1000),
       tags: [],
-      content
+      content,
     };
 
     const signedEvent = await window.nostr!.signEvent(event);
     return signedEvent;
   } catch (error) {
-    console.error('Error signing event:', error);
+    console.error("Error signing event:", error);
     return null;
   }
 };

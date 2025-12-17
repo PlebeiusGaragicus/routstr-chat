@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown } from 'lucide-react';
-import MarkdownRenderer from '@/components/MarkdownRenderer';
+import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { ChevronDown } from "lucide-react";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 const BrainIcon = ({ className }: { className?: string }) => (
   <svg
@@ -14,7 +14,11 @@ const BrainIcon = ({ className }: { className?: string }) => (
     strokeWidth={1.5}
     className={className}
   >
-    <path d="M12 2a5 5 0 0 0-5 5v1a5 5 0 0 0-2 4v2a5 5 0 0 0 5 5h4a5 5 0 0 0 5-5v-2a5 5 0 0 0-2-4V7a5 5 0 0 0-5-5z" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M12 2a5 5 0 0 0-5 5v1a5 5 0 0 0-2 4v2a5 5 0 0 0 5 5h4a5 5 0 0 0 5-5v-2a5 5 0 0 0-2-4V7a5 5 0 0 0-5-5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
     <path d="M9 12h6" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M9 16h6" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M9 8h6" strokeLinecap="round" strokeLinejoin="round" />
@@ -57,22 +61,26 @@ interface ThinkingSectionProps {
   isStreaming?: boolean;
 }
 
-export default function ThinkingSection({ thinking, thinkingContent, isStreaming = false }: ThinkingSectionProps) {
+export default function ThinkingSection({
+  thinking,
+  thinkingContent,
+  isStreaming = false,
+}: ThinkingSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Determine content source
   const content = useMemo(() => {
     if (isStreaming && thinkingContent) return thinkingContent;
     if (!isStreaming && thinking) return thinking;
-    return thinkingContent || thinking || '';
+    return thinkingContent || thinking || "";
   }, [thinking, thinkingContent, isStreaming]);
 
   // Collapsed streaming preview: line-by-line reveal and auto-scroll
   const [visibleLineCount, setVisibleLineCount] = useState(0);
-  const contentRef = useRef<string>('');
+  const contentRef = useRef<string>("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previewMaxPx = 300; // ~ a few lines
-  const lines = useMemo(() => content.split('\n'), [content]);
+  const lines = useMemo(() => content.split("\n"), [content]);
 
   useEffect(() => {
     if (!isStreaming) {
@@ -103,7 +111,10 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
     };
   }, [content, lines.length, isStreaming]);
 
-  const visibleText = useMemo(() => lines.slice(0, visibleLineCount).join('\n'), [lines, visibleLineCount]);
+  const visibleText = useMemo(
+    () => lines.slice(0, visibleLineCount).join("\n"),
+    [lines, visibleLineCount]
+  );
   const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!isStreaming) return;
@@ -130,13 +141,13 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
         const finalMs = Date.now() - startTime;
         setDurationMs(finalMs);
         // Persist in ephemeral cache using a fingerprint of the content
-        const key = fingerprintText(thinking || thinkingContent || '');
+        const key = fingerprintText(thinking || thinkingContent || "");
         if (key) {
           thoughtDurationCache.set(key, finalMs);
         }
       } else if (durationMs == null) {
         // Attempt to recover from cache if we remounted and lost state
-        const key = fingerprintText(thinking || thinkingContent || '');
+        const key = fingerprintText(thinking || thinkingContent || "");
         if (key && thoughtDurationCache.has(key)) {
           setDurationMs(thoughtDurationCache.get(key)!);
         }
@@ -147,7 +158,10 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
   const durationLabel = useMemo(() => {
     if (durationMs == null) return null;
     const seconds = durationMs / 1000;
-    const value = seconds >= 10 ? Math.round(seconds).toString() : seconds.toFixed(1).replace(/\.0$/, '');
+    const value =
+      seconds >= 10
+        ? Math.round(seconds).toString()
+        : seconds.toFixed(1).replace(/\.0$/, "");
     return `Thought for ${value}s`;
   }, [durationMs]);
 
@@ -164,21 +178,21 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
         ) : (
           <BulbIcon className="w-3 h-3" />
         )}
-        <span>
-          {isStreaming ? 'Thinking...' : (durationLabel || 'Thought')}
-        </span>
+        <span>{isStreaming ? "Thinking..." : durationLabel || "Thought"}</span>
         <ChevronDown
-          className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          className={`w-3 h-3 transition-transform duration-200 ${
+            isExpanded ? "rotate-180" : ""
+          }`}
         />
       </button>
-      
+
       {/* Streaming collapsed preview */}
       {isStreaming && !isExpanded && (
         <motion.div
           className="mt-2 border border-white/10 rounded-lg bg-white/5 relative"
           animate={{ maxHeight: previewMaxPx }}
           initial={false}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
         >
           <div
             ref={scrollRef}
@@ -191,8 +205,14 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
               ) : (
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" />
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                  <div
+                    className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"
+                    style={{ animationDelay: "0.2s" }}
+                  />
+                  <div
+                    className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"
+                    style={{ animationDelay: "0.4s" }}
+                  />
                 </div>
               )}
             </div>
@@ -204,9 +224,9 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
         {isExpanded && (
           <motion.div
             initial={{ height: 0 }}
-            animate={{ height: 'auto' }}
+            animate={{ height: "auto" }}
             exit={{ height: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
             <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-lg">
@@ -216,8 +236,14 @@ export default function ThinkingSection({ thinking, thinkingContent, isStreaming
                 ) : (
                   <div className="flex items-center gap-2">
                     <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" />
-                    <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                    <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                    <div
+                      className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"
+                      style={{ animationDelay: "0.2s" }}
+                    />
+                    <div
+                      className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"
+                      style={{ animationDelay: "0.4s" }}
+                    />
                   </div>
                 )}
               </div>

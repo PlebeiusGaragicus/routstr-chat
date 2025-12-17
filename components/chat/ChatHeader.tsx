@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Menu, SquarePen } from 'lucide-react';
-import { useChat } from '@/context/ChatProvider';
-import { useAuth } from '@/context/AuthProvider';
-import ModelSelector from './ModelSelector';
-import { BalanceDisplay } from '@/features/wallet';
+import React from "react";
+import { Menu, SquarePen } from "lucide-react";
+import { useChat } from "@/context/ChatProvider";
+import { useAuth } from "@/context/AuthProvider";
+import ModelSelector from "./ModelSelector";
+import { BalanceDisplay } from "@/features/wallet";
 
 /**
  * Top header with model selector and controls
@@ -13,11 +13,18 @@ import { BalanceDisplay } from '@/features/wallet';
  * mobile menu button, and header layout and styling
  */
 interface ChatHeaderProps {
-  onShowQRCode: (data: { invoice: string; amount: string; unit: string }) => void;
+  onShowQRCode: (data: {
+    invoice: string;
+    amount: string;
+    unit: string;
+  }) => void;
   isQrModalOpen: boolean;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({
+  onShowQRCode,
+  isQrModalOpen,
+}) => {
   const { isAuthenticated } = useAuth();
   const {
     // Model State
@@ -31,7 +38,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) 
     configuredModels,
     toggleConfiguredModel,
     setModelProviderFor,
-    
+
     // UI State
     isMobile,
     isSidebarOpen,
@@ -39,7 +46,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) 
     setIsSidebarOpen,
     setIsLoginModalOpen,
     createNewConversationHandler,
-    
+
     // Balance
     balance,
 
@@ -48,20 +55,26 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) 
 
     // Settings
     setIsSettingsOpen,
-    setInitialSettingsTab
+    setInitialSettingsTab,
   } = useChat();
 
   return (
-    <div className={`fixed top-0 ${isMobile && isSidebarOpen ? 'bg-[#181818]' : 'bg-[#181818]'} backdrop-blur-sm z-30 transition-all duration-300 ease-in-out ${
-      isMobile || !isAuthenticated
-        ? 'left-0 right-0'
-        : isSidebarCollapsed
-          ? 'left-0 right-0'
-          : 'left-72 right-0'
-    }`}>
-      <div className={`flex items-center justify-start h-[60px] relative ${
-        isMobile ? 'px-2' : 'px-4'
-      }`}>
+    <div
+      className={`fixed top-0 ${
+        isMobile && isSidebarOpen ? "bg-[#181818]" : "bg-[#181818]"
+      } backdrop-blur-sm z-30 transition-all duration-300 ease-in-out ${
+        isMobile || !isAuthenticated
+          ? "left-0 right-0"
+          : isSidebarCollapsed
+          ? "left-0 right-0"
+          : "left-72 right-0"
+      }`}
+    >
+      <div
+        className={`flex items-center justify-start h-[60px] relative ${
+          isMobile ? "px-2" : "px-4"
+        }`}
+      >
         {/* Mobile Menu Button */}
         {isMobile && !isAuthenticated && (
           <button
@@ -102,7 +115,15 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) 
         )}
 
         {/* Model Selector - left aligned; add padding on mobile and when sidebar is collapsed to avoid overlap */}
-        <div className={`${isMobile ? 'pl-20' : (isAuthenticated && isSidebarCollapsed ? 'pl-20' : '')}`}>
+        <div
+          className={`${
+            isMobile
+              ? "pl-20"
+              : isAuthenticated && isSidebarCollapsed
+              ? "pl-20"
+              : ""
+          }`}
+        >
           <ModelSelector
             selectedModel={selectedModel}
             isModelDrawerOpen={isModelDrawerOpen}
@@ -119,16 +140,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onShowQRCode, isQrModalOpen }) 
             baseUrl={baseUrl}
             openModelsConfig={() => {
               setIsSettingsOpen(true);
-              setInitialSettingsTab('models');
+              setInitialSettingsTab("models");
             }}
             lowBalanceWarningForModel={lowBalanceWarningForModel}
           />
         </div>
 
         {/* Balance Display */}
-        <div className={`absolute ${
-          isMobile ? 'right-2' : 'right-4'
-        }`}>
+        <div className={`absolute ${isMobile ? "right-2" : "right-4"}`}>
           <BalanceDisplay
             setIsSettingsOpen={setIsSettingsOpen}
             setInitialSettingsTab={setInitialSettingsTab}

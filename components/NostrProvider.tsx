@@ -1,7 +1,7 @@
-import { NostrEvent, NPool, NRelay1 } from '@nostrify/nostrify';
-import { NostrContext } from '@nostrify/react';
-import React, { useRef, useEffect } from 'react'; // Import useEffect
-import { useAppContext } from '@/hooks/useAppContext';
+import { NostrEvent, NPool, NRelay1 } from "@nostrify/nostrify";
+import { NostrContext } from "@nostrify/react";
+import React, { useRef, useEffect } from "react"; // Import useEffect
+import { useAppContext } from "@/hooks/useAppContext";
 
 interface NostrProviderProps {
   children: React.ReactNode;
@@ -25,7 +25,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const { children } = props;
 
   const { config } = useAppContext(); // Keep presetRelays even if not used directly here
-  
+
   // NPool instance created once
   const pool = useRef<NPool | undefined>(undefined);
   // Use ref for relayUrls to ensure the pool always has the latest config

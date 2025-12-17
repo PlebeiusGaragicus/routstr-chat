@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { AuthProvider } from '@/context/AuthProvider';
-import { ChatProvider } from '@/context/ChatProvider';
-import ChatContainer from '@/components/chat/ChatContainer';
-import SettingsModal from '@/components/SettingsModal';
-import LoginModal from '@/components/LoginModal';
-import TopUpPromptModal from '@/components/TopUpPromptModal';
-import { QueryTimeoutModal } from '@/components/QueryTimeoutModal';
-import QRCodeModal from '@/components/QRCodeModal';
-import { useAuth } from '@/context/AuthProvider';
-import { useChat } from '@/context/ChatProvider';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCashuWallet } from '@/features/wallet';
-import { hasSeenTopUpPrompt, markTopUpPromptSeen } from '@/utils/storageUtils';
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { AuthProvider } from "@/context/AuthProvider";
+import { ChatProvider } from "@/context/ChatProvider";
+import ChatContainer from "@/components/chat/ChatContainer";
+import SettingsModal from "@/components/SettingsModal";
+import LoginModal from "@/components/LoginModal";
+import TopUpPromptModal from "@/components/TopUpPromptModal";
+import { QueryTimeoutModal } from "@/components/QueryTimeoutModal";
+import QRCodeModal from "@/components/QRCodeModal";
+import { useAuth } from "@/context/AuthProvider";
+import { useChat } from "@/context/ChatProvider";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCashuWallet } from "@/features/wallet";
+import { hasSeenTopUpPrompt, markTopUpPromptSeen } from "@/utils/storageUtils";
 
 function ChatPageContent() {
   const router = useRouter();
@@ -28,25 +28,25 @@ function ChatPageContent() {
     isLoginModalOpen,
     setIsLoginModalOpen,
     initialSettingsTab,
-    
+
     // API State
     baseUrl,
     models,
     fetchModels,
-    
+
     // Balance and Transaction State
     balance,
     setBalance,
     transactionHistory,
     setTransactionHistory,
-    
+
     // Model State
     configuredModels,
     toggleConfiguredModel,
     setConfiguredModels,
     modelProviderMap,
     setModelProviderFor,
-    
+
     // Chat State
     clearConversations,
     isBalanceLoading,
@@ -58,14 +58,33 @@ function ChatPageContent() {
 
   const [isTopUpPromptOpen, setIsTopUpPromptOpen] = useState(false);
   const [topUpPromptDismissed, setTopUpPromptDismissed] = useState(false);
-  const { showQueryTimeoutModal, setShowQueryTimeoutModal, didRelaysTimeout, setDidRelaysTimeout, isLoading: isWalletLoading } = useCashuWallet();
+  const {
+    showQueryTimeoutModal,
+    setShowQueryTimeoutModal,
+    didRelaysTimeout,
+    setDidRelaysTimeout,
+    isLoading: isWalletLoading,
+  } = useCashuWallet();
   const pendingUrlSyncRef = useRef(false);
-  const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
-  const chatIdFromUrl = useMemo(() => searchParams.get('chatId'), [searchParams]);
-  const cashuTokenFromUrl = useMemo(() => searchParams.get('cashu'), [searchParams]);
+  const searchParamsString = useMemo(
+    () => searchParams.toString(),
+    [searchParams]
+  );
+  const chatIdFromUrl = useMemo(
+    () => searchParams.get("chatId"),
+    [searchParams]
+  );
+  const cashuTokenFromUrl = useMemo(
+    () => searchParams.get("cashu"),
+    [searchParams]
+  );
 
   // QR Code Modal State
-  const [qrModalData, setQrModalData] = useState<{ invoice: string; amount: string; unit: string } | null>(null);
+  const [qrModalData, setQrModalData] = useState<{
+    invoice: string;
+    amount: string;
+    unit: string;
+  } | null>(null);
 
   useEffect(() => {
     let topUpTimer: NodeJS.Timeout | null = null;
@@ -78,7 +97,7 @@ function ChatPageContent() {
           setIsTopUpPromptOpen(true);
         }, 500);
       }
-    } 
+    }
 
     return () => {
       if (topUpTimer) clearTimeout(topUpTimer);
@@ -93,10 +112,18 @@ function ChatPageContent() {
 
     pendingUrlSyncRef.current = true;
     const params = new URLSearchParams(searchParamsString);
-    params.set('chatId', activeConversationId);
+    params.set("chatId", activeConversationId);
     const queryString = params.toString();
-    router.replace(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
-  }, [activeConversationId, chatIdFromUrl, pathname, router, searchParamsString]);
+    router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+      scroll: false,
+    });
+  }, [
+    activeConversationId,
+    chatIdFromUrl,
+    pathname,
+    router,
+    searchParamsString,
+  ]);
 
   useEffect(() => {
     if (!chatIdFromUrl) return;
@@ -106,15 +133,19 @@ function ChatPageContent() {
     if (!conversations.length) {
       pendingUrlSyncRef.current = true;
       const params = new URLSearchParams(searchParamsString);
-      params.delete('chatId');
+      params.delete("chatId");
       const queryString = params.toString();
-      router.replace(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
+      router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+        scroll: false,
+      });
       return;
     }
 
     if (chatIdFromUrl === activeConversationId) return;
 
-    const matchingConversation = conversations.find(conversation => conversation.id === chatIdFromUrl);
+    const matchingConversation = conversations.find(
+      (conversation) => conversation.id === chatIdFromUrl
+    );
     if (matchingConversation) {
       loadConversation(chatIdFromUrl);
       return;
@@ -132,7 +163,7 @@ function ChatPageContent() {
     loadConversation,
     router,
     pathname,
-    searchParamsString
+    searchParamsString,
   ]);
 
   useEffect(() => {
@@ -158,7 +189,10 @@ function ChatPageContent() {
 
   return (
     <div className="flex h-dvh w-full bg-[#181818] text-white overflow-hidden">
-      <ChatContainer onShowQRCode={setQrModalData} isQrModalOpen={!!qrModalData} />
+      <ChatContainer
+        onShowQRCode={setQrModalData}
+        isQrModalOpen={!!qrModalData}
+      />
 
       {/* Modals */}
       {isSettingsOpen && isAuthenticated && (
@@ -195,9 +229,15 @@ function ChatPageContent() {
       {isTopUpPromptOpen && (
         <TopUpPromptModal
           isOpen={isTopUpPromptOpen}
-          onClose={() => { setIsTopUpPromptOpen(false); setTopUpPromptDismissed(true); }}
+          onClose={() => {
+            setIsTopUpPromptOpen(false);
+            setTopUpPromptDismissed(true);
+          }}
           onTopUp={handleTopUp}
-          onDontShowAgain={() => { setTopUpPromptDismissed(true); markTopUpPromptSeen(); }}
+          onDontShowAgain={() => {
+            setTopUpPromptDismissed(true);
+            markTopUpPromptSeen();
+          }}
           setIsLoginModalOpen={setIsLoginModalOpen}
           cashuToken={cashuTokenFromUrl || undefined}
         />
@@ -205,16 +245,25 @@ function ChatPageContent() {
 
       <QueryTimeoutModal
         isOpen={showQueryTimeoutModal || (didRelaysTimeout && !isWalletLoading)}
-        onClose={() => { console.log('rdlogs: closing query timeout modal', showQueryTimeoutModal, didRelaysTimeout, isWalletLoading); setShowQueryTimeoutModal(false); setDidRelaysTimeout(false); }}
+        onClose={() => {
+          console.log(
+            "rdlogs: closing query timeout modal",
+            showQueryTimeoutModal,
+            didRelaysTimeout,
+            isWalletLoading
+          );
+          setShowQueryTimeoutModal(false);
+          setDidRelaysTimeout(false);
+        }}
       />
 
       {/* QR Code Modal */}
       <QRCodeModal
         isOpen={!!qrModalData}
         onClose={() => setQrModalData(null)}
-        invoice={qrModalData?.invoice || ''}
-        amount={qrModalData?.amount || ''}
-        unit={qrModalData?.unit || ''}
+        invoice={qrModalData?.invoice || ""}
+        amount={qrModalData?.amount || ""}
+        unit={qrModalData?.unit || ""}
       />
     </div>
   );
@@ -222,11 +271,13 @@ function ChatPageContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-dvh w-full bg-[#181818]">
-        <Loader2 className="h-8 w-8 text-white/50 animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-dvh w-full bg-[#181818]">
+          <Loader2 className="h-8 w-8 text-white/50 animate-spin" />
+        </div>
+      }
+    >
       <AuthProvider>
         <ChatProvider>
           <ChatPageContent />

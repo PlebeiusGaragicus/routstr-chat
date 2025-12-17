@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Copy, Check } from 'lucide-react';
+import { useState } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Copy, Check } from "lucide-react";
 
 interface CodeBlockProps {
   children: string;
@@ -11,12 +11,16 @@ interface CodeBlockProps {
   inline?: boolean;
 }
 
-export default function CodeBlock({ children, className, inline }: CodeBlockProps) {
+export default function CodeBlock({
+  children,
+  className,
+  inline,
+}: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
   // Extract language from className (format: "language-javascript")
-  const match = /language-(\w+)/.exec(className || '');
-  const language = match ? match[1] : '';
+  const match = /language-(\w+)/.exec(className || "");
+  const language = match ? match[1] : "";
 
   const handleCopy = async () => {
     try {
@@ -24,7 +28,7 @@ export default function CodeBlock({ children, className, inline }: CodeBlockProp
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.error("Failed to copy text: ", err);
     }
   };
 
@@ -42,7 +46,7 @@ export default function CodeBlock({ children, className, inline }: CodeBlockProp
     <div className="relative group my-4 not-prose">
       <div className="flex items-center justify-between bg-zinc-800/90 px-4 py-2 rounded-t-lg border border-white/10 border-b-0">
         <span className="text-xs text-white/70 font-medium tracking-wide">
-          {language || 'text'}
+          {language || "text"}
         </span>
         <button
           onClick={handleCopy}
@@ -65,20 +69,21 @@ export default function CodeBlock({ children, className, inline }: CodeBlockProp
       <div className="rounded-b-lg overflow-hidden border border-white/10 border-t-0">
         <SyntaxHighlighter
           style={oneDark}
-          language={language || 'text'}
+          language={language || "text"}
           PreTag="div"
           customStyle={{
             margin: 0,
-            padding: '16px',
-            background: '#09090b',
-            fontSize: '13px',
-            lineHeight: '1.6',
+            padding: "16px",
+            background: "#09090b",
+            fontSize: "13px",
+            lineHeight: "1.6",
             borderRadius: 0,
           }}
           codeTagProps={{
             style: {
-              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-            }
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+            },
           }}
         >
           {children}
@@ -86,4 +91,4 @@ export default function CodeBlock({ children, className, inline }: CodeBlockProp
       </div>
     </div>
   );
-} 
+}
