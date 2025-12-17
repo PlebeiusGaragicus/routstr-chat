@@ -28,6 +28,8 @@ const isQuotaExceeded = (error: unknown): boolean => {
  */
 const NON_CRITICAL_STORAGE_KEYS = new Set<string>(["modelsFromAllProviders"]);
 
+import { recommendedModels } from "@/lib/preconfiguredModels";
+
 /**
  * Interface for a stored Cashu token entry
  */
@@ -239,15 +241,18 @@ export const saveFavoriteModels = (favoriteModels: string[]): void => {
  */
 export const loadConfiguredModels = (): string[] => {
   // New key for configured models
-  const configured = getStorageItem<string[]>("configured_models", []);
-  if (configured.length > 0) return configured;
+  if (hasStorageItem("configured_models")) {
+    return getStorageItem<string[]>("configured_models", []);
+  }
+
   // Migrate from legacy favorites if present
   const legacyFavorites = loadFavoriteModels();
   if (legacyFavorites.length > 0) {
     setStorageItem("configured_models", legacyFavorites);
     return legacyFavorites;
   }
-  return [];
+
+  return recommendedModels;
 };
 
 /**
