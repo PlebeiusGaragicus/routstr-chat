@@ -171,7 +171,7 @@ export default function ThinkingSection({
     <div className="mb-4">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         {isStreaming ? (
           <BrainIcon className="w-3 h-3" />
@@ -189,7 +189,7 @@ export default function ThinkingSection({
       {/* Streaming collapsed preview */}
       {isStreaming && !isExpanded && (
         <motion.div
-          className="mt-2 border border-white/10 rounded-lg bg-white/5 relative"
+          className="mt-2 border border-border rounded-lg bg-muted/50 relative"
           animate={{ maxHeight: previewMaxPx }}
           initial={false}
           transition={{ duration: 0.25, ease: "easeInOut" }}
@@ -199,7 +199,7 @@ export default function ThinkingSection({
             className="p-3 overflow-y-auto"
             style={{ maxHeight: previewMaxPx }}
           >
-            <div className="text-xs text-gray-300 leading-relaxed">
+            <div className="text-xs text-muted-foreground leading-relaxed">
               {visibleText ? (
                 <MarkdownRenderer content={visibleText} className="text-xs" />
               ) : (
@@ -229,8 +229,8 @@ export default function ThinkingSection({
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-lg">
-              <div className="text-xs text-gray-300 leading-relaxed">
+            <div className="mt-2 p-3 bg-muted/50 border border-border rounded-lg">
+              <div className="text-xs text-muted-foreground leading-relaxed">
                 {content ? (
                   <MarkdownRenderer content={content} className="text-xs" />
                 ) : (
