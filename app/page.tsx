@@ -16,6 +16,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCashuWallet } from "@/features/wallet";
 import { hasSeenTopUpPrompt, markTopUpPromptSeen } from "@/utils/storageUtils";
 import { useAutoRefill } from "@/hooks/useAutoRefill";
+import { KeepAliveProvider } from "@/components/pwa/KeepAliveProvider";
 
 function ChatPageContent() {
   const router = useRouter();
@@ -72,15 +73,15 @@ function ChatPageContent() {
   const pendingUrlSyncRef = useRef(false);
   const searchParamsString = useMemo(
     () => searchParams.toString(),
-    [searchParams],
+    [searchParams]
   );
   const chatIdFromUrl = useMemo(
     () => searchParams.get("chatId"),
-    [searchParams],
+    [searchParams]
   );
   const cashuTokenFromUrl = useMemo(
     () => searchParams.get("cashu"),
-    [searchParams],
+    [searchParams]
   );
 
   // QR Code Modal State
@@ -148,7 +149,7 @@ function ChatPageContent() {
     if (chatIdFromUrl === activeConversationId) return;
 
     const matchingConversation = conversations.find(
-      (conversation) => conversation.id === chatIdFromUrl,
+      (conversation) => conversation.id === chatIdFromUrl
     );
     if (matchingConversation) {
       loadConversation(chatIdFromUrl);
@@ -254,7 +255,7 @@ function ChatPageContent() {
             "rdlogs: closing query timeout modal",
             showQueryTimeoutModal,
             didRelaysTimeout,
-            isWalletLoading,
+            isWalletLoading
           );
           setShowQueryTimeoutModal(false);
           setDidRelaysTimeout(false);
@@ -284,7 +285,9 @@ export default function ChatPage() {
     >
       <AuthProvider>
         <ChatProvider>
-          <ChatPageContent />
+          <KeepAliveProvider>
+            <ChatPageContent />
+          </KeepAliveProvider>
         </ChatProvider>
       </AuthProvider>
     </Suspense>
