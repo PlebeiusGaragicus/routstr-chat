@@ -40,7 +40,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     // Conversation State
     conversations,
     activeConversationId,
-    createNewConversationHandler,
+    startNewConversation,
     loadConversation,
     deleteConversation,
 
@@ -77,7 +77,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
           isMobile={isMobile}
           conversations={conversations}
           activeConversationId={activeConversationId}
-          createNewConversation={createNewConversationHandler}
+          createNewConversation={startNewConversation}
           loadConversation={loadConversation}
           deleteConversation={deleteConversation}
           setIsSettingsOpen={setIsSettingsOpen}

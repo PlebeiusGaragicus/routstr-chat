@@ -111,12 +111,28 @@ function ChatPageContent() {
 
   const handleTopUp = (_amount?: number) => {};
 
+  // Sync URL with activeConversationId
+  // When activeConversationId is null (new chat), remove chatId from URL
+  // When activeConversationId has a value, set chatId in URL
   useEffect(() => {
-    if (!activeConversationId) return;
+    const params = new URLSearchParams(searchParamsString);
+
+    if (!activeConversationId) {
+      // New chat state - remove chatId from URL if present
+      if (chatIdFromUrl) {
+        pendingUrlSyncRef.current = true;
+        params.delete("chatId");
+        const queryString = params.toString();
+        router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+          scroll: false,
+        });
+      }
+      return;
+    }
+
     if (chatIdFromUrl === activeConversationId) return;
 
     pendingUrlSyncRef.current = true;
-    const params = new URLSearchParams(searchParamsString);
     params.set("chatId", activeConversationId);
     const queryString = params.toString();
     router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {

@@ -45,7 +45,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
     isSidebarCollapsed,
     setIsSidebarOpen,
     setIsLoginModalOpen,
-    createNewConversationHandler,
+    startNewConversation,
 
     // Balance
     balance,
@@ -92,7 +92,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
               <Menu className="h-4 w-4" />
             </button>
             <button
-              onClick={() => createNewConversationHandler()}
+              onClick={() => startNewConversation()}
               className="rounded-full p-1.5 border border-border bg-muted/50 hover:bg-muted text-foreground cursor-pointer"
               aria-label="New chat"
             >
@@ -104,7 +104,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         {/* Desktop New Chat (only when sidebar is collapsed) */}
         {!isMobile && isAuthenticated && isSidebarCollapsed && (
           <button
-            onClick={() => createNewConversationHandler()}
+            onClick={() => startNewConversation()}
             className="absolute left-12 rounded-full p-1.5 border border-border bg-muted/50 hover:bg-muted text-foreground cursor-pointer"
             aria-label="New chat"
           >

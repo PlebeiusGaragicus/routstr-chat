@@ -24,7 +24,7 @@ interface SidebarProps {
   deleteConversation: (id: string, e: React.MouseEvent) => Promise<void>;
   setIsSettingsOpen: (isOpen: boolean) => void;
   setInitialSettingsTab: (
-    tab: "settings" | "wallet" | "history" | "api-keys",
+    tab: "settings" | "wallet" | "history" | "api-keys"
   ) => void;
   balance: number;
   syncWithNostr: () => Promise<void>;
@@ -50,7 +50,7 @@ export default function Sidebar({
   isSyncing,
 }: SidebarProps) {
   return (
-    <div className="relative h-full flex-shrink-0 z-50">
+    <div className="relative h-full shrink-0 z-50">
       {/* Sidebar */}
       <div
         className={`${

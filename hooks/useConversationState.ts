@@ -47,38 +47,39 @@ export interface UseConversationStateReturn {
   setEditingContent: (content: string) => void;
   createNewConversationHandler: (
     initialMessages?: Message[],
-    timestamp?: string,
+    timestamp?: string
   ) => string;
+  startNewConversation: () => void;
   loadConversation: (conversationId: string) => void;
   deleteConversation: (
     conversationId: string,
-    e: React.MouseEvent,
+    e: React.MouseEvent
   ) => Promise<void>;
   clearConversations: () => void;
   startEditingMessage: (index: number) => void;
   cancelEditing: () => void;
   saveConversationById: (
     conversationId: string,
-    newMessages: Message[],
+    newMessages: Message[]
   ) => void;
   appendMessageToConversation: (
     conversationId: string,
-    message: Message,
+    message: Message
   ) => void;
   getActiveConversationId: () => string | null;
   getLastNonSystemMessageEventId: (
     conversationId: string,
-    lastMessageRole?: string[],
+    lastMessageRole?: string[]
   ) => string;
   updateLastMessageSatsSpent: (
     conversationId: string,
-    satsSpent: number,
+    satsSpent: number
   ) => void;
   isSyncing: boolean;
   currentPns: PnsKeys | null;
   createAndStoreChatEvent: (
     conversationId: string,
-    message: Message,
+    message: Message
   ) => Promise<string | null>;
   syncWithNostr: () => Promise<void>;
 }
@@ -96,7 +97,7 @@ export const useConversationState = (): UseConversationStateReturn => {
   >(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(
-    null,
+    null
   );
   const [editingContent, setEditingContent] = useState("");
 
@@ -139,7 +140,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     ) {
       const storedConversations = loadConversationsFromStorage();
       const hasUnsyncedMessages = storedConversations.some((c) =>
-        c.messages.some((m) => !m._eventId),
+        c.messages.some((m) => !m._eventId)
       );
 
       if (hasUnsyncedMessages) {
@@ -147,7 +148,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         console.log("Found unsynced messages, starting migration...");
         const updatedConversations = migrateConversations(
           storedConversations,
-          currentPnsKeys,
+          currentPnsKeys
         );
 
         if (updatedConversations) {
@@ -202,14 +203,14 @@ export const useConversationState = (): UseConversationStateReturn => {
     // Log decryption statistics for debugging
     if (failedDecryptions > 0 || successfulDecryptions > 0) {
       console.log(
-        `[useConversationState] PNS event decryption stats: ${successfulDecryptions} successful, ${failedDecryptions} failed`,
+        `[useConversationState] PNS event decryption stats: ${successfulDecryptions} successful, ${failedDecryptions} failed`
       );
     }
 
     // Update state with new conversations array if we processed any new events
     if (hasNewEvents) {
       const updatedConversations = Array.from(
-        conversationsMapRef.current.values(),
+        conversationsMapRef.current.values()
       );
       const sortedConversations =
         sortConversationsByRecentActivity(updatedConversations);
@@ -258,7 +259,7 @@ export const useConversationState = (): UseConversationStateReturn => {
   useEffect(() => {
     if (editingMessageIndex !== null && messages[editingMessageIndex]) {
       const messageText = getTextFromContent(
-        messages[editingMessageIndex].content,
+        messages[editingMessageIndex].content
       );
       setEditingContent(messageText);
     }
@@ -276,9 +277,17 @@ export const useConversationState = (): UseConversationStateReturn => {
       setActiveConversationId(conversationId);
       saveActiveConversationId(conversationId);
     },
-    [],
+    []
   );
 
+  // Used when the "New Chat" button is clicked - clears the active conversation
+  // The actual conversation is only created when the AI starts responding
+  const startNewConversation = useCallback(() => {
+    setActiveConversationIdWithStorage(null);
+    setMessages([]);
+  }, [setActiveConversationIdWithStorage]);
+
+  // Creates an actual conversation - called when AI response starts
   const createNewConversationHandler = useCallback(
     (initialMessages: Message[] = [], timestamp?: string) => {
       let createdId: string = "";
@@ -287,7 +296,7 @@ export const useConversationState = (): UseConversationStateReturn => {
           createNewConversationWithMap(
             conversationsMapRef.current,
             initialMessages,
-            timestamp,
+            timestamp
           );
         createdId = newConversation.id;
         setActiveConversationIdWithStorage(newConversation.id);
@@ -297,7 +306,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       });
       return createdId;
     },
-    [],
+    [setActiveConversationIdWithStorage]
   );
 
   const loadConversation = useCallback(
@@ -321,7 +330,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         return prevConversations;
       });
     },
-    [setActiveConversationIdWithStorage],
+    [setActiveConversationIdWithStorage]
   );
 
   // Internal function to delete a conversation by ID (no event required)
@@ -330,7 +339,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       setConversations((prevConversations) => {
         const updatedConversations = deleteConversationFromStorage(
           prevConversations,
-          conversationId,
+          conversationId
         );
 
         // Get the conversation to access its messages and their event IDs
@@ -351,7 +360,7 @@ export const useConversationState = (): UseConversationStateReturn => {
               const deletionEvent = createPnsDeletionEvent(
                 eventIds,
                 currentPnsKeys,
-                "Conversation deleted",
+                "Conversation deleted"
               );
 
               // Add the deletion event to the store
@@ -366,12 +375,12 @@ export const useConversationState = (): UseConversationStateReturn => {
               performDeletionSync(deletionEvent);
 
               console.log(
-                `[useConversationState] Deleted ${eventIds.length} events for conversation ${conversationId}`,
+                `[useConversationState] Deleted ${eventIds.length} events for conversation ${conversationId}`
               );
             } catch (error) {
               console.error(
                 "[useConversationState] Failed to create deletion event:",
-                error,
+                error
               );
             }
           }
@@ -388,7 +397,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         return updatedConversations;
       });
     },
-    [setActiveConversationIdWithStorage, currentPnsKeys, performDeletionSync],
+    [setActiveConversationIdWithStorage, currentPnsKeys, performDeletionSync]
   );
 
   const deleteConversation = useCallback(
@@ -396,7 +405,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       e.stopPropagation();
       deleteConversationById(conversationId);
     },
-    [deleteConversationById],
+    [deleteConversationById]
   );
 
   // Auto-delete old conversations (older than 7 days) when enabled
@@ -432,7 +441,7 @@ export const useConversationState = (): UseConversationStateReturn => {
 
     if (idsToDelete.length > 0) {
       console.log(
-        `[useConversationState] Auto-deleting ${idsToDelete.length} old conversations`,
+        `[useConversationState] Auto-deleting ${idsToDelete.length} old conversations`
       );
       // Use setTimeout to avoid state updates during render
       setTimeout(() => {
@@ -462,7 +471,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         // Already an array with possible attachments
       }
     },
-    [messages],
+    [messages]
   );
 
   const cancelEditing = useCallback(() => {
@@ -490,7 +499,7 @@ export const useConversationState = (): UseConversationStateReturn => {
 
       // Update state with new conversation array
       const updatedConversations = Array.from(
-        conversationsMapRef.current.values(),
+        conversationsMapRef.current.values()
       );
       const sortedConversations =
         sortConversationsByRecentActivity(updatedConversations);
@@ -504,13 +513,13 @@ export const useConversationState = (): UseConversationStateReturn => {
         setMessages([...conversation.messages]);
       }
     },
-    [],
+    []
   );
 
   const createAndStoreChatEvent = useCallback(
     async (
       conversationId: string,
-      message: Message,
+      message: Message
     ): Promise<string | null> => {
       console.log("Createing mes 1081", message);
       const strippedMessage = stripImageDataFromSingleMessage(message);
@@ -519,11 +528,11 @@ export const useConversationState = (): UseConversationStateReturn => {
           conversationId,
           strippedMessage,
           currentPnsKeys,
-          appendMessageToConversation,
+          appendMessageToConversation
         );
       } else {
         console.log(
-          "[useConversationState] No currentPnsKeys, triggering stored 1081 events processing",
+          "[useConversationState] No currentPnsKeys, triggering stored 1081 events processing"
         );
         triggerProcessStored1081Events();
 
@@ -534,12 +543,12 @@ export const useConversationState = (): UseConversationStateReturn => {
               map((keysMap) => {
                 // Find the first PNS keys with SALT_PNS
                 return Array.from(keysMap.values()).find(
-                  (pnsKeys) => pnsKeys.salt === SALT_PNS,
+                  (pnsKeys) => pnsKeys.salt === SALT_PNS
                 );
               }),
               filter((keys) => !!keys),
-              timeout(5000), // Timeout after 5 seconds
-            ),
+              timeout(5000) // Timeout after 5 seconds
+            )
           );
 
           if (keys) {
@@ -547,7 +556,7 @@ export const useConversationState = (): UseConversationStateReturn => {
               conversationId,
               strippedMessage,
               keys,
-              appendMessageToConversation,
+              appendMessageToConversation
             );
           }
         } catch (err) {
@@ -562,7 +571,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       currentPnsKeys,
       appendMessageToConversation,
       triggerProcessStored1081Events,
-    ],
+    ]
   );
 
   const getLastNonSystemMessageEventId = useCallback(
@@ -594,7 +603,7 @@ export const useConversationState = (): UseConversationStateReturn => {
       // If no non-system messages found, return empty Nostr event
       return emptyEventId;
     },
-    [],
+    []
   );
 
   const updateLastMessageSatsSpent = useCallback(
@@ -625,7 +634,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         console.log(
           activeConversationIdRef.current,
           activeConversationId,
-          conversationId,
+          conversationId
         );
         if (activeConversationId === conversationId) {
           console.log("latest messaegs with sats spend", conversation.messages);
@@ -635,14 +644,14 @@ export const useConversationState = (): UseConversationStateReturn => {
 
         // Update conversations state to trigger re-render
         const updatedConversations = Array.from(
-          conversationsMapRef.current.values(),
+          conversationsMapRef.current.values()
         );
         const sortedConversations =
           sortConversationsByRecentActivity(updatedConversations);
         setConversations(sortedConversations);
       }
     },
-    [],
+    []
   );
 
   return {
@@ -657,6 +666,7 @@ export const useConversationState = (): UseConversationStateReturn => {
     setEditingMessageIndex,
     setEditingContent,
     createNewConversationHandler,
+    startNewConversation,
     loadConversation,
     deleteConversation,
     clearConversations,
@@ -667,7 +677,7 @@ export const useConversationState = (): UseConversationStateReturn => {
         return saveConversationToStorage(
           prevConversations,
           conversationId,
-          newMessages,
+          newMessages
         );
       });
     },
