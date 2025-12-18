@@ -78,7 +78,7 @@ export function useAutoRefill({
       if (!lastRefillAt) return false;
       return Date.now() - lastRefillAt < AUTO_REFILL_COOLDOWN_MS;
     },
-    [],
+    []
   );
 
   /**
@@ -95,15 +95,9 @@ export function useAutoRefill({
         // Double-check NWC connection
         const connected = await isNWCConnected();
         if (!connected) {
-          console.log(
-            "[useAutoRefill] NWC not connected, skipping auto-refill",
-          );
           return;
         }
 
-        console.log(
-          `[useAutoRefill] Triggering NWC auto-refill: ${settings.amount} sats`,
-        );
         toast.info(`Auto-refilling ${settings.amount} sats from NWC wallet...`);
 
         const result = await payWithNWC(
@@ -126,7 +120,7 @@ export function useAutoRefill({
               console.error("[useAutoRefill] NWC payment error:", error);
               toast.error(`Auto-refill failed: ${error.message}`);
             },
-          },
+          }
         );
 
         if (result.success) {
@@ -139,7 +133,7 @@ export function useAutoRefill({
         isProcessingNWCRef.current = false;
       }
     },
-    [cashuStore.activeMintUrl, updateProofs],
+    [cashuStore.activeMintUrl, updateProofs]
   );
 
   /**
@@ -149,7 +143,7 @@ export function useAutoRefill({
     async (
       settings: AutoTopupAPISettings,
       _apiKeyBalance: number,
-      apiKeyBaseUrl: string,
+      apiKeyBaseUrl: string
     ) => {
       if (isProcessingAPIRef.current) return;
       if (!settings.apiKey) return;
@@ -158,15 +152,12 @@ export function useAutoRefill({
       try {
         isProcessingAPIRef.current = true;
 
-        console.log(
-          `[useAutoRefill] Triggering API auto-topup: ${settings.amount} sats`,
-        );
         toast.info(`Auto-topping up API key with ${settings.amount} sats...`);
 
         // Generate Cashu token for topup using sendToken
         const cashuToken = await sendToken(
           cashuStore.activeMintUrl,
-          settings.amount,
+          settings.amount
         );
 
         if (!cashuToken) {
@@ -176,7 +167,7 @@ export function useAutoRefill({
         // Make topup request to API
         const response = await fetch(
           `${apiKeyBaseUrl}v1/wallet/topup?cashu_token=${encodeURIComponent(
-            cashuToken,
+            cashuToken
           )}`,
           {
             method: "POST",
@@ -184,13 +175,13 @@ export function useAutoRefill({
               Authorization: `Bearer ${settings.apiKey}`,
               "Content-Type": "application/json",
             },
-          },
+          }
         );
 
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(
-            errorData.detail || `Topup failed with status ${response.status}`,
+            errorData.detail || `Topup failed with status ${response.status}`
           );
         }
 
@@ -201,13 +192,13 @@ export function useAutoRefill({
         toast.error(
           `API auto-topup failed: ${
             error instanceof Error ? error.message : "Unknown error"
-          }`,
+          }`
         );
       } finally {
         isProcessingAPIRef.current = false;
       }
     },
-    [cashuStore.activeMintUrl, sendToken],
+    [cashuStore.activeMintUrl, sendToken]
   );
 
   /**
@@ -219,16 +210,7 @@ export function useAutoRefill({
       const now = Date.now();
       const timeSinceLastCheck = now - lastCheckTimeRef.current;
 
-      console.log(
-        `[useAutoRefill] Balance check triggered. Balance: ${balance}, Time since last check: ${timeSinceLastCheck}ms`,
-      );
-
       if (timeSinceLastCheck < BALANCE_CHECK_INTERVAL_MS) {
-        console.log(
-          `[useAutoRefill] Skipping - throttled (need ${
-            BALANCE_CHECK_INTERVAL_MS - timeSinceLastCheck
-          }ms more)`,
-        );
         return;
       }
       lastCheckTimeRef.current = now;
@@ -238,34 +220,14 @@ export function useAutoRefill({
       const apiSettings = loadAutoTopupAPISettings();
       settingsRef.current = { nwc: nwcSettings, api: apiSettings };
 
-      console.log(`[useAutoRefill] Settings loaded:`, {
-        nwcEnabled: nwcSettings.enabled,
-        nwcThreshold: nwcSettings.threshold,
-        nwcAmount: nwcSettings.amount,
-        isProcessing: isProcessingNWCRef.current,
-        lastRefillAt: nwcSettings.lastRefillAt,
-        inCooldown: isInCooldown(nwcSettings.lastRefillAt),
-      });
-
       // Check NWC auto-refill
       if (nwcSettings.enabled && !isProcessingNWCRef.current) {
         if (!isInCooldown(nwcSettings.lastRefillAt)) {
           // Check if balance is below threshold
           if (balance < nwcSettings.threshold) {
-            console.log(
-              `[useAutoRefill] Balance ${balance} below threshold ${nwcSettings.threshold} - TRIGGERING REFILL`,
-            );
             await executeNWCRefill(nwcSettings);
-          } else {
-            console.log(
-              `[useAutoRefill] Balance ${balance} >= threshold ${nwcSettings.threshold} - no refill needed`,
-            );
           }
-        } else {
-          console.log(`[useAutoRefill] In cooldown, skipping refill`);
         }
-      } else if (!nwcSettings.enabled) {
-        console.log(`[useAutoRefill] NWC auto-refill is disabled`);
       }
 
       // Check API auto-topup
@@ -277,50 +239,24 @@ export function useAutoRefill({
         if (!isInCooldown(apiSettings.lastTopupAt)) {
           // Find the configured API key in synced keys
           const targetApiKey = syncedApiKeys.find(
-            (k) => k.key === apiSettings.apiKey,
+            (k) => k.key === apiSettings.apiKey
           );
 
           if (targetApiKey) {
             // API key balance is in msats, threshold is also in msats
             const apiKeyBalanceMsats = targetApiKey.balance ?? 0;
 
-            console.log(
-              `[useAutoRefill] API key balance: ${apiKeyBalanceMsats} msats, threshold: ${apiSettings.threshold} msats`,
-            );
-
             if (apiKeyBalanceMsats < apiSettings.threshold) {
               // Check if we have enough in Cashu wallet to topup
               if (balance >= apiSettings.amount) {
-                console.log(
-                  `[useAutoRefill] API key balance ${apiKeyBalanceMsats} msats below threshold ${apiSettings.threshold} msats - TRIGGERING TOPUP`,
-                );
                 await executeAPITopup(
                   apiSettings,
                   apiKeyBalanceMsats,
-                  targetApiKey.baseUrl || "",
-                );
-              } else {
-                console.log(
-                  `[useAutoRefill] API key needs topup but Cashu balance (${balance}) < topup amount (${apiSettings.amount})`,
+                  targetApiKey.baseUrl || ""
                 );
               }
-            } else {
-              console.log(
-                `[useAutoRefill] API key balance sufficient - no topup needed`,
-              );
             }
-          } else {
-            console.log(
-              `[useAutoRefill] Configured API key not found in synced keys`,
-            );
           }
-        } else {
-          console.log(`[useAutoRefill] API topup in cooldown, skipping`);
-        }
-      } else if (!apiSettings.enabled) {
-        // Only log this occasionally to avoid spam
-        if (Math.random() < 0.1) {
-          console.log(`[useAutoRefill] API auto-topup is disabled`);
         }
       }
     };

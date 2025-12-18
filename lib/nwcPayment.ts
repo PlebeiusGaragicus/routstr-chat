@@ -77,7 +77,7 @@ export interface NWCPaymentResult {
 export async function payWithNWC(
   amount: number,
   mintUrl: string,
-  callbacks?: NWCPaymentCallbacks,
+  callbacks?: NWCPaymentCallbacks
 ): Promise<NWCPaymentResult> {
   try {
     // Check NWC connection
@@ -86,53 +86,34 @@ export async function payWithNWC(
       throw new Error("NWC wallet not connected");
     }
 
-    console.log(
-      `[payWithNWC] Creating invoice for ${amount} sats from mint: ${mintUrl}`,
-    );
-
     // Create invoice via Cashu mint
     const invoiceData = await createLightningInvoice(mintUrl, amount);
     const { paymentRequest, quoteId } = invoiceData;
 
-    console.log(`[payWithNWC] Invoice created. QuoteId: ${quoteId}`);
     callbacks?.onInvoiceCreated?.(paymentRequest, quoteId);
 
     // Pay with connected NWC wallet
     const mod = await import("@getalby/bitcoin-connect-react");
     const provider = await mod.requestProvider();
 
-    console.log(`[payWithNWC] Sending payment via NWC...`);
     const res = await provider.sendPayment(paymentRequest);
-
-    console.log(`[payWithNWC] NWC payment response:`, res);
 
     // Check payment status - different wallets may return different formats
     const preimage = (res as any)?.preimage || (res as any)?.payment_preimage;
 
     if (preimage && preimage !== "") {
-      console.log(
-        `[payWithNWC] Payment successful with preimage, minting tokens...`,
-      );
-
       // Payment successful, mint tokens
       const proofs = await mintTokensFromPaidInvoice(mintUrl, quoteId, amount);
 
       if (proofs.length > 0) {
-        console.log(`[payWithNWC] Minted ${proofs.length} proofs`);
         callbacks?.onPaymentSuccess?.(proofs, amount);
         return { success: true, proofs };
       } else {
-        console.log(
-          `[payWithNWC] Payment confirmed but no proofs yet (mint may be slow)`,
-        );
         return { success: true, proofs: [] };
       }
     } else {
       // Empty or no preimage - payment might still be processing
       // Poll for payment status (some wallets process async)
-      console.log(
-        `[payWithNWC] No immediate preimage, polling for payment status...`,
-      );
 
       // Poll up to 30 seconds
       const maxPolls = 15;
@@ -145,24 +126,20 @@ export async function payWithNWC(
           const proofs = await mintTokensFromPaidInvoice(
             mintUrl,
             quoteId,
-            amount,
+            amount
           );
           if (proofs.length > 0) {
-            console.log(
-              `[payWithNWC] Payment confirmed after polling, minted ${proofs.length} proofs`,
-            );
             callbacks?.onPaymentSuccess?.(proofs, amount);
             return { success: true, proofs };
           }
         } catch (e) {
           // Invoice not paid yet, continue polling
-          console.log(`[payWithNWC] Poll ${i + 1}/${maxPolls}: Not paid yet`);
         }
       }
 
       // After polling, payment didn't complete
       throw new Error(
-        "Payment did not complete within timeout. Please check your wallet.",
+        "Payment did not complete within timeout. Please check your wallet."
       );
     }
   } catch (error) {
@@ -170,7 +147,7 @@ export async function payWithNWC(
       error instanceof Error ? error.message : "Unknown payment error";
     console.error(`[payWithNWC] Error:`, errorMessage);
     callbacks?.onPaymentError?.(
-      error instanceof Error ? error : new Error(errorMessage),
+      error instanceof Error ? error : new Error(errorMessage)
     );
     return { success: false, error: errorMessage };
   }
@@ -186,7 +163,7 @@ export async function payWithNWC(
 export async function attemptMintFromQuote(
   mintUrl: string,
   quoteId: string,
-  amount: number,
+  amount: number
 ): Promise<Proof[]> {
   try {
     const proofs = await mintTokensFromPaidInvoice(mintUrl, quoteId, amount);

@@ -39,14 +39,14 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
 
   // NWC Auto-Refill State
   const [nwcSettings, setNwcSettings] = useState<AutoRefillNWCSettings>(
-    DEFAULT_AUTO_REFILL_NWC_SETTINGS,
+    DEFAULT_AUTO_REFILL_NWC_SETTINGS
   );
   const [isNwcConnected, setIsNwcConnected] = useState(false);
   const [nwcBalance, setNwcBalance] = useState<number | null>(null);
 
   // API Auto-Topup State
   const [apiSettings, setApiSettings] = useState<AutoTopupAPISettings>(
-    DEFAULT_AUTO_TOPUP_API_SETTINGS,
+    DEFAULT_AUTO_TOPUP_API_SETTINGS
   );
 
   // Tooltip states
@@ -76,40 +76,28 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
     // Load API keys from localStorage if not passed as prop
     if (apiKeys.length === 0) {
       try {
-        // Try multiple possible storage keys
         const possibleKeys = ["api_keys", "stored_api_keys"];
         let foundKeys: StoredApiKey[] = [];
 
         for (const key of possibleKeys) {
           const storedKeys = localStorage.getItem(key);
-          console.log(
-            `[AutoRefillSettings] Checking localStorage key '${key}':`,
-            storedKeys ? "found" : "not found",
-          );
           if (storedKeys) {
             foundKeys = JSON.parse(storedKeys);
-            console.log(
-              `[AutoRefillSettings] Loaded ${foundKeys.length} API keys from '${key}'`,
-            );
             break;
           }
         }
 
         if (foundKeys.length > 0) {
           setLoadedApiKeys(foundKeys);
-        } else {
-          console.log("[AutoRefillSettings] No API keys found in localStorage");
         }
       } catch (e) {
         console.error(
           "[AutoRefillSettings] Error loading API keys from localStorage:",
-          e,
+          e
         );
       }
     } else {
-      console.log(
-        `[AutoRefillSettings] Using ${apiKeys.length} API keys from props`,
-      );
+      // API keys passed via props, no need to load from localStorage
     }
   }, [apiKeys.length]);
 
@@ -136,14 +124,6 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
         ? syncedApiKeys
         : loadedApiKeys;
   const validApiKeys = effectiveApiKeys.filter((k) => !k.isInvalid);
-
-  console.log("[AutoRefillSettings] API keys:", {
-    propsCount: apiKeys.length,
-    syncedCount: syncedApiKeys.length,
-    localCount: loadedApiKeys.length,
-    effectiveCount: effectiveApiKeys.length,
-    isLoadingApiKeys,
-  });
 
   return (
     <div className="mb-6 space-y-4">
