@@ -404,7 +404,7 @@ export const useChatActions = ({
           },
           onMessageAppend: (message) => {
             let prevId;
-            if (retryMessage)
+            if (retryMessage && message.role !== "system")
               prevId = getLastNonSystemMessageEventId(originConversationId, [
                 "user",
                 "assistant",

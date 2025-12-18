@@ -24,11 +24,14 @@ export function calculateBalanceByMint(
     units[mint.url] = "sat";
 
     const keysets = mint.keysets;
-    if (!keysets) continue;
-
+    if (!keysets) {
+      continue;
+    }
     for (const keyset of keysets) {
-      // Select all proofs with id == keyset.id
-      const proofsForKeyset = proofs.filter((proof) => proof.id === keyset.id);
+      // Select all proofs with id == keyset.id or keyset._id
+      const keysetId = keyset.id ?? (keyset as any)._id;
+      const proofsForKeyset = proofs.filter((proof) => proof.id === keysetId);
+      console.log("Blance check", mint.url, proofsForKeyset);
       if (proofsForKeyset.length) {
         balances[mint.url] += proofsForKeyset.reduce(
           (acc, proof) => acc + proof.amount,
@@ -37,6 +40,21 @@ export function calculateBalanceByMint(
         units[mint.url] = keyset.unit;
       }
     }
+  }
+  // Check if sum of all balances is 0
+  const totalBalance = Object.values(balances).reduce(
+    (sum, balance) => sum + balance,
+    0
+  );
+  if (totalBalance === 0) {
+    console.log("[Balance Check] Total balance is 0. Debug info:");
+    mints.forEach((mint, index) => {
+      console.log(
+        `[Balance Check] Mint ${index + 1} (${mint.url}) keysets:`,
+        mint.keysets
+      );
+    });
+    console.log("[Balance Check] Proofs:", proofs);
   }
 
   return { balances, units };

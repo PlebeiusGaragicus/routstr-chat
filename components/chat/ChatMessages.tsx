@@ -239,12 +239,6 @@ export default function ChatMessages({
       }
     });
 
-    console.log(
-      "Messages to version:",
-      messagesToVersion.map((msg) => [msg._prevId, msg._eventId]),
-    );
-    console.log("ALL ", messages);
-
     // Build adjacency list for tree structure
     const childrenMap = new Map<string, Message[]>();
     const roots: Message[] = [];
@@ -306,8 +300,6 @@ export default function ChatMessages({
       currentDepth++;
       currentLevel = nextLevel;
     }
-
-    console.log("Version groups:", groups);
 
     return groups;
   }, [messages]);
