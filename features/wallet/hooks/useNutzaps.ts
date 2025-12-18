@@ -10,6 +10,7 @@ import { useCashuStore } from "../state/cashuStore";
 /**
  * Hook to fetch a nutzap informational event for a specific pubkey
  */
+
 export function useNutzapInfo(pubkey?: string) {
   const { nostr } = useNostr();
   const nutzapStore = useNutzapStore();
@@ -28,7 +29,7 @@ export function useNutzapInfo(pubkey?: string) {
       // Otherwise fetch it from the network
       const events = await nostr.query(
         [{ kinds: [CASHU_EVENT_KINDS.ZAPINFO], authors: [pubkey], limit: 1 }],
-        { signal },
+        { signal }
       );
 
       if (events.length === 0) {
@@ -53,7 +54,7 @@ export function useNutzapInfo(pubkey?: string) {
       const p2pkPubkeyTag = event.tags.find((tag) => tag[0] === "pubkey");
       if (!p2pkPubkeyTag) {
         throw new Error(
-          "No pubkey tag found in the nutzap informational event",
+          "No pubkey tag found in the nutzap informational event"
         );
       }
 

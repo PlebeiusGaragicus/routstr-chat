@@ -11,7 +11,7 @@ export type MintUnits = Record<string, string> | undefined;
 export function truncateMintUrl(
   url: string,
   maxDomainLen = 20,
-  shortLen = 15,
+  shortLen = 15
 ): string {
   try {
     const urlObj = new URL(url);
@@ -35,7 +35,7 @@ export function getAvailableMints(mintBalances: MintBalances): string[] {
  */
 export function isMintValid(
   activeMintUrl: string | null | undefined,
-  availableMints: string[],
+  availableMints: string[]
 ): boolean {
   return !!activeMintUrl && availableMints.includes(activeMintUrl);
 }
@@ -45,7 +45,7 @@ export function isMintValid(
  */
 export function getCurrentMintBalance(
   activeMintUrl: string | null | undefined,
-  mintBalances: MintBalances,
+  mintBalances: MintBalances
 ): number {
   if (!activeMintUrl || !mintBalances) return 0;
   return mintBalances[activeMintUrl] || 0;
@@ -56,7 +56,7 @@ export function getCurrentMintBalance(
  */
 export function computeTotalBalanceSats(
   mintBalances: MintBalances,
-  mintUnits: MintUnits,
+  mintUnits: MintUnits
 ): number {
   let total = 0;
   if (!mintBalances) return total;
@@ -89,4 +89,71 @@ export function formatSatsVerbose(amount: number): string {
   } catch {
     return `${amount} sats`;
   }
+}
+
+/**
+ * Wallet mint data interface for shared mint information
+ */
+export interface WalletMintData {
+  /** List of available mint URLs */
+  availableMints: string[];
+  /** Balance per mint URL */
+  mintBalances: Record<string, number>;
+  /** Unit per mint URL (e.g., "sat", "msat") */
+  mintUnits: Record<string, string>;
+}
+
+/**
+ * Mint store interface (subset of CashuStore needed for this function)
+ */
+export interface MintStoreData {
+  mints: Array<{
+    url: string;
+    keysets?: { id: string; unit: string; active: boolean }[];
+  }>;
+  proofs: Array<{ id: string; amount: number }>;
+}
+
+/**
+ * Wallet data interface (subset of Wallet from useCashuWallet)
+ */
+export interface WalletData {
+  mints?: string[];
+}
+
+/**
+ * Get unified wallet mint data for display in both floating wallet and settings
+ * This function ensures both SixtyWallet and BalanceDisplay show identical data
+ *
+ * @param wallet - Wallet data from useCashuWallet hook (may be null/undefined)
+ * @param cashuStore - CashuStore data (mints and proofs)
+ * @param calculateBalanceByMint - Function to calculate balances (from features/wallet)
+ * @returns WalletMintData with availableMints, mintBalances, and mintUnits
+ */
+export function getWalletMintData<
+  TProofs extends Array<{ id: string; amount: number }>,
+  TMints extends Array<{ url: string; keysets?: unknown[] }>,
+>(
+  wallet: WalletData | null | undefined,
+  cashuStore: { mints: TMints; proofs: TProofs },
+  calculateBalanceByMint: (
+    proofs: TProofs,
+    mints: TMints
+  ) => { balances: Record<string, number>; units: Record<string, string> }
+): WalletMintData {
+  // Get available mints from wallet.mints (same as SixtyWallet.tsx line 920)
+  let availableMints: string[];
+  if (wallet?.mints && wallet.mints.length > 0) {
+    availableMints = wallet.mints;
+  } else {
+    // Fallback to cashuStore.mints if wallet is not loaded yet
+    availableMints = cashuStore.mints.map((m) => m.url);
+  }
+
+  // Compute mintBalances and mintUnits (same as SixtyWallet.tsx lines 366-369)
+  const { balances: mintBalances, units: mintUnits } = cashuStore.proofs
+    ? calculateBalanceByMint(cashuStore.proofs, cashuStore.mints)
+    : { balances: {}, units: {} };
+
+  return { availableMints, mintBalances, mintUnits };
 }

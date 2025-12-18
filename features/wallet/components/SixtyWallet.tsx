@@ -28,7 +28,10 @@ import {
 } from "@/features/wallet";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
-import { computeTotalBalanceSats } from "@/utils/walletUtils";
+import {
+  computeTotalBalanceSats,
+  getWalletMintData,
+} from "@/utils/walletUtils";
 import InvoiceModal from "./InvoiceModal";
 import {
   createLightningInvoice,
@@ -61,7 +64,7 @@ const SixtyWallet: React.FC<{
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"deposit" | "send" | "history">(
-    "deposit",
+    "deposit"
   );
 
   // Lightning state variables (from Chorus)
@@ -72,7 +75,7 @@ const SixtyWallet: React.FC<{
   const [sendInvoice, setSendInvoice] = useState("");
   const [invoiceAmount, setInvoiceAmount] = useState<number | null>(null);
   const [invoiceFeeReserve, setInvoiceFeeReserve] = useState<number | null>(
-    null,
+    null
   );
   const [mintQuote, setMintQuote] = useState<MintQuoteResponse | null>(null);
   const [meltQuote, setMeltQuote] = useState<MeltQuoteResponse | null>(null);
@@ -114,7 +117,7 @@ const SixtyWallet: React.FC<{
       const proofs = await mintTokensFromPaidInvoice(
         cashuStore.activeMintUrl,
         currentMeltQuoteId,
-        pendingAmount,
+        pendingAmount
       );
       console.log(proofs);
       if (proofs.length > 0) {
@@ -129,7 +132,7 @@ const SixtyWallet: React.FC<{
         });
         if (pendingTransactionId)
           transactionHistoryStore.removePendingTransaction(
-            pendingTransactionId,
+            pendingTransactionId
           );
         setPendingTransactionId(null);
         setSuccessMessage(`Received ${formatBalance(pendingAmount, "sats")}!`);
@@ -246,7 +249,7 @@ const SixtyWallet: React.FC<{
   const handleCreateInvoice = async (quickMintAmount?: number) => {
     if (!cashuStore.activeMintUrl) {
       setError(
-        "No active mint selected. Please select a mint in your wallet settings.",
+        "No active mint selected. Please select a mint in your wallet settings."
       );
       return;
     }
@@ -267,7 +270,7 @@ const SixtyWallet: React.FC<{
 
       const invoiceData = await createLightningInvoice(
         cashuStore.activeMintUrl,
-        amount,
+        amount
       );
 
       setInvoice(invoiceData.paymentRequest);
@@ -309,7 +312,7 @@ const SixtyWallet: React.FC<{
       console.error("Error creating invoice:", error);
       setError(
         "Failed to create Lightning invoice: " +
-          (error instanceof Error ? error.message : String(error)),
+          (error instanceof Error ? error.message : String(error))
       );
     } finally {
       setIsProcessing(false);
@@ -363,10 +366,11 @@ const SixtyWallet: React.FC<{
     }
   }, [hookError]);
 
-  const { balances: mintBalances, units: mintUnits } = React.useMemo(() => {
-    if (!cashuStore.proofs) return { balances: {}, units: {} };
-    return calculateBalanceByMint(cashuStore.proofs, cashuStore.mints);
-  }, [cashuStore.proofs, cashuStore.mints]);
+  // Get unified wallet mint data using shared utility (same as BalanceDisplay)
+  const { availableMints, mintBalances, mintUnits } = React.useMemo(
+    () => getWalletMintData(wallet, cashuStore, calculateBalanceByMint),
+    [wallet, cashuStore.proofs, cashuStore.mints]
+  );
 
   useEffect(() => {
     setCurrentMintUnit(mintUnits[cashuStore.activeMintUrl ?? ""]);
@@ -411,14 +415,14 @@ const SixtyWallet: React.FC<{
       await addMintIfNotExists(customMintUrl);
       setCustomMintUrl("");
       setSuccessMessage(
-        `Mint "${cleanMintUrl(customMintUrl)}" added and set as active.`,
+        `Mint "${cleanMintUrl(customMintUrl)}" added and set as active.`
       );
     } catch (error) {
       console.error("Error adding custom mint:", error);
       setError(
         `Failed to add mint: ${
           error instanceof Error ? error.message : String(error)
-        }`,
+        }`
       );
     } finally {
       setIsAddingMint(false);
@@ -434,7 +438,7 @@ const SixtyWallet: React.FC<{
 
       await removeMint(mintUrl);
       setSuccessMessage(
-        `Mint "${cleanMintUrl(mintUrl)}" removed successfully.`,
+        `Mint "${cleanMintUrl(mintUrl)}" removed successfully.`
       );
 
       // If the removed mint was the active one, set a new active mint
@@ -453,7 +457,7 @@ const SixtyWallet: React.FC<{
       setError(
         `Failed to remove mint: ${
           error instanceof Error ? error.message : String(error)
-        }`,
+        }`
       );
     } finally {
       setIsRemovingMint(false);
@@ -486,8 +490,8 @@ const SixtyWallet: React.FC<{
       setSuccessMessage(
         `Received ${formatBalance(
           totalAmount,
-          unit != undefined ? unit + "s" : "sats",
-        )} successfully!`,
+          unit != undefined ? unit + "s" : "sats"
+        )} successfully!`
       );
       setTokenToImport("");
     } catch (error) {
@@ -517,7 +521,7 @@ const SixtyWallet: React.FC<{
       if (result.status === "success" && result.token) {
         setGeneratedToken(result.token);
         setSuccessMessage(
-          `Token generated for ${formatBalance(amountValue, currentMintUnit)}`,
+          `Token generated for ${formatBalance(amountValue, currentMintUnit)}`
         );
       } else {
         setError(result.error || "Failed to generate token");
@@ -533,7 +537,7 @@ const SixtyWallet: React.FC<{
     console.log("rdlogs:gm", processingInvoiceRef.current, currentMeltQuoteId);
     if (!cashuStore.activeMintUrl) {
       setError(
-        "No active mint selected. Please select a mint in your wallet settings.",
+        "No active mint selected. Please select a mint in your wallet settings."
       );
       return;
     }
@@ -560,7 +564,7 @@ const SixtyWallet: React.FC<{
       console.error("Error creating melt quote:", error);
       setError(
         "Failed to create melt quote: " +
-          (error instanceof Error ? error.message : String(error)),
+          (error instanceof Error ? error.message : String(error))
       );
       setcurrentMeltQuoteId(""); // Reset quote ID on error
       handleCancel();
@@ -583,7 +587,7 @@ const SixtyWallet: React.FC<{
 
     if (!cashuStore.activeMintUrl) {
       setError(
-        "No active mint selected. Please select a mint in your wallet settings.",
+        "No active mint selected. Please select a mint in your wallet settings."
       );
       return;
     }
@@ -604,18 +608,18 @@ const SixtyWallet: React.FC<{
       const selectedProofs = await cashuStore.getMintProofs(mintUrl);
       const totalProofsAmount = selectedProofs.reduce(
         (sum, p) => sum + p.amount,
-        0,
+        0
       );
 
       if (totalProofsAmount < invoiceAmount + (invoiceFeeReserve || 0)) {
         setError(
           `Insufficient balance: have ${formatBalance(
             totalProofsAmount,
-            "sats",
+            "sats"
           )}, need ${formatBalance(
             invoiceAmount + (invoiceFeeReserve || 0),
-            "sats",
-          )}`,
+            "sats"
+          )}`
         );
         setIsProcessing(false);
         return;
@@ -637,7 +641,7 @@ const SixtyWallet: React.FC<{
         mintUrl,
         currentMeltQuoteId,
         selectedProofs,
-        cleanSpentProofs,
+        cleanSpentProofs
       );
 
       if (result.success) {
@@ -656,7 +660,7 @@ const SixtyWallet: React.FC<{
         });
 
         setSuccessMessage(
-          `Paid ${formatBalance(invoiceAmount, `${currentMintUnit}s`)}!`,
+          `Paid ${formatBalance(invoiceAmount, `${currentMintUnit}s`)}!`
         );
         setSendInvoice("");
         setInvoiceAmount(null);
@@ -669,7 +673,7 @@ const SixtyWallet: React.FC<{
       console.error("Error paying invoice:", error);
       setError(
         "Failed to pay Lightning invoice: " +
-          (error instanceof Error ? error.message : String(error)),
+          (error instanceof Error ? error.message : String(error))
       );
       setcurrentMeltQuoteId(""); // Reset quote ID on error
     } finally {
@@ -705,7 +709,7 @@ const SixtyWallet: React.FC<{
 
     if (!cashuStore.activeMintUrl) {
       setError(
-        "No active mint selected. Please select a mint in your wallet settings.",
+        "No active mint selected. Please select a mint in your wallet settings."
       );
       return;
     }
@@ -729,7 +733,7 @@ const SixtyWallet: React.FC<{
       // Calculate total amount to migrate
       const totalAmount = proofs.reduce(
         (sum: number, proof: any) => sum + proof.amount,
-        0,
+        0
       );
 
       // Create token from local proofs
@@ -747,7 +751,7 @@ const SixtyWallet: React.FC<{
       const receivedProofs = await receiveToken(token as string);
       const receivedAmount = receivedProofs.reduce(
         (sum, p) => sum + p.amount,
-        0,
+        0
       );
 
       // Step 3: Clear local wallet proofs after successful migration
@@ -760,8 +764,8 @@ const SixtyWallet: React.FC<{
       setSuccessMessage(
         `Successfully migrated ${formatBalance(
           receivedAmount,
-          "sats",
-        )} from local wallet to NIP-60 wallet!`,
+          "sats"
+        )} from local wallet to NIP-60 wallet!`
       );
     } catch (error) {
       console.error("Error during migration:", error);
@@ -946,9 +950,7 @@ const SixtyWallet: React.FC<{
                         htmlFor={`mint-${mint}`}
                         className={cn(
                           "text-sm cursor-pointer truncate max-w-[70vw] sm:max-w-md",
-                          isActive
-                            ? "text-foreground"
-                            : "text-muted-foreground",
+                          isActive ? "text-foreground" : "text-muted-foreground"
                         )}
                       >
                         {cleanMintUrl(mint)}
@@ -958,9 +960,7 @@ const SixtyWallet: React.FC<{
                       <span
                         className={cn(
                           "text-sm font-medium",
-                          isActive
-                            ? "text-foreground"
-                            : "text-muted-foreground",
+                          isActive ? "text-foreground" : "text-muted-foreground"
                         )}
                       >
                         {formatBalance(mintBalance, unit + "s")}
