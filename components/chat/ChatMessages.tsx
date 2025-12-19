@@ -545,7 +545,7 @@ export default function ChatMessages({
                             editingMessageIndex === index
                               ? "w-full sm:max-w-[90%] md:max-w-[85%] lg:max-w-[75%] xl:max-w-[70%]"
                               : "max-w-[85%]"
-                          } break-words break-all`}
+                          } wrap-break-word break-all`}
                         >
                           {editingMessageIndex === index ? (
                             <div className="flex flex-col w-full">

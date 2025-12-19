@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import {
+  oneDark,
+  oneLight,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface CodeBlockProps {
   children: string;
@@ -17,6 +21,11 @@ export default function CodeBlock({
   inline,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const { resolvedTheme } = useTheme();
+
+  const isDark = resolvedTheme === "dark";
+  const syntaxTheme = isDark ? oneDark : oneLight;
+  const backgroundColor = isDark ? "#09090b" : "#fafafa";
 
   // Extract language from className (format: "language-javascript")
   const match = /language-(\w+)/.exec(className || "");
@@ -68,13 +77,13 @@ export default function CodeBlock({
       </div>
       <div className="rounded-b-lg overflow-hidden border border-border border-t-0">
         <SyntaxHighlighter
-          style={oneDark}
+          style={syntaxTheme}
           language={language || "text"}
           PreTag="div"
           customStyle={{
             margin: 0,
             padding: "16px",
-            background: "#09090b",
+            background: backgroundColor,
             fontSize: "13px",
             lineHeight: "1.6",
             borderRadius: 0,
