@@ -107,8 +107,6 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
     return result.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   }, [historyEntries]);
 
-  console.log(processedEntries[0]);
-
   useEffect(() => {
     const checkPendingCashuToken = () => {
       const amount = getPendingCashuTokenAmount();
@@ -259,7 +257,9 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {entry.timestamp
-                              ? new Date(entry.timestamp * 1000).toLocaleString()
+                              ? new Date(
+                                  entry.timestamp * 1000
+                                ).toLocaleString()
                               : "N/A"}
                           </div>
                         </div>
@@ -275,7 +275,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
                         </div>
                         {entry.type === "spent" && entry.receivedAmount && (
                           <div className="text-xs text-muted-foreground">
-                            Received: {entry.receivedAmount} sats
+                            Pair: {entry.receivedAmount} - {entry.amount} sats
                           </div>
                         )}
                       </div>
@@ -314,7 +314,9 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {entry.timestamp
-                              ? new Date(entry.timestamp * 1000).toLocaleString()
+                              ? new Date(
+                                  entry.timestamp * 1000
+                                ).toLocaleString()
                               : "N/A"}
                           </div>
                         </div>

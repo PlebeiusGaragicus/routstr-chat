@@ -101,7 +101,7 @@ export function useCashuHistory() {
       const filter = {
         kinds: [CASHU_EVENT_KINDS.HISTORY],
         authors: [user.pubkey],
-        limit: 420,
+        limit: 2100,
       };
 
       // Add the 'since' property if we have a previous timestamp

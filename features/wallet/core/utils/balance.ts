@@ -14,7 +14,7 @@ export function calculateProofsBalance(proofs: Proof[]): number {
  */
 export function calculateBalanceByMint(
   proofs: Proof[],
-  mints: Array<{ url: string; keysets?: Keyset[] }>,
+  mints: Array<{ url: string; keysets?: Keyset[] }>
 ): { balances: Record<string, number>; units: Record<string, string> } {
   const balances: Record<string, number> = {};
   const units: Record<string, string> = {};
@@ -31,11 +31,10 @@ export function calculateBalanceByMint(
       // Select all proofs with id == keyset.id or keyset._id
       const keysetId = keyset.id ?? (keyset as any)._id;
       const proofsForKeyset = proofs.filter((proof) => proof.id === keysetId);
-      console.log("Blance check", mint.url, proofsForKeyset);
       if (proofsForKeyset.length) {
         balances[mint.url] += proofsForKeyset.reduce(
           (acc, proof) => acc + proof.amount,
-          0,
+          0
         );
         units[mint.url] = keyset.unit;
       }
@@ -65,7 +64,7 @@ export function calculateBalanceByMint(
  */
 export function computeTotalBalanceSats(
   mintBalances: Record<string, number>,
-  mintUnits: Record<string, string>,
+  mintUnits: Record<string, string>
 ): number {
   let total = 0;
 
@@ -83,7 +82,7 @@ export function computeTotalBalanceSats(
  */
 export function getMintBalance(
   mintUrl: string,
-  mintBalances: Record<string, number>,
+  mintBalances: Record<string, number>
 ): number {
   return mintBalances[mintUrl] || 0;
 }
