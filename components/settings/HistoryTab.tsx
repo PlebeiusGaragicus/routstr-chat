@@ -1,18 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { TransactionHistory } from "@/types/chat";
 import {
   getPendingCashuTokenAmount,
   getPendingCashuTokenDistribution,
 } from "../../utils/cashuUtils";
+import { useTransactionHistoryStore } from "@/features/wallet/state/transactionHistoryStore";
+
+type ViewMode = "combined" | "separate";
 
 interface HistoryTabProps {
   transactionHistory: TransactionHistory[];
   setTransactionHistory: (
     transactionHistory:
       | TransactionHistory[]
-      | ((
-          prevTransactionHistory: TransactionHistory[],
-        ) => TransactionHistory[]),
+      | ((prevTransactionHistory: TransactionHistory[]) => TransactionHistory[])
   ) => void;
   clearConversations: () => void;
   onClose: () => void;
@@ -25,11 +26,88 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
   onClose,
 }) => {
   const [pendingCashuAmount, setPendingCashuAmount] = useState<number | null>(
-    null,
+    null
   );
   const [pendingDistribution, setPendingDistribution] = useState<
     { baseUrl: string; amount: number }[]
   >([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("combined");
+
+  // Get transaction history from the store
+  const getHistoryEntries = useTransactionHistoryStore(
+    (state) => state.getHistoryEntries
+  );
+  const historyEntries = getHistoryEntries();
+
+  // Process entries to pair received with sent for "combined" view
+  const processedEntries = useMemo(() => {
+    // Sort by timestamp oldest first for pairing
+    const sorted = historyEntries;
+
+    const paired = new Set<string>(); // Track paired entry IDs
+    const result: Array<{
+      id: string;
+      type: "received" | "sent" | "spent";
+      amount: string;
+      timestamp?: number;
+      receivedAmount?: string;
+      sentAmount?: string;
+    }> = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+      const entry = sorted[i];
+
+      if (paired.has(entry.id)) continue; // Skip already paired
+
+      if (entry.direction === "in") {
+        // Look for the next unpaired 'out' to pair with
+        let foundPair = false;
+        for (let j = i + 1; j < sorted.length; j++) {
+          const nextEntry = sorted[j];
+          if (nextEntry.direction === "out" && !paired.has(nextEntry.id)) {
+            // Pair them as "spent"
+            paired.add(entry.id);
+            paired.add(nextEntry.id);
+
+            result.push({
+              id: `${entry.id}-${nextEntry.id}`,
+              type: "spent",
+              amount: nextEntry.amount,
+              timestamp: nextEntry.timestamp,
+              receivedAmount: entry.amount,
+              sentAmount: nextEntry.amount,
+            });
+
+            foundPair = true;
+            break;
+          }
+        }
+
+        if (!foundPair) {
+          // No pair found, keep as received
+          result.push({
+            id: entry.id,
+            type: "received",
+            amount: entry.amount,
+            timestamp: entry.timestamp,
+          });
+        }
+      } else if (entry.direction === "out") {
+        // Unpaired sent transaction
+        result.push({
+          id: entry.id,
+          type: "sent",
+          amount: entry.amount,
+          timestamp: entry.timestamp,
+        });
+      }
+    }
+
+    // Sort result by timestamp newest first for display
+    return result.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }, [historyEntries]);
+
+  console.log(processedEntries[0]);
 
   useEffect(() => {
     const checkPendingCashuToken = () => {
@@ -50,7 +128,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
   const handleClearTransactions = () => {
     if (
       window.confirm(
-        "Are you sure you want to clear all transaction history? This cannot be undone.",
+        "Are you sure you want to clear all transaction history? This cannot be undone."
       )
     ) {
       setTransactionHistory([]);
@@ -64,7 +142,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
   const handleClearConversations = () => {
     if (
       window.confirm(
-        "Are you sure you want to clear all conversations? This cannot be undone.",
+        "Are you sure you want to clear all conversations? This cannot be undone."
       )
     ) {
       clearConversations();
@@ -81,8 +159,37 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
             Transaction History
           </h3>
           <span className="text-xs text-muted-foreground">
-            {transactionHistory.length} transactions
+            {viewMode === "combined"
+              ? processedEntries.length
+              : historyEntries.length}{" "}
+            transactions
           </span>
+        </div>
+
+        {/* View Mode Tabs */}
+        <div className="flex gap-1 mb-3 p-1 bg-muted/50 rounded-md w-fit">
+          <button
+            type="button"
+            onClick={() => setViewMode("combined")}
+            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+              viewMode === "combined"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Combined
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("separate")}
+            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+              viewMode === "separate"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Separate
+          </button>
         </div>
 
         <div className="bg-muted/50 border border-border rounded-md">
@@ -123,46 +230,106 @@ const HistoryTab: React.FC<HistoryTabProps> = ({
               </div>
             </div>
           )}
-          {transactionHistory.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
-              No transactions yet
-            </div>
-          ) : (
-            <div className="max-h-80 overflow-y-auto">
-              {[...transactionHistory].reverse().map((tx, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 border-b border-border last:border-b-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        tx.type === "send" || tx.type === "spent"
-                          ? "bg-red-500"
-                          : "bg-green-500"
-                      }`}
-                    />
-                    <div>
-                      <div className="text-sm font-medium text-foreground capitalize">
-                        {tx.type}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(tx.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-mono text-foreground">
-                      {tx.type === "send" || tx.type === "spent" ? "-" : "+"}
-                      {tx.amount} sats
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Balance: {tx.balance}
-                    </div>
-                  </div>
+
+          {/* Combined View */}
+          {viewMode === "combined" && (
+            <>
+              {processedEntries.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No transactions yet
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {processedEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between p-4 border-b border-border last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            entry.type === "sent" || entry.type === "spent"
+                              ? "bg-red-500"
+                              : "bg-green-500"
+                          }`}
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-foreground capitalize">
+                            {entry.type}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {entry.timestamp
+                              ? new Date(entry.timestamp * 1000).toLocaleString()
+                              : "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-mono text-foreground">
+                          {entry.type === "received" ? "+" : "-"}
+                          {entry.type === "spent" && entry.receivedAmount
+                            ? Number(entry.amount) -
+                              Number(entry.receivedAmount)
+                            : entry.amount}{" "}
+                          sats
+                        </div>
+                        {entry.type === "spent" && entry.receivedAmount && (
+                          <div className="text-xs text-muted-foreground">
+                            Received: {entry.receivedAmount} sats
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Separate View */}
+          {viewMode === "separate" && (
+            <>
+              {historyEntries.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No transactions yet
+                </div>
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {historyEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between p-4 border-b border-border last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            entry.direction === "out"
+                              ? "bg-red-500"
+                              : "bg-green-500"
+                          }`}
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-foreground capitalize">
+                            {entry.direction === "in" ? "Received" : "Sent"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {entry.timestamp
+                              ? new Date(entry.timestamp * 1000).toLocaleString()
+                              : "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-mono text-foreground">
+                          {entry.direction === "out" ? "-" : "+"}
+                          {entry.amount} sats
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
