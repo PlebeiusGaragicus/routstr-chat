@@ -179,7 +179,8 @@ export function useCashuToken() {
       let proofsToKeep: Proof[], proofsToSend: Proof[];
 
       try {
-        const result = await wallet.send(amount, proofs);
+        // Pass keysetId to force swap and skip offline send functionality
+        const result = await wallet.send(amount, proofs, { keysetId: activeKeysets[0]?.id });
         proofsToKeep = result.keep;
         proofsToSend = result.send;
       } catch (error) {
@@ -221,7 +222,8 @@ export function useCashuToken() {
             console.log("rdlogs: proofsToSend", proofsToSend);
           } catch (error) {
             try {
-              const result = await wallet.send(amount, proofs);
+              // Pass keysetId to force swap and skip offline send functionality
+              const result = await wallet.send(amount, proofs, { keysetId: activeKeysets[0]?.id });
               proofsToKeep = result.keep;
               proofsToSend = result.send;
             } catch (error2) {
