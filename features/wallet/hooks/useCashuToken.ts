@@ -180,7 +180,9 @@ export function useCashuToken() {
 
       try {
         // Pass keysetId to force swap and skip offline send functionality
-        const result = await wallet.send(amount, proofs, { keysetId: activeKeysets[0]?.id });
+        const result = await wallet.send(amount, proofs, {
+          keysetId: activeKeysets[0]?.id,
+        });
         proofsToKeep = result.keep;
         proofsToSend = result.send;
       } catch (error) {
@@ -223,7 +225,9 @@ export function useCashuToken() {
           } catch (error) {
             try {
               // Pass keysetId to force swap and skip offline send functionality
-              const result = await wallet.send(amount, proofs, { keysetId: activeKeysets[0]?.id });
+              const result = await wallet.send(amount, proofs, {
+                keysetId: activeKeysets[0]?.id,
+              });
               proofsToKeep = result.keep;
               proofsToSend = result.send;
             } catch (error2) {
@@ -493,6 +497,7 @@ export function useCashuToken() {
         let keysets = mintDetails?.keysets;
 
         const activeKeysets = keysets?.filter((k) => k.active);
+        console.log("ACTIVE ", activeKeysets);
         const units = [...new Set(activeKeysets?.map((k) => k.unit))];
         const preferredUnit = units?.includes("msat")
           ? "msat"
